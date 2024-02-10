@@ -1,0 +1,292 @@
+package utils
+
+import (
+	"fmt"
+	"log"
+)
+
+const (
+	RED    = "\033[0;31m"
+	GREEN  = "\033[0;32m"
+	BLUE   = "\033[0;34m"
+	YELLOW = "\033[0;33m"
+	BOLD   = "\033[1m"
+	NC     = "\033[0m"
+	// nice true colors
+	BLUE_HI     = "\033[94m"
+	GREEN_HI    = "\033[92m"
+	PURP_HI     = "\033[95m"
+	GREEN_WHITE = "\x1b[38;5;121m"
+	GREEN_LIGHT = "\x1b[38;5;49m"
+	WHITEPINK   = "\x1b[38;5;218m"
+	SAND        = "\x1b[38;5;222m"
+	PEACH       = "\x1b[38;5;230m"
+	PINKISH     = "\x1b[38;5;199m"
+	WHITEBLUE   = "\x1b[38;5;117m"
+	// nice true above
+	PURP_DARK      = "\x1b[38;5;128m"
+	PURP_SHINE     = "\x1b[38;5;129m"
+	PURPLE_WHITE   = "\x1b[38;5;189m"
+	DIM            = "\033[2m"
+	LIGHT_GREY     = "\033[37m"
+	LIGHT_YELLOW   = "\033[1;33m"
+	GREY_BLUE      = "\x1b[38;5;153m"
+	GREEN_GREY     = "\x1b[38;5;158m"
+	GREEN_DEEPDARK = "\x1b[38;5;36m"
+	LIGHTPINK      = "\x1b[38;5;219m"
+	SKYBLUE        = "\x1b[38;5;45m"
+	COOLBLUE       = "\x1b[38;5;44m"
+	GREENISH       = "\x1b[38;5;42m"
+	PURPCOOL       = "\x1b[38;5;93m"
+	INDIGO         = "\x1b[38;5;57m"
+	BLUE_DEEP      = "\x1b[38;5;39m"
+	BLUEHYPER      = "\x1b[38;5;33m"
+	PURPLE         = "\x1b[38;5;135m"
+	PURPLE_DULL    = "\x1b[38;5;5m"
+	TICK_GREEN     = "\x1b[1m\x1b[32m✓\x1b[0m"
+	CROSS_RED      = "\x1b[1m\x1b[31m✗\x1b[0m"
+	UNDERLINE      = "\033[4m"
+	NO_UNDERLINE   = "\033[24m"
+	DELIMITER      = "======================================================================"
+	SECTION        = "********************************************"
+)
+
+func LogError(msg string) {
+	log.Printf("%s%s%s", RED, msg, NC)
+}
+
+func LogWarning(msg string) {
+	log.Printf("%s%s%s%s", DIM, YELLOW, msg, NC)
+}
+
+func LogMainAction(msg string) {
+	fmt.Printf("%s\n%s%s%s%s\n%s\n", DELIMITER, BOLD, WHITEBLUE, msg, NC, DELIMITER)
+}
+
+func LogSection(msg string) {
+	//	fmt.Printf("%s\n%s%s%s%s\n%s\n", DELIMITER, BOLD, GREEN_HI, msg, NC, DELIMITER)
+	fmt.Printf("%s%s%s\n%s%s%s%s\n%s%s%s\n", DIM, DELIMITER, NC, BOLD, GREEN_HI, msg, NC, DIM, DELIMITER, NC)
+}
+
+func LogStep(msg string) {
+	fmt.Printf("%s%s%s\n%s%s%s%s\n%s%s%s\n", DIM, SECTION, NC, BOLD, GREY_BLUE, msg, NC, DIM, SECTION, NC)
+
+	// fmt.Printf("%s\n%s%s%s%s\n%s\n", SECTION, BOLD, GREY_BLUE, msg, NC, SECTION)
+}
+
+func LogStepSuccess(msg string) {
+	log.Printf("%s%s%s", BOLD, msg, NC)
+}
+
+func Help() {
+	fmt.Printf("%s\n%s%s%s%s\n%s\n", DELIMITER, BOLD, WHITEBLUE, " m8l - Kubernetes on Bare Metal using KVM", NC, DELIMITER)
+
+	fmt.Printf(UNDERLINE + "\nSystem Library to Manage virtual machines and launch and configure Kubernetes clusters.\n\n" + NC)
+
+	fmt.Printf("@author " + WHITEBLUE + "kuro337\n\n" + NC)
+	fmt.Println(DIM + SECTION + NC + BOLD + PURPLE_WHITE + "\nHost System Linux Deps\n" + NC + DIM + SECTION + NC)
+
+	fmt.Println(`
+sudo apt install -y qemu qemu-kvm libvirt-daemon libvirt-clients bridge-utils virt-manager cloud-image-utils libguestfs-tools
+
+sudo reboot
+	`)
+	fmt.Println(DIM + SECTION + NC + BOLD + PURPLE_DULL + "\nCreating and Managing VMs\n" + NC + DIM + SECTION + NC)
+
+	fmt.Printf(`
+%s%sCreating a writable clone of a boot drive%s
+
+qemu-img create -b ubuntu-18.04-server-cloudimg-amd64.img -F qcow2 -f qcow2 ubuntu-vm-disk.qcow2 20G
+
+%s%sStarting a VM with virt-install%s
+
+virt-install --name ubuntu-vm \
+	--virt-type kvm \
+	--os-type Linux --os-variant ubuntu18.04 \
+	--memory 2048 \
+	--vcpus 2 \
+	--boot hd,menu=on \
+	--disk path=ubuntu-vm-disk.qcow2,device=disk \
+	--disk path=user-data.img,format=raw \
+	--graphics none \
+	--noautoconsole
+		
+	`, BOLD, WHITEPINK, NC, BOLD, WHITEPINK, NC)
+
+	fmt.Println()
+
+	fmt.Println(DIM + SECTION + NC + BOLD + SAND + "\nVirsh Networking and Common Issues\n" + NC + DIM + SECTION + NC)
+
+	fmt.Printf(`
+%sIf default network bridge is not seen on normal user%s
+
+virsh net-list --all 	  # default missing 
+sudo virsh net-list --all # shows default 
+
+%sMake sure current user is added to the libvirt group%s
+
+%s%sRestarting libvirtd and adding user to libvirt group%s
+
+sudo systemctl restart libvirtd
+sudo usermod -aG libvirt <username>
+cp /etc/libvirt/libvirt.conf ~/.config/libvirt/
+virsh net-autostart default 
+sudo reboot
+
+%sUpdate libvirt.conf to set the correct group%s
+
+%s1. Make sure user is set to <user> and group is libvirt%s
+# by default it will be root and root
+
+sudo vi /etc/libvirt/qemu.conf
+
+# default 
+
+user = "root"     
+group = "root"
+
+# update to current user and group libvirt (recommended)
+
+user = "kuro"     
+group = "libvirt"
+
+%s2. Uncomment last line at vi /etc/libvirt/libvirt.conf%s
+
+sudo vi /etc/libvirt/libvirt.conf
+
+#uri_default="qemu:///system" # uncomment this 
+
+%s3. Check if default bridge is available for current user%s
+
+virsh net-list --all
+	`, SAND, NC, BOLD, NC, UNDERLINE, PEACH, NC, SAND, NC, BOLD, NC, PEACH, NC, PEACH, NC)
+
+	fmt.Println()
+	// Virsh Commands and Usage
+	fmt.Println(DIM + SECTION + NC + BOLD + WHITEPINK + "\nVirsh Commands and Usage\n" + NC + DIM + SECTION + NC)
+	fmt.Println()
+	fmt.Println(LIGHTPINK + "Common virsh VM actions:" + NC)
+
+	fmt.Printf(`
+%svirsh commands to interact with Virtual Machines%s
+virsh list --all
+virsh shutdown ubuntu-vm
+virsh suspend ubuntu-vm
+virsh resume ubuntu-vm
+
+%sAdd user to libvirt group%s
+sudo systemctl restart libvirtd
+sudo usermod -aG libvirt kuro
+sudo reboot
+
+%s%sCLI util to query VM metadata%s
+
+%ssudo apt-get install arp-scan%s
+
+%sGetting VM MAC & IP Addr%s
+
+virsh dumpxml worker | grep 'mac address'
+sudo arp-scan --interface=virbr0 --localnet | grep "52:54:00:25:40:cb"
+
+%slibvirt utils to read write%s
+
+sudo virt-ls -d <vmname> /path/on/vm/
+sudo virt-copy-out -d vmname /path/on/vm/init.log /local/
+sudo virt-copy-in -a pathto/vm-disk.qcow2 <file_to_copy> /path/in/vm
+
+%sSingle Command to get the IP of a VM from the domain name%s
+
+VM=mydomain sudo arp-scan --interface=virbr0 --localnet \
+	| grep -f <(virsh dumpxml $VM \
+	| awk -F"'" '/mac address/{print $2}') \
+	| awk '{print $1}'
+
+128.999.45.100 %s# ip of VM mydomain%s
+`, PURPLE_WHITE, NC, PURPLE_WHITE, NC, BOLD, PURPLE_WHITE, NC, BOLD, NC, PURPLE_WHITE, NC, PURPLE_WHITE, NC, PURPLE_WHITE, NC, BOLD, NC)
+
+	fmt.Println()
+
+	fmt.Println(DIM + SECTION + NC + BOLD + GREEN_LIGHT + "\nLibrary Usage\n" + NC + DIM + SECTION + NC)
+
+	fmt.Printf(`
+%sLaunching a Single Control Plane Single Worker Cluster%s
+
+func main() {
+
+	vm.LaunchKubeControlNode()
+	vm.LaunchKubeWorkerNode()
+
+	healthy, _ := vm.ClusterHealthCheck()
+	if healthy {
+		fmt.Println("Cluster is healthy.")
+	} 
+
+	vm.FullCleanup("kubecontrol")
+	vm.FullCleanup("kubeworker")
+}
+
+%sConfiguring a VM according to Custom Specs%s
+
+func main() {
+  config := NewVMConfig("kubecontrol").
+	SetImageURL("https://cloud-images/ubuntu-22.04.amd64.img"). %s// base Image for VM%s 
+	SetBootFilesDir("data/scripts/master_kube"). %s// location to Init Scripts and Systemd Services for VM%s
+	DefaultUserData(). %s// Use default user data for username password login%s  
+	SetBootServices([]string{"kubemaster.service"}). %s// Define Services to Launch at Startup%s
+	SetCores(2).
+	SetMemory(2048). %s// Once VM is launched - define the artifacts to pull from the VM%s
+	SetArtifacts([]string{"/home/ubuntu/kubeadm-init.log"})
+
+	config.CreateImage().    %s// Create & Cache a Custom Image ,Setup the VM, Launch it%s
+		Setup().         %s// Setup the VM%s 
+		Launch().        %s// Launch the VM using the KVM Hypervisor%s 
+		PullArtifacts(). %s// Pull the Boot Artifacts to Host,%s
+		HealthCheck()    %s// Performs a Health Check by testing a deployment and networking%s
+}
+	`, COOLBLUE, NC, COOLBLUE, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC)
+
+	fmt.Println()
+}
+
+func HelpTest() {
+	fmt.Printf("%svirsh%s : wrapper around the %sC library%s %slibvirt%s\n", GREEN, NC, BOLD, NC, GREEN_HI, NC)
+	fmt.Printf("%svirsh%s : wrapper around the C library %slibvirt%s\n", PURP_HI, NC, GREEN_HI, NC)
+	fmt.Printf("%svirsh%s : wrapper around the C library %slibvirt%s\n", BLUE_HI, NC, BLUE, NC)
+	fmt.Printf("%s%svirsh%s : wrapper around the C library %slibvirt%s\n", BOLD, BLUE_HI, NC, BLUE, NC)
+
+	fmt.Println(DIM + "This is dim text" + NC)
+	fmt.Println(LIGHT_GREY + "This is light grey text" + NC)
+
+	fmt.Println(LIGHTPINK + "This is light pink text" + NC)
+	fmt.Println(WHITEPINK + "This is whiTe pink text" + NC)
+	fmt.Println(COOLBLUE + "This is cool blue text" + NC)
+	fmt.Println(GREENISH + "This is greenish text" + NC)
+	fmt.Println(PURPCOOL + "This is purple cool text" + NC)
+
+	fmt.Println(BLUEHYPER + "This is blue hyper text" + NC)
+	fmt.Println(PURPLE + "This is purple text" + NC)
+	fmt.Println(GREEN_WHITE + "This is green white text" + NC)
+	fmt.Println(BOLD + GREEN_WHITE + "This is bold green white text" + NC)
+	fmt.Println(GREEN_LIGHT + "This is green light text" + NC)
+	fmt.Println(SAND + "This is sand text" + NC)
+	fmt.Println(PURPLE_DULL + "This is purple dull text" + NC)
+	fmt.Println(GREEN_DEEPDARK + "This is green deep dark text" + NC)
+	fmt.Println(TICK_GREEN + " " + BOLD + "Commands Successful" + NC)
+	fmt.Println(CROSS_RED + " " + BOLD + "Failures Detected" + NC)
+
+	fmt.Printf("%s\n%s%s%s\n%s\n", SECTION, GREY_BLUE, "Section Steps Running", NC, SECTION)
+	fmt.Printf("%s\n%s%s%s%s\n%s\n", SECTION, BOLD, GREY_BLUE, "SECTION STEPS RUNNING", NC, SECTION)
+
+	LogMainAction("1. STEP A")
+	LogSection("RUNNING KUBE MASTER")
+	LogStep("Step 1. Performing xyz")
+
+	LogError("Failed to Launch Cluster")
+
+	fmt.Printf("%s%s%s", LIGHT_YELLOW, "LIGHT Warning Message: Be Careful", NC)
+	fmt.Printf("%s%s%s%s", DIM, LIGHT_YELLOW, "LIGHT Warning Message: Be Careful", NC)
+	fmt.Printf("%s%s%s", YELLOW, "Warning Message: Be Careful", NC)
+	fmt.Printf("%s%s%s%s", DIM, YELLOW, "Warning Message: Be Careful", NC)
+}
+
+// VM=mydomain sudo arp-scan --interface=virbr0 --localnet | grep -f <(virsh dumpxml $VM | awk -F"'" '/mac address/{print $2}') | awk '{print $1}'
