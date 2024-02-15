@@ -6,34 +6,23 @@ import (
 )
 
 const (
-	RED    = "\033[0;31m"
-	GREEN  = "\033[0;32m"
-	BLUE   = "\033[0;34m"
-	YELLOW = "\033[0;33m"
-	BOLD   = "\033[1m"
-	NC     = "\033[0m"
-	// nice true colors
-	BLUE_HI     = "\033[94m"
-	GREEN_HI    = "\033[92m"
-	PURP_HI     = "\033[95m"
-	GREEN_WHITE = "\x1b[38;5;121m"
-	GREEN_LIGHT = "\x1b[38;5;49m"
-	WHITEPINK   = "\x1b[38;5;218m"
-	SAND        = "\x1b[38;5;222m"
-	PEACH       = "\x1b[38;5;230m"
-	PINKISH     = "\x1b[38;5;199m"
-	WHITEBLUE   = "\x1b[38;5;117m"
-	// nice true above
-	PURP_DARK      = "\x1b[38;5;128m"
-	PURP_SHINE     = "\x1b[38;5;129m"
-	PURPLE_WHITE   = "\x1b[38;5;189m"
+	NC             = "\033[0m"
+	BOLD           = "\033[1m"
 	DIM            = "\033[2m"
+	UNDERLINE      = "\033[4m"
+	NO_UNDERLINE   = "\033[24m"
+	BLUE_HI        = "\033[94m"
+	GREEN_HI       = "\033[92m"
+	PURP_HI        = "\033[95m"
 	LIGHT_GREY     = "\033[37m"
+	RED            = "\033[0;31m"
+	GREEN          = "\033[0;32m"
+	BLUE           = "\033[0;34m"
+	YELLOW         = "\033[0;33m"
 	LIGHT_YELLOW   = "\033[1;33m"
-	GREY_BLUE      = "\x1b[38;5;153m"
-	GREEN_GREY     = "\x1b[38;5;158m"
+	PURPLE_DULL    = "\x1b[38;5;5m"
 	GREEN_DEEPDARK = "\x1b[38;5;36m"
-	LIGHTPINK      = "\x1b[38;5;219m"
+	GREEN_LIGHT    = "\x1b[38;5;49m"
 	SKYBLUE        = "\x1b[38;5;45m"
 	COOLBLUE       = "\x1b[38;5;44m"
 	GREENISH       = "\x1b[38;5;42m"
@@ -41,15 +30,66 @@ const (
 	INDIGO         = "\x1b[38;5;57m"
 	BLUE_DEEP      = "\x1b[38;5;39m"
 	BLUEHYPER      = "\x1b[38;5;33m"
+	GREEN_WHITE    = "\x1b[38;5;121m"
+	WHITEPINK      = "\x1b[38;5;218m"
+	SAND           = "\x1b[38;5;222m"
+	PEACH          = "\x1b[38;5;230m"
+	PINKISH        = "\x1b[38;5;199m"
+	WHITEBLUE      = "\x1b[38;5;117m"
+	PURP_DARK      = "\x1b[38;5;128m"
+	PURP_SHINE     = "\x1b[38;5;129m"
+	PURPLE_WHITE   = "\x1b[38;5;189m"
+	GREY_BLUE      = "\x1b[38;5;153m"
+	GREEN_GREY     = "\x1b[38;5;158m"
+	LIGHTPINK      = "\x1b[38;5;219m"
 	PURPLE         = "\x1b[38;5;135m"
-	PURPLE_DULL    = "\x1b[38;5;5m"
 	TICK_GREEN     = "\x1b[1m\x1b[32m✓\x1b[0m"
 	CROSS_RED      = "\x1b[1m\x1b[31m✗\x1b[0m"
-	UNDERLINE      = "\033[4m"
-	NO_UNDERLINE   = "\033[24m"
-	DELIMITER      = "======================================================================"
-	SECTION        = "********************************************"
+
+	DELIMITER    = "======================================================================"
+	DELIMITERDIM = "\033[2m======================================================================\033[0m"
+	SECTION      = "**********************************************************************"
+	DOTTED       = "-----------------------------------------------------"
 )
+
+// Enables Logging Flags that display Date, Timestamp, Caller File, and Caller Line Number
+func EnableInfo() {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+}
+
+func DisableInfo() {
+	log.SetFlags(0)
+}
+
+/*
+		// Example with color
+		coloredMsg := LogFormat("This section is in purple", Purple)
+		fmt.Println(coloredMsg)
+
+		// Example with color and style
+		coloredStyledMsg := LogFormat("This section is light pink and bold", LightPink, Bold)
+		fmt.Println(coloredStyledMsg)
+	}
+*/
+func LogFormat(msg string, styles ...string) string {
+	startFormat := ""
+	for _, style := range styles {
+		startFormat += style
+	}
+
+	return fmt.Sprintf("%s%s%s", startFormat, msg, NC)
+}
+
+func LogKVResults(keyColor, valueColor string, droneStats map[string]string) {
+	fmt.Println(DELIMITERDIM)
+	log.Printf("%s%sDrone Stats%s", BOLD, UNDERLINE, NC)
+
+	for key, value := range droneStats {
+		log.Printf("%s%-20s: %s%s%s\n", keyColor, key, valueColor, value, NC)
+	}
+
+	log.Println(DELIMITERDIM)
+}
 
 func LogError(msg string) {
 	log.Printf("%s%s%s", RED, msg, NC)
@@ -63,8 +103,11 @@ func LogMainAction(msg string) {
 	fmt.Printf("%s\n%s%s%s%s\n%s\n", DELIMITER, BOLD, WHITEBLUE, msg, NC, DELIMITER)
 }
 
+func LogDottedLineDelimitedText(msg string) {
+	fmt.Printf("%s\n%s\n%s\n", DOTTED, msg, DOTTED)
+}
+
 func LogSection(msg string) {
-	//	fmt.Printf("%s\n%s%s%s%s\n%s\n", DELIMITER, BOLD, GREEN_HI, msg, NC, DELIMITER)
 	fmt.Printf("%s%s%s\n%s%s%s%s\n%s%s%s\n", DIM, DELIMITER, NC, BOLD, GREEN_HI, msg, NC, DIM, DELIMITER, NC)
 }
 
@@ -76,6 +119,104 @@ func LogStep(msg string) {
 
 func LogStepSuccess(msg string) {
 	log.Printf("%s%s%s", BOLD, msg, NC)
+}
+
+func LogSuccessDark(msg string) {
+	log.Printf("%s%s%s", GREEN_DEEPDARK, msg, NC)
+}
+
+func LogSuccess(msg string) {
+	log.Printf("%s%s%s", GREEN_WHITE, msg, NC)
+}
+
+func LogBoldUnderlined(msg string) {
+	log.Printf("%s%s%s%s", UNDERLINE, BOLD, msg, NC)
+}
+
+func LogBold(msg string) {
+	log.Printf("%s%s%s", BOLD, msg, NC)
+}
+
+func LogWhiteBlueBold(msg string) {
+	log.Printf("%s%s%s%s", BOLD, WHITEBLUE, msg, NC)
+}
+
+func LogWhiteBlue(msg string) {
+	log.Printf("%s%s%s", WHITEBLUE, msg, NC)
+}
+
+func LogGreyBlueBold(msg string) {
+	log.Printf("%s%s%s%s", BOLD, GREY_BLUE, msg, NC)
+}
+
+func LogGreyBlue(msg string) {
+	log.Printf("%s%s%s", GREY_BLUE, msg, NC)
+}
+
+func LogRichLightPurpleBold(msg string) {
+	log.Printf("%s%s%s%s", BOLD, PURP_HI, msg, NC)
+}
+
+func LogRichLightPurple(msg string) {
+	log.Printf("%s%s%s", PURP_HI, msg, NC)
+}
+
+func LogTealDark(msg string) {
+	log.Printf("%s%s%s", GREEN_DEEPDARK, msg, NC)
+}
+
+func LogTealDarkBold(msg string) {
+	log.Printf("%s%s%s%s", BOLD, GREEN_DEEPDARK, msg, NC)
+}
+
+func LogOffwhite(msg string) {
+	log.Printf("%s%s%s%s", BOLD, PEACH, msg, NC)
+}
+
+func LogOffwhiteBold(msg string) {
+	log.Printf("%s%s%s%s", BOLD, PEACH, msg, NC)
+}
+
+func LogSkyBlue(msg string) {
+	log.Printf("%s%s%s", BLUE_HI, msg, NC)
+}
+
+func LogSkyBlueBold(msg string) {
+	log.Printf("%s%s%s%s", BOLD, BLUE_HI, msg, NC)
+}
+
+func LogEvent(pairs ...interface{}) {
+	message := ""
+	for i := 0; i < len(pairs); i += 2 {
+		desc := pairs[i]
+		var valueStr string
+		if i+1 < len(pairs) {
+
+			value := pairs[i+1]
+			valueStr = fmt.Sprintf("%s%+v%s", PEACH, value, NC)
+		} else {
+			valueStr = fmt.Sprint(desc)
+		}
+		message += fmt.Sprintf("%s%s%s: %s ", BOLD, desc, NC, valueStr)
+	}
+	log.Printf(message)
+}
+
+func LogEventCoded(ansicolor string, pairs ...interface{}) {
+	message := ""
+	for i := 0; i < len(pairs); i += 2 {
+		desc := pairs[i]
+		var valueStr string
+		if i+1 < len(pairs) {
+
+			value := pairs[i+1]
+			valueStr = fmt.Sprintf("%s%+v%s", ansicolor, value, NC)
+		} else {
+			valueStr = fmt.Sprint(desc)
+		}
+		message += fmt.Sprintf("%s%s%s: %s ", BOLD, desc, NC, valueStr)
+	}
+	log.Printf(message)
 }
 
 func Help() {
@@ -246,6 +387,69 @@ func main() {
 	`, COOLBLUE, NC, COOLBLUE, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC, GREEN_GREY, NC)
 
 	fmt.Println()
+}
+
+func MockANSIPrint() {
+	colors := map[string]string{
+		"Normal":                NC,
+		"Bold":                  BOLD,
+		"Dim":                   DIM,
+		"Underline":             UNDERLINE,
+		"No Underline":          NO_UNDERLINE,
+		"Cool Blue":             COOLBLUE,
+		"Deep Blue":             BLUE_DEEP,
+		"High Intensity Blue":   BLUE_HI,
+		"High Intensity Green":  GREEN_HI,
+		"High Intensity Purple": PURP_HI,
+		"Light Grey":            LIGHT_GREY,
+		"Red":                   RED,
+		"Green":                 GREEN,
+		"Blue":                  BLUE,
+		"Yellow":                YELLOW,
+		"Light Yellow":          LIGHT_YELLOW,
+		"Purple Dull":           PURPLE_DULL,
+		"Deep Dark Green":       GREEN_DEEPDARK,
+		"White Pink":            WHITEPINK,
+		"White Blue":            WHITEBLUE,
+		"Green White":           GREEN_WHITE,
+		"Grey Blue":             GREY_BLUE,
+		"Sand":                  SAND,
+		"Peach":                 PEACH,
+	}
+
+	sentences := map[string]string{
+		"Normal":                "This is normal.",
+		"Bold":                  "This is bold.",
+		"Dim":                   "This is dim.",
+		"Underline":             "This is underlined.",
+		"No Underline":          "This has no underline.",
+		"High Intensity Blue":   "Blue Blue Blue BLUE_HI.",
+		"High Intensity Green":  "Green Green Green GREEN_HI.",
+		"High Intensity Purple": "Purple Purple Purple PURPLE_HI",
+		"Light Grey":            "Grey Grey Light Grey",
+		"Red":                   "Red RED red red red.",
+		"Green":                 "Green green normal green.",
+		"Blue":                  "Blue,,,,,Blue blue BLUE.",
+		"Yellow":                "yellowyellowyellowyellow.",
+		"Light Yellow":          "Light Yellow LIGHT YELLOW.",
+		"Purple Dull":           "Purple, dull .",
+		"Deep Dark Green":       "Green, dark",
+		"White Pink":            "White Pinkish Tone",
+		"White Blue":            "White Blue Tone",
+		"Green White":           "Green White Tone",
+		"Grey Blue":             "Grey Blue Tone",
+		"Sand":                  "Sand Tone",
+		"Peach":                 "Peach Tone",
+		"Cool Blue":             "Cool Blue COOL BLUE.",
+		"Deep Blue":             "Deep Blue DEEP BLUE.",
+	}
+
+	for colorName, colorCode := range colors {
+		fmt.Printf("%s%s%s\n", colorCode, sentences[colorName], NC)
+		fmt.Printf("%s%s%s (bold)%s\n", BOLD, colorCode, sentences[colorName], NC)
+		fmt.Printf("%s%s%s (dim)%s\n", DIM, colorCode, sentences[colorName], NC)
+
+	}
 }
 
 func HelpTest() {

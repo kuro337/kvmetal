@@ -52,7 +52,7 @@ func LaunchKubeControlNode(master_name string) (*VMConfig, error) {
 
 	utils.LogSection("GENERATING CLOUDINIT USERDATA")
 
-	if err := config.GenerateCustomUserDataImg(); err != nil {
+	if err := config.GenerateCustomUserDataImg(""); err != nil {
 		slog.Error("Failed to Generate Cloud-Init Disk", "error", err)
 		Cleanup(config.VMName)
 		return nil, err

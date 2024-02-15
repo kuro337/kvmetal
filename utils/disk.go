@@ -51,6 +51,18 @@ func CopyScriptsAndService(bootScript, systemdScript, mountPath, vmName string) 
 	return nil
 }
 
+// PathResolvable checks if a file exists at the specified path and returns true if it does.
+func PathResolvable(filePath string) bool {
+	_, err := os.Stat(filePath)
+	if err == nil {
+		return true
+	}
+	if os.IsNotExist(err) {
+		return false
+	}
+	return false
+}
+
 func PrintCurrentPath() {
 	dir, err := os.Getwd()
 	if err != nil {

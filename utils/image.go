@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 var (
@@ -87,8 +88,21 @@ func MountImage(imagePath, mountPath string) error {
 	return nil
 }
 
+// Unmounts VM from Host mount path after creation
 func UnmountImage(mountPath string) error {
 	return exec.Command("sudo", "guestunmount", mountPath).Run()
+}
+
+// Clears the Temp Mount Dir for the VM needed during Creation
+func ClearMountPath(vmName string) error {
+	removeCmd := exec.Command("sudo", "rm", "-rf", "/mnt/"+vmName)
+	if err := removeCmd.Run(); err != nil {
+		log.Printf("Failed to remove VM directory %s: %v", vmName, err)
+		return err
+	} else {
+		log.Printf("Removed VM directory %s successfully", vmName)
+	}
+	return nil
 }
 
 func CreateUserDataFile(userData, filePath string) error {
@@ -102,6 +116,7 @@ func CreateUserDataFile(userData, filePath string) error {
 	return err
 }
 
+// CreateBaseImage creates an Image for the VM from a Distro such as Ubuntu or any other one
 func CreateBaseImage(imageURL, vmName string) (string, error) {
 	baseImageName := filepath.Base(imageURL)
 	modifiedImageName := vmName + "-vm-disk.qcow2"
@@ -202,19 +217,51 @@ func IsVMRunning(vmName string) (bool, error) {
 	return false, scanner.Err()
 }
 
-// RemoveVM destroys the running VM : virsh destroy <vm_name>
-func RemoveVM(vmName string) error {
-	destroyCmd := exec.Command("virsh", "destroy", vmName)
+// RemoveVM shuts down the running VM : virsh shutdown <vm_name>
+func ShutdownVM(vmName string) error {
+	destroyCmd := exec.Command("virsh", "shutdown", vmName)
 	if _, err := destroyCmd.Output(); err != nil {
-		log.Printf("Failed to destroy VM '%s', it might not be running. Error: %v", vmName, err)
+		log.Printf("Attempting to shutdown VM '%s', it might not be running. Error: %v", vmName, err)
 	}
 
-	undefineCmd := exec.Command("virsh", "undefine", vmName)
-	if _, err := undefineCmd.Output(); err != nil {
-		log.Printf("Failed to undefine VM '%s'. Error: %v", vmName, err)
+	// Check every 3s for up to 15s if the VM has been shut down
+	for i := 0; i < 5; i++ {
+		time.Sleep(3 * time.Second)
+		running, err := IsVMRunning(vmName)
+		if err != nil {
+			log.Printf("Error checking if VM '%s' is running: %v", vmName, err)
+			continue
+		}
+		if !running {
+			log.Printf("VM '%s' has been successfully shut down.", vmName)
+			return nil
+		}
+	}
+
+	// If the VM is still running after the waiting period, forcefully destroy it
+	log.Printf("VM '%s' is still running after waiting period, attempting to destroy it forcefully...", vmName)
+	destroyCmd = exec.Command("virsh", "destroy", vmName)
+	if _, err := destroyCmd.Output(); err != nil {
+		log.Printf("Failed to forcefully destroy VM '%s'. Error: %v", vmName, err)
 		return err
 	}
 
-	log.Printf("VM '%s' has been successfully destroyed and undefined.", vmName)
+	log.Printf("VM '%s' has been forcefully destroyed.", vmName)
+	return nil
+}
+
+func UndefineAndRemoveVM(vmName string) error {
+	if err := ShutdownVM(vmName); err != nil {
+		return err
+	}
+
+	log.Printf("Undefining VM '%s' and removing all storage...", vmName)
+	undefineCmd := exec.Command("virsh", "undefine", vmName, "--remove-all-storage")
+	if _, err := undefineCmd.Output(); err != nil {
+		log.Printf("Failed to undefine VM '%s' and remove all storage. Error: %v", vmName, err)
+		return err
+	}
+
+	log.Printf("VM '%s' has been successfully undefined and all storage removed.", vmName)
 	return nil
 }

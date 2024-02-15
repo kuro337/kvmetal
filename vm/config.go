@@ -89,6 +89,10 @@ func (config *VMConfig) SetArtifacts(artifacts []string) *VMConfig {
 
 func (config *VMConfig) SetUserData(userData string) *VMConfig {
 	config.UserData = userData
+	if userData == "" {
+		log.Printf("Setting to default Cloud init data")
+		config.DefaultUserData()
+	}
 	return config
 }
 
@@ -105,20 +109,28 @@ func (s *VMConfig) PullImage() {
 	}
 }
 
-func (config *VMConfig) GenerateCustomUserDataImg() error {
+/*
+GenerateCustomUserDataImg creates the raw disk and attaches it as a secondary disk to the VM for user-data.
+This enables username/pw access for the VM.
+
+	virsh domblklist vm_name  // view attached disks
+	qemu-img info user-data.img // Viewing Disk Type
+
+To view Logs for CloudInit user data if boot script was set check
+
+	cat /var/log/cloud-init-output.log | less
+*/
+func (config *VMConfig) GenerateCustomUserDataImg(bootScriptPath string) error {
 	// Create the directory for userdata if it doesn't exist
 	userdataDirPath := filepath.Join(config.artifactPath, config.VMName, "userdata")
 	if err := os.MkdirAll(userdataDirPath, 0o755); err != nil {
 		return fmt.Errorf("failed to create userdata directory: %v", err)
 	}
 
-	// Define the content of the user-data file
-	userDataContent := fmt.Sprintf(`#cloud-config
-hostname: %s
-password: password
-chpasswd: { expire: False }
-ssh_pwauth: True
-`, config.VMName)
+	userDataContent, _ := CreateCloudInitDynamically(config.VMName, bootScriptPath)
+
+	utils.LogOffwhite("CloudInit UserData set to:")
+	utils.LogDottedLineDelimitedText(userDataContent)
 
 	// Create a temporary user-data file
 	userDataFilePath := filepath.Join(userdataDirPath, "user-data.txt")
@@ -142,6 +154,88 @@ ssh_pwauth: True
 	// }
 
 	return nil
+}
+
+// Create Image from Direct Provided User Data Image
+func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) error {
+	// Create the directory for userdata if it doesn't exist
+	userdataDirPath := filepath.Join(config.artifactPath, config.VMName, "userdata")
+	if err := os.MkdirAll(userdataDirPath, 0o755); err != nil {
+		return fmt.Errorf("failed to create userdata directory: %v", err)
+	}
+
+	userDataBytes, err := os.ReadFile(userDataPathAbs) // Ensure you're using the appropriate I/O library for your Go version
+	if err != nil {
+		return fmt.Errorf("failed to read boot script: %v", err)
+	}
+
+	userDataContent := string(userDataBytes)
+
+	utils.LogOffwhite("CloudInit UserData set to:")
+	utils.LogDottedLineDelimitedText(userDataContent)
+
+	// Create a temporary user-data file
+	userDataFilePath := filepath.Join(userdataDirPath, "user-data.txt")
+	err = os.WriteFile(userDataFilePath, []byte(userDataContent), 0o644)
+	if err != nil {
+		return fmt.Errorf("failed to write user-data file: %v", err)
+	}
+
+	// Path for the output user-data.img
+	outputImgPath := filepath.Join(userdataDirPath, "user-data.img")
+
+	// Generate the user-data.img
+	cmd := exec.Command("cloud-localds", outputImgPath, userDataFilePath)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run cloud-localds: %v", err)
+	}
+
+	return nil
+}
+
+/*
+Generates Cloud Init Data that the VM runs at Bootup
+
+This is how the runcmd properly formatted should be:
+
+#cloud-config
+hostname: hadoop
+password: password
+chpasswd: { expire: False }
+ssh_pwauth: True
+runcmd:
+  - |
+    #!/bin/bash
+    # Update and upgrade packages non-interactively
+    sudo DEBIAN_FRONTEND=noninteractive apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get -y upgrade
+*/
+func CreateCloudInitDynamically(vmName, bootScriptPath string) (string, error) {
+	var scriptContent string
+	if bootScriptPath != "" {
+		content, err := os.ReadFile(bootScriptPath) // Ensure you're using the appropriate I/O library for your Go version
+		if err != nil {
+			return "", fmt.Errorf("failed to read boot script: %v", err)
+		}
+		scriptContent = string(content)
+	}
+
+	// The crucial adjustment: Indent the script content for inclusion in the cloud-init YAML.
+	indentedScriptContent := "    " + strings.ReplaceAll(scriptContent, "\n", "\n    ")
+
+	userDataContent := fmt.Sprintf(`#cloud-config
+hostname: %s
+password: password
+chpasswd: { expire: False }
+ssh_pwauth: True
+runcmd:
+  - |
+%s`, vmName, indentedScriptContent)
+
+	// if err := os.WriteFile("testingdynamicinit.yaml", []byte(userDataContent), 0o644); err != nil {
+	// 	return fmt.Errorf("failed to write user data file: %v", err)
+	// }
+
+	return userDataContent, nil
 }
 
 func (config *VMConfig) GenerateUserDataImgDefault() error {
@@ -197,6 +291,7 @@ func (s *VMConfig) CreateBaseImage() error {
 	return nil
 }
 
+// SetupVM() creates a Mount Path to Copy Boot scripts into the VM, Copies Dynamic Data into the VM, and then clears the Mount Data.
 func (s *VMConfig) SetupVM() error {
 	utils.LogStep("MOUNTING IMAGE")
 
@@ -215,36 +310,44 @@ func (s *VMConfig) SetupVM() error {
 
 	s.navigateToRoot()
 
-	utils.LogStep("COPYING SCRIPTS AND SYSTEMD SERVICES")
-
-	if err := s.CopyVMSetupFiles(); err != nil {
-		slog.Error("Failed Copying Boot Script and Service", "error", err)
-		return err
+	// If Boot Files Present Copy Them
+	if s.BootFilesDir != "" {
+		utils.LogStep("COPYING SCRIPTS AND SYSTEMD SERVICES")
+		if err := s.CopyVMSetupFiles(); err != nil {
+			slog.Error("Failed Copying Boot Script and Service", "error", err)
+			return err
+		}
+		log.Printf("Files Copied Successfully")
 	}
 
-	log.Printf("Files Copied Successfully")
-
-	utils.LogStep("ENABLING SYSTEMD SERVICE AND UNMOUNTING")
-
-	if err := s.EnableSystemdServices(); err != nil {
-		slog.Error("Failed Enabling Systemd Services", "error", err)
-		return err
+	// If SystemD scripts defined - enable them
+	if s.SystemdScript != "" {
+		utils.LogStep("ENABLING SYSTEMD SERVICE AND UNMOUNTING")
+		if err := s.EnableSystemdServices(); err != nil {
+			slog.Error("Failed Enabling Systemd Services", "error", err)
+			return err
+		}
+		log.Printf("Systemd services on Image enabled successfully")
 	}
 
-	log.Printf("Systemd services on Image enabled successfully")
+	log.Printf("Unmounting Image and Clearing Temp Mount Path")
 
 	if err := utils.UnmountImage(mountPath); err != nil {
 		slog.Error("Failed Unmounting Image", "error", err)
 		return err
 	}
 
-	log.Printf("Unmounting Image")
+	if err := utils.ClearMountPath(s.VMName); err != nil {
+		slog.Error("Failed Unmounting Image", "error", err)
+		return err
+	}
 
 	s.navigateToRoot()
 
 	return nil
 }
 
+// CreateVM() uses libvirtd to create the VM and boot it. The state will change to Running and the boot scripts will run followed by systemd services
 func (s *VMConfig) CreateVM() error {
 	s.navigateToRoot()
 
@@ -253,10 +356,9 @@ func (s *VMConfig) CreateVM() error {
 
 	cmd := exec.Command("virt-install", "--name", s.VMName, "--virt-type", "kvm", "--memory", fmt.Sprint(s.Memory), "--vcpus", fmt.Sprint(s.CPUCores), "--boot", "hd,menu=on", "--disk", "path="+modifiedImagePath+",device=disk", "--disk", "path="+vm_userdata_img+",format=raw", "--graphics", "none", "--network", "network=default", "--os-type", "Linux", "--os-variant", "ubuntu18.04", "--noautoconsole")
 
-	log.Printf("%sCreating Virtual Machine%s %s%s%s: %s\n", utils.BOLD, utils.NC, utils.PURP_HI, s.VMName, utils.NC, cmd.String())
+	log.Printf("%sCreating Virtual Machine%s %s%s%s%s: %s\n", utils.BOLD, utils.NC, utils.BOLD, utils.COOLBLUE, s.VMName, utils.NC, cmd.String())
 
-	// Capture standard error
-	var stderr bytes.Buffer
+	var stderr bytes.Buffer // Capture stderr
 	cmd.Stderr = &stderr
 
 	err := cmd.Run()
