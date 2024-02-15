@@ -1,0 +1,15 @@
+[Unit]
+Description=Boot service to launch kube worker node
+
+[Service]
+ExecStart=/home/ubuntu/launch_worker.sh
+
+# this might not be required for worker - it is causing failures
+# ExecStartPost=/bin/bash /home/ubuntu/setup_kubectl_user.sh 
+
+Type=oneshot
+RemainAfterExit=yes
+User=root
+
+[Install]
+WantedBy=multi-user.target

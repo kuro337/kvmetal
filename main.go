@@ -8,6 +8,9 @@ import (
 
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+	// network.PrivateIPAddrAllVMs(true)
+	// network.GetHostIP(true)
+	// network.VMIpAddrInfoList(true)
 
 	cli.Evaluate()
 

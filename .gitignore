@@ -1,5 +1,4 @@
 GO.mod 
 go.sum 
-NOTES.md
 metallb/deployment_l2_actual.yaml
-data/*
+data/images

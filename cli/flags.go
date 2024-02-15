@@ -28,8 +28,10 @@ go run main.go --launch-vm=spark --mem=24576 --cpu=8
 Hadoop:
 go run main.go --launch-vm=hadoop --mem=12288 --cpu=4
 
+# remember to adjust logic to make sure we can set the userdata inline too
 go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --boot=data/scripts/defaults/shell.sh
 
+# launches hadoop
 go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
 
 
