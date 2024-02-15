@@ -1,0 +1,12 @@
+[Unit]
+Description=Boot service to launch kube control node
+
+[Service]
+ExecStart=/home/ubuntu/launch_master.sh
+
+Type=oneshot
+RemainAfterExit=yes
+User=root
+
+[Install]
+WantedBy=multi-user.target

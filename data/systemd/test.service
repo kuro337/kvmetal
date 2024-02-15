@@ -1,0 +1,11 @@
+[Unit]
+Description=My custom startup script
+
+[Service]
+ExecStart=/home/ubuntu/init.sh
+Type=oneshot
+RemainAfterExit=yes
+User=root
+
+[Install]
+WantedBy=multi-user.target

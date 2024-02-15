@@ -8,6 +8,7 @@ import (
 	"strings"
 )
 
+// ExecCmd("ls -a",true) will run a command and return the full string result and print/not print
 func ExecCmd(command string, print bool) (string, error) {
 	// Splitting command into command and arguments
 	args := strings.Split(command, " ")
