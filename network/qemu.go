@@ -10,11 +10,17 @@ import (
 )
 
 /*
+CHECK docs/network/hostname.md for Hostname not showing up Solutions:
+
+sudo arp-scan --interface=virbr0 --localnet | grep -f <(virsh dumpxml hadoop | awk -F"'" '/mac address/{print $2}') | awk '{print $1}'
+
 sudo iptables -t nat -L PREROUTING -n -v --line-number
 sudo iptables -L FORWARD -nv --line-number
 
 # Leases stay active until the Expiry-time
 sudo virsh net-dhcp-leases default
+
+virsh net-dumpxml default
 
 # from the VM run this TO make sure the hostname is set to the right one
 sudo hostnamectl set-hostname hadoop
@@ -48,6 +54,38 @@ type VMLeaseInfo struct {
 	Protocol string
 }
 
+const sampleQemuHooksFile = `#!/bin/bash
+	
+v=$(/sbin/iptables -L FORWARD -n -v | /usr/bin/grep 192.168.122.0/24 | /usr/bin/wc -l)
+
+[ $v -le 2 ] && /sbin/iptables -I FORWARD 1 -o virbr0 -m state -s 192.168.1.0/24 -d 192.168.122.0/24 --state NEW,RELATED,ESTABLISHED -j ACCEPT
+`
+
+func CreateQemuHooksFile() string {
+	hostIP, _ := GetHostIP(false)
+
+	libvirtIpSubnet, err := GetLibvirtIpSubnet()
+	if err != nil {
+		log.Printf("%s", err)
+	}
+
+	log.Printf("Libvirt IP Subnet %s", libvirtIpSubnet)
+
+	qemuHooksFile := ConstructQemuHooksFile(hostIP, libvirtIpSubnet)
+
+	utils.LogDottedLineDelimitedText(qemuHooksFile)
+
+	return qemuHooksFile
+}
+
+func ConstructQemuHooksFile(hostIpWithSubnet, libvirtIpSubnet string) string {
+	return fmt.Sprintf(`#!/bin/bash	
+v=$(/sbin/iptables -L FORWARD -n -v | /usr/bin/grep %s | /usr/bin/wc -l)
+
+[ $v -le 2 ] && /sbin/iptables -I FORWARD 1 -o virbr0 -m state -s %s -d %s --state NEW,RELATED,ESTABLISHED -j ACCEPT
+	`, libvirtIpSubnet, hostIpWithSubnet, libvirtIpSubnet)
+}
+
 /*
 CreateUfwBeforeRule creates the Port Forwarding Rule to expose the VM to external guests within the same network
 
@@ -70,8 +108,8 @@ CreateUfwBeforeRule creates the Port Forwarding Rule to expose the VM to externa
 
 	reboot // or reboot the host
 */
-func CreateUfwBeforeRule(vmIpAddr, vmExposePort, hostPort string) string {
-	return fmt.Sprintf("-A PREROUTING -p tcp --dport %s -j DNAT --to-destination %s:%s -m comment --comment \"Testing port 9999 of vm from ubuntu host 9999\"", hostPort, vmIpAddr, vmExposePort)
+func CreateUfwBeforeRule(vmIpAddr, vmExposePort, hostPort, comment string) string {
+	return fmt.Sprintf("-A PREROUTING -p tcp --dport %s -j DNAT --to-destination %s:%s -m comment --comment \"%s\"", hostPort, vmIpAddr, vmExposePort, comment)
 }
 
 // PrivateIPAddrAllVMs parses libvirtd output for DHCP leases and gets the IP Subnet

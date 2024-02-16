@@ -101,6 +101,8 @@ func ParseFlags() *Config {
 
 	flag.Parse()
 
+	utils.LogWhiteBlueBold(fmt.Sprintf("VM passed: %s", *vm))
+
 	if *cluster {
 		action = Launch
 	} else if *cleanup != "" {

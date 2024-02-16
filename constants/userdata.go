@@ -13,6 +13,7 @@ sudo chsh -s $(which zsh)
 const CloudInitUbuntu = `#cloud-config
 
 #hostname: _HOSTNAME_
+#fqdn: _FQDN_
 passwd: password  
 lock_passwd: false
 sudo: ALL=(ALL) NOPASSWD:ALL
@@ -20,8 +21,4 @@ package-update: true
 package_upgrade: true
 password: password
 ssh_pwauth: true
-chpasswd: { expire: False }
-
-
-
 chpasswd: { expire: False }`

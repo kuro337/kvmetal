@@ -4,7 +4,6 @@ import (
 	"log"
 
 	"kvmgo/cli"
-	"kvmgo/network"
 )
 
 func main() {
@@ -12,12 +11,12 @@ func main() {
 
 	cli.Evaluate()
 
-	network.GetHostIP(true)
-	network.PrivateIPAddrAllVMs(true)
-	network.VMIpAddrInfoList(true)
+	// network.GetHostIP(true)
+	// network.PrivateIPAddrAllVMs(true)
+	// network.VMIpAddrInfoList(true)
 
-	rule := network.CreateUfwBeforeRule("192.168.1.194", "8088", "9999")
-	log.Printf("ufw rule: %s", rule)
+	// rule := network.CreateUfwBeforeRule("192.168.1.194", "8088", "9999")
+	// log.Printf("ufw rule: %s", rule)
 
 	// hadoop := utils.GenerateDefaultCloudInitZshKernelUpgrade("hadoop")
 	// log.Printf("%s", hadoop)
