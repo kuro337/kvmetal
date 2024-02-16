@@ -46,6 +46,9 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 
 	if err := vmConfig.CreateVM(); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Create VM ERROR:%s", err))
+		log.Printf("Check sudo cat /var/log/libvirt/qemu/%s.log for verbose failure logs", vmConfig.VMName)
+		log.Printf("Known Issue: Ensure no invalid hooks are present in /etc/libvirt/hooks/qemu")
+
 		return nil, err
 
 	}
@@ -53,6 +56,8 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 	utils.IsVMRunning(vmConfig.VMName)
 
 	slog.Info("VM created successfully")
+
+	utils.LogBold("For VM Boot Logs: Check /var/log/cloud-init-output.log to view boot logs.")
 
 	return vmConfig, nil
 }

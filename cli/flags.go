@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"strings"
 
+	"kvmgo/configuration/presets"
 	"kvmgo/utils"
 	"kvmgo/vm"
 	kvm "kvmgo/vm"
@@ -31,9 +32,16 @@ go run main.go --launch-vm=hadoop --mem=12288 --cpu=4
 # remember to adjust logic to make sure we can set the userdata inline too
 go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --boot=data/scripts/defaults/shell.sh
 
+# test ZSH shell script
+go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
+
+
 # launches hadoop
 go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
 
+go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/bigdata/user-data.txt
+
+go run main.go --launch-vm=hadoop --preset=hadoop --mem=8192 --cpu=4
 
 Launch a new VM with Control Plane Setup
 go run main.go --cluster --control=kubecontrol --workers=kubeworker1,kubeworker2
@@ -59,17 +67,20 @@ const (
 )
 
 type Config struct {
-	Action     Action
-	Cluster    bool
-	Cleanup    []string
-	Control    string
-	Workers    []string
-	Name       string
-	Memory     int
-	CPU        int
-	BootScript string
-	Userdata   string
-	Help       bool
+	VM           string
+	Action       Action
+	Cluster      bool
+	Cleanup      []string
+	Control      string
+	Workers      []string
+	Name         string
+	Memory       int
+	CPU          int
+	BootScript   string
+	Userdata     string
+	UserdataFile string
+	Help         bool
+	Preset       string
 }
 
 func ParseFlags() *Config {
@@ -84,7 +95,9 @@ func ParseFlags() *Config {
 	cpu := flag.String("cpu", "", "Specify Cores for the VM")
 	bootScript := flag.String("boot", "", "Path to the custom boot script")
 	userdata := flag.String("userdata", "", "Path to the User Data Cloud init script to be used Directly")
+	preset := flag.String("preset", "", "Choose from a preconfigured Setup such as Hadoop, Spark, Kubernetes")
 	help := flag.Bool("help", false, "View Help for kVM application")
+	vm := flag.String("vm", "", "Virtual Machine (Domain Name)")
 
 	flag.Parse()
 
@@ -98,50 +111,67 @@ func ParseFlags() *Config {
 		action = New
 	}
 
-	var mem int
+	config := &Config{
+		Action:  action,
+		VM:      *vm,
+		Name:    *launch_vm,
+		Cluster: *cluster,
+		Control: *control,
+		Workers: strings.Split(*workers, ","),
+		// Memory:       mem,
+		// CPU:          vcpu,
+		// BootScript:   absBootScriptPath,
+		// Userdata:     dynamicCloudInit,
+		// UserdataFile: absUserdataPath,
+		Help: *help,
+	}
 
 	if *memory != "" {
 		parsedMem, err := strconv.Atoi(*memory)
 		if err != nil {
 			log.Printf("Failed to parse memory value: %v.Setting default memory as 2048mb", err)
 		}
-		mem = parsedMem
+		config.Memory = parsedMem
 	}
-
-	var vcpu int
 
 	if *cpu != "" {
 		parsedCpu, err := strconv.Atoi(*cpu)
 		if err != nil {
 			log.Fatalf("Failed to parse CPU value: %v. Setting to default as 2", err)
 		}
-		vcpu = parsedCpu
+		config.CPU = parsedCpu
 
 	}
 
-	absUserdataPath, err := filepath.Abs(*userdata)
-	if err != nil {
-		log.Printf("Path could not be resolved. Make sure --userdata path is valid.")
-		absUserdataPath = ""
+	if *preset != "" {
+		switch *preset {
+		case "hadoop":
+			utils.LogRichLightPurple("Preset: Hadoop")
+			config.Userdata = presets.CreateHadoopUserData("ubuntu", "password", *launch_vm)
+			os.WriteFile("currRun.yaml", []byte(config.Userdata), 0o644)
+		default:
+			utils.LogError("Invalid Preset Passed")
+		}
 	}
 
-	absBootScriptPath, err := filepath.Abs(*bootScript)
-	if err != nil {
-		log.Printf("Path could not be resolved. Make sure --boot path is valid.")
-		absBootScriptPath = ""
+	if *userdata != "" {
+
+		absUserdataPath, err := filepath.Abs(*userdata)
+		if err != nil {
+			log.Printf("Path could not be resolved. Make sure --userdata path is valid.")
+			absUserdataPath = ""
+		}
+		config.UserdataFile = absUserdataPath
 	}
 
-	config := &Config{
-		Action:     action,
-		Name:       *launch_vm,
-		Cluster:    *cluster,
-		Control:    *control,
-		Workers:    strings.Split(*workers, ","),
-		Memory:     mem,
-		CPU:        vcpu,
-		BootScript: absBootScriptPath,
-		Userdata:   absUserdataPath,
-		Help:       *help,
+	if *bootScript != "" {
+
+		absBootScriptPath, err := filepath.Abs(*bootScript)
+		if err != nil {
+			log.Printf("Path could not be resolved. Make sure --boot path is valid.")
+			absBootScriptPath = ""
+		}
+		config.BootScript = absBootScriptPath
 	}
 
 	if *cleanup != "" {
@@ -193,10 +223,6 @@ func launchVM(launchConfig Config) {
 
 	vmConfig := CreateVMConfig(launchConfig)
 
-	log.Printf("vm.VMConfig:\n%+v", vmConfig)
-
-	// vm.CreateCloudInitDynamically(vm_name, absBootScriptPath)
-
 	vm.LaunchNewVM(vmConfig)
 }
 
@@ -210,13 +236,17 @@ func launchCluster(controlNode string, workerNodes []string) {
 }
 
 func CreateVMConfig(config Config) *vm.VMConfig {
-	log.Printf("Direct User Data File passed as %s", config.Userdata)
+	if config.UserdataFile != "" && config.Userdata != "" {
+		utils.LogWarning("Both User Data and --preset cannot be used. --preset overrides.")
+	}
+
 	return vm.NewVMConfig(config.Name).
 		SetImageURL("https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img").
 		SetImagesDir("data/images").
-		SetUserData(config.Userdata).
+		SetUserData(config.UserdataFile).
 		SetCores(config.CPU).
-		SetMemory(config.Memory)
+		SetMemory(config.Memory).
+		SetCloudInitDataInline(config.Userdata)
 }
 
 func cleanupNodes(nodes []string) {
