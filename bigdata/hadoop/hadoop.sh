@@ -76,16 +76,6 @@ export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$HADOOP_HOME/lib/native"
 echo "$ENV_CONFIG" >> $ENV_SHELL
 source $ENV_SHELL
 
-# source $HOME/.bashrc 
-
-# echo 'export HADOOP_HOME=/home/ubuntu/hadoop-3.3.6
-# export PATH=$PATH:$HADOOP_HOME/bin:$HADOOP_HOME/sbin
-# export HADOOP_MAPRED_HOME=$HADOOP_HOME
-# export HADOOP_COMMON_HOME=$HADOOP_HOME
-# export HADOOP_HDFS_HOME=$HADOOP_HOME
-# export YARN_HOME=$HADOOP_HOME
-# export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HADOOP_HOME/lib/native' >> ~/.bashrc
-
 hadoop version
 
 echo -e "Setting JAVA_HOME for Hadoop by modifying $HADOOP_HOME/etc/hadoop/hadoop-env.sh Config File"

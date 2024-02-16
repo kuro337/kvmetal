@@ -119,7 +119,7 @@ sudo iptables -L FORWARD -nv --line-number
 sudo iptables -t nat -L PREROUTING -n -v --line-number
 sudo iptables -t nat -L -n -v
 
-# NOTE IMPORTANT: 
+# NOTE IMPORTANT:
 # Running ufw enable or reload too many times can add Duplicate Rules
 
 # identify dupe rules and delete them
@@ -133,6 +133,7 @@ sudo iptables -t nat -D PREROUTING 2
 # after confirming /etc/ufw/before.rules looks good - run
 sudo ufw reload
 
+sudo systemctl restart libvirtd
 
 # run this on vm
 nc -lk 9999

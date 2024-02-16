@@ -1,39 +1,30 @@
 #cloud-config
 
-passwd: password  
-lock_passwd: false
-sudo: ALL=(ALL) NOPASSWD:ALL
-package-update: true
+users:
+  - name: ubuntu
+    shell: /usr/bin/zsh
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    groups: sudo
+    passwd: password
+    lock_passwd: false
+
 package_upgrade: true
-password: password
+
 ssh_pwauth: true
-chpasswd: { expire: False }
-
-
-
-chpasswd: { expire: False }
+chpasswd:
+  list: |
+     ubuntu:password
+  expire: False
 
 packages:
-  - openjdk-11-jdk
   - zsh
+  - openjdk-11-jdk
   - git
   - curl
+  - wget
 
 runcmd:
-
-  ## Run Command for Dependency: zsh 
-  # Clone zsh-autosuggestions
-  - sudo -u ubuntu git clone https://github.com/zsh-users/zsh-autosuggestions ${ZSH_CUSTOM:-/home/ubuntu/.oh-my-zsh/custom}/plugins/zsh-autosuggestions
-  # Clone zsh-syntax-highlighting
-  - sudo -u ubuntu git clone https://github.com/zsh-users/zsh-syntax-highlighting ${ZSH_CUSTOM:-/home/ubuntu/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting
-  # Append plugins to .zshrc
-  - echo "plugins=(git zsh-autosuggestions zsh-syntax-highlighting)" | sudo -u ubuntu tee -a /home/ubuntu/.zshrc
-  # Source the files or set any other configurations you need
-  - echo "source ${ZSH_CUSTOM:-/home/ubuntu/.oh-my-zsh/custom}/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" | sudo -u ubuntu tee -a /home/ubuntu/.zshrc
-  - echo "source ${ZSH_CUSTOM:-/home/ubuntu/.oh-my-zsh/custom}/plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" | sudo -u ubuntu tee -a /home/ubuntu/.zshrc
-
-
-  ## Run Command for Dependency: Hadoop   # Set up environment variables
+  # Set up environment variables
   - |
     export JAVA_HOME=$(dirname $(dirname $(readlink -f /usr/bin/java)))
     echo "export JAVA_HOME=${JAVA_HOME}" >> /etc/profile.d/java_home.sh
@@ -71,7 +62,7 @@ runcmd:
     JAVA_HOME_PATH=$(readlink -f /usr/bin/java | sed "s:bin/java::")
     HADOOP_ENV_SH="/opt/hadoop/hadoop/etc/hadoop/hadoop-env.sh"
     grep -q 'export JAVA_HOME=' $HADOOP_ENV_SH && sed -i "/export JAVA_HOME=/c\export JAVA_HOME=${JAVA_HOME_PATH}" $HADOOP_ENV_SH || echo "export JAVA_HOME=${JAVA_HOME_PATH}" >> $HADOOP_ENV_SH
-
+  
   # Validate Hadoop installation
   - source /etc/profile && hadoop version
 
@@ -82,7 +73,7 @@ runcmd:
   - cp /opt/hadoop/hadoop/etc/hadoop/mapred-site.xml /opt/hadoop/hadoop/etc/hadoop/mapred-site.xml.backup
   - cp /opt/hadoop/hadoop/etc/hadoop/yarn-site.xml /opt/hadoop/hadoop/etc/hadoop/yarn-site.xml.backup
 
-
+ 
   # Configure core-site.xml
   - |
     echo '<configuration>
@@ -150,7 +141,7 @@ runcmd:
   # Validate HDFS setup
   - sudo -u ubuntu /opt/hadoop/hadoop/bin/hdfs dfs -mkdir /test
   - sudo -u ubuntu /opt/hadoop/hadoop/bin/hdfs dfs -ls /
-
+  
   - echo "source /etc/profile.d/hadoop_env.sh" >> ~ubuntu/.zshrc
   - echo "source /etc/profile.d/hadoop_env.sh" >> ~ubuntu/.bashrc
 

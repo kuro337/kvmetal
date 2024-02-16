@@ -2,11 +2,37 @@ package network
 
 import (
 	"fmt"
+	"log"
 	"net"
 	"regexp"
 
 	"kvmgo/utils"
 )
+
+/*
+sudo iptables -t nat -L PREROUTING -n -v --line-number
+sudo iptables -L FORWARD -nv --line-number
+
+# Leases stay active until the Expiry-time
+sudo virsh net-dhcp-leases default
+
+# from the VM run this TO make sure the hostname is set to the right one
+sudo hostnamectl set-hostname hadoop
+
+sudo systemctl restart network-manager
+sudo systemctl restart libvirtd
+
+# To Clear Forwarding Rules we dont need anymore
+
+sudo iptables -D FORWARD 1
+sudo iptables -D FORWARD 1  # Note: After deleting the first rule, the next rule becomes the first.
+
+# Rules with Active Traffic such as these do not touch
+7     565K   13G LIBVIRT_FWX
+
+
+
+*/
 
 // IPAddressWithSubnet holds an IP address and its subnet mask.
 type IPAddressWithSubnet struct {
@@ -56,7 +82,7 @@ func PrivateIPAddrAllVMs(print bool) []IPAddressWithSubnet {
 
 	if print {
 		for _, addr := range ipAddresses {
-			fmt.Printf("%s/%s\n", addr.IP, addr.Subnet)
+			log.Printf("%s/%s\n", addr.IP, addr.Subnet)
 		}
 	}
 
@@ -72,7 +98,7 @@ func VMIpAddrInfoList(print bool) []VMLeaseInfo {
 
 	if print {
 		for _, info := range leaseInfo {
-			fmt.Printf("IP: %s/%s, Hostname: %s, MAC: %s, Protocol: %s\n",
+			log.Printf("IP: %s/%s, Hostname: %s, MAC: %s, Protocol: %s\n",
 				info.IP, info.Subnet, info.Hostname, info.MAC, info.Protocol)
 		}
 	}
@@ -147,7 +173,7 @@ func GetHostIP(print bool) (string, error) {
 					ones, _ := v.Mask.Size() // Correctly handle the multiple return values here
 					cidr := fmt.Sprintf("%s/%d", ip.String(), ones)
 					if print {
-						fmt.Printf("Host IP with Subnet: %s\n", cidr)
+						log.Printf("Host IP with Subnet: %s\n", cidr)
 					}
 					return cidr, nil
 				}

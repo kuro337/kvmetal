@@ -3,6 +3,9 @@
 kvm
 
 ```bash
+
+sudo cloud-init schema --system
+
 # install kvm and required libs
 sudo apt install -y qemu qemu-kvm libvirt-daemon libvirt-clients bridge-utils virt-manager cloud-image-utils libguestfs-tools
 
@@ -109,7 +112,7 @@ lscpu | grep '^CPU(s):' # viewing cpus available on host
 # detailed info such as memory and cpu
 virsh dominfo <domain-name>
 virsh list --all
-virsh reboot hadoop # in case we lose access during console session 
+virsh reboot hadoop # in case we lose access during console session
 virsh shutdown ubuntu-vm
 virsh suspend ubuntu-vm
 virsh resume ubuntu-vm

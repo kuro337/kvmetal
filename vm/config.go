@@ -12,12 +12,14 @@ import (
 	"strings"
 	"time"
 
+	"kvmgo/configuration"
 	"kvmgo/network"
 	"kvmgo/utils"
 )
 
 type VMConfig struct {
 	VMName         string
+	InlineUserdata string
 	ImageURL       string
 	ImagesDir      string
 	BootFilesDir   string
@@ -62,6 +64,14 @@ func (config *VMConfig) SetCores(vcpus int) *VMConfig {
 	return config
 }
 
+func (config *VMConfig) SetCloudInitDataInline(cloudInitUserData string) *VMConfig {
+	if cloudInitUserData != "" {
+		utils.LogStep("Using Dynamic Preset Config for Userdata")
+		config.InlineUserdata = cloudInitUserData
+	}
+	return config
+}
+
 func (config *VMConfig) SetMemory(memory_mb int) *VMConfig {
 	config.Memory = memory_mb
 	return config
@@ -97,7 +107,7 @@ func (config *VMConfig) SetUserData(userData string) *VMConfig {
 }
 
 func (config *VMConfig) DefaultUserData() *VMConfig {
-	config.UserData = "data/userdata/default/user_data.txt"
+	config.UserData = "/home/kuro/Documents/Code/Go/kvmgo/data/userdata/default/user_data.txt"
 	return config
 }
 
@@ -164,19 +174,32 @@ func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) err
 		return fmt.Errorf("failed to create userdata directory: %v", err)
 	}
 
-	userDataBytes, err := os.ReadFile(userDataPathAbs) // Ensure you're using the appropriate I/O library for your Go version
-	if err != nil {
-		return fmt.Errorf("failed to read boot script: %v", err)
-	}
+	var userDataContent string
 
-	userDataContent := string(userDataBytes)
+	// Check if --preset flag is used to override the manually passed File and Log a Warning
+	if config.InlineUserdata != "" {
+		userDataContent = config.InlineUserdata
+		if userDataPathAbs != "" {
+			utils.LogOffwhiteBold("If setting the User Data Dynamically - do not use --user-data to point to a File. The inline Cloud Init Data will be prioritized over it.")
+			log.Printf("Using Inline Dynamic User Data , Ignoring userdata file passed : %s", userDataPathAbs)
+		}
+	} else {
+		// We use the Default UserData or UserData Passed according to the Flag
+		log.Printf("Using UserData from Disk")
+		log.Printf("UserDataPath Abs : %s", userDataPathAbs)
+		userDataBytes, err := os.ReadFile(userDataPathAbs)
+		if err != nil {
+			return fmt.Errorf("failed to read boot script: %v", err)
+		}
+		userDataContent = configuration.SubstituteHostnameUserData(string(userDataBytes), config.VMName)
+	}
 
 	utils.LogOffwhite("CloudInit UserData set to:")
 	utils.LogDottedLineDelimitedText(userDataContent)
 
 	// Create a temporary user-data file
 	userDataFilePath := filepath.Join(userdataDirPath, "user-data.txt")
-	err = os.WriteFile(userDataFilePath, []byte(userDataContent), 0o644)
+	err := os.WriteFile(userDataFilePath, []byte(userDataContent), 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to write user-data file: %v", err)
 	}
@@ -354,7 +377,16 @@ func (s *VMConfig) CreateVM() error {
 	modifiedImagePath := filepath.Join(s.ImagesDir, s.VMName+"-vm-disk.qcow2")
 	vm_userdata_img := filepath.Join("data", "artifacts", s.VMName, "userdata", "user-data.img")
 
-	cmd := exec.Command("virt-install", "--name", s.VMName, "--virt-type", "kvm", "--memory", fmt.Sprint(s.Memory), "--vcpus", fmt.Sprint(s.CPUCores), "--boot", "hd,menu=on", "--disk", "path="+modifiedImagePath+",device=disk", "--disk", "path="+vm_userdata_img+",format=raw", "--graphics", "none", "--network", "network=default", "--os-type", "Linux", "--os-variant", "ubuntu18.04", "--noautoconsole")
+	cmd := exec.Command("virt-install", "--name", s.VMName,
+		"--virt-type", "kvm",
+		"--memory", fmt.Sprint(s.Memory),
+		"--vcpus", fmt.Sprint(s.CPUCores),
+		"--disk", "path="+modifiedImagePath+",device=disk",
+		"--disk", "path="+vm_userdata_img+",format=raw",
+		"--graphics", "none",
+		"--boot", "hd,menu=on",
+		"--network", "network=default",
+		"--os-variant", "ubuntu18.04", "--noautoconsole")
 
 	log.Printf("%sCreating Virtual Machine%s %s%s%s%s: %s\n", utils.BOLD, utils.NC, utils.BOLD, utils.COOLBLUE, s.VMName, utils.NC, cmd.String())
 

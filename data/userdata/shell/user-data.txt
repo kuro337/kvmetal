@@ -5,10 +5,14 @@ users:
     shell: /usr/bin/zsh
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     groups: sudo
-    passwd: password 
+    password: password 
     lock_passwd: false
 
 package_upgrade: true
+package_update: true
+ssh_pwauth: true
+password: password
+chpasswd: { expire: False }
 
 packages:
   - zsh
@@ -23,8 +27,3 @@ runcmd:
   - sudo sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
   - sudo systemctl restart sshd
 
-ssh_pwauth: true
-chpasswd:
-  list: |
-     ubuntu:password
-  expire: False
