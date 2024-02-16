@@ -43,6 +43,7 @@ func TestCloudInitValidSchema(t *testing.T) {
 		log.Fatalf("cmd.Run() failed with %s\n%s", err, stderr.String())
 	}
 
+	log.Printf(hadoop_userdata)
 	// Check command output for success message
 	if !strings.Contains(out.String(), "Valid cloud-config") {
 		t.Errorf("cloud-init schema validation failed: %s", out.String())
@@ -50,6 +51,11 @@ func TestCloudInitValidSchema(t *testing.T) {
 
 	// Your additional validation logic here
 	if !strings.Contains(hadoop_userdata, "hadoop") {
+		t.Errorf("Parsing and Substitution Failed")
+	}
+
+	// Your additional validation logic here
+	if !strings.Contains(hadoop_userdata, "hadoop.kuro.com") {
 		t.Errorf("Parsing and Substitution Failed")
 	}
 }

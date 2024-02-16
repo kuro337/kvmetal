@@ -49,7 +49,8 @@ func NewConfigBuilder(distro constants.Distro, deps []constants.Dependency, pkgs
 
 func (c *ConfigBuilder) CreateCloudInitData() string {
 	var userDataBuilder strings.Builder
-	baseUserData := SubstituteHostnameUserData(c.distro.DefaultCloudInit(), c.hostname)
+	baseUserData := SubstituteHostNameAndFqdnUserdata(c.distro.DefaultCloudInit(), c.hostname)
+
 	userDataBuilder.WriteString(baseUserData + "\n")
 
 	userDataBuilder.WriteString(c.BuildPackages())
