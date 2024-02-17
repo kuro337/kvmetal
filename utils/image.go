@@ -163,6 +163,19 @@ func PullFromRunningVM(vm_name, path string) error {
 	return nil
 }
 
+// RebootVM restarts the VM. This is useful for rebooting once boot scripts are finished.
+func RebootVM(vm_name, path string) error {
+	// virsh reboot vmname
+
+	cmd := exec.Command("virsh", "reboot", vm_name)
+
+	log.Printf("Running command: %s\n", cmd.String())
+
+	cmd.Run()
+
+	return nil
+}
+
 /*
 Static Function to check for files from a running VM
 Usage:

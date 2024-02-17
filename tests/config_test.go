@@ -16,6 +16,7 @@ import (
 func TestCloudInitValidSchema(t *testing.T) {
 	hadoop_userdata := presets.CreateHadoopUserData("ubuntu", "password", "hadoop")
 
+	//	os.WriteFile("testfile.yaml", []byte(hadoop_userdata), 0o644)
 	tmpfile, err := os.CreateTemp("", "testfile.yaml")
 	if err != nil {
 		log.Fatal(err)

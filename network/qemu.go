@@ -5,6 +5,7 @@ import (
 	"log"
 	"net"
 	"regexp"
+	"strconv"
 
 	"kvmgo/utils"
 )
@@ -40,20 +41,6 @@ sudo iptables -D FORWARD 1  # Note: After deleting the first rule, the next rule
 
 */
 
-// IPAddressWithSubnet holds an IP address and its subnet mask.
-type IPAddressWithSubnet struct {
-	IP     net.IP
-	Subnet string
-}
-
-type VMLeaseInfo struct {
-	IP       net.IP
-	Subnet   string
-	Hostname string
-	MAC      string
-	Protocol string
-}
-
 const sampleQemuHooksFile = `#!/bin/bash
 	
 v=$(/sbin/iptables -L FORWARD -n -v | /usr/bin/grep 192.168.122.0/24 | /usr/bin/wc -l)
@@ -62,7 +49,7 @@ v=$(/sbin/iptables -L FORWARD -n -v | /usr/bin/grep 192.168.122.0/24 | /usr/bin/
 `
 
 func CreateQemuHooksFile() string {
-	hostIP, _ := GetHostIP(false)
+	hostIP, _ := GetHostIP()
 
 	libvirtIpSubnet, err := GetLibvirtIpSubnet()
 	if err != nil {
@@ -71,7 +58,7 @@ func CreateQemuHooksFile() string {
 
 	log.Printf("Libvirt IP Subnet %s", libvirtIpSubnet)
 
-	qemuHooksFile := ConstructQemuHooksFile(hostIP, libvirtIpSubnet)
+	qemuHooksFile := ConstructQemuHooksFile(hostIP.String(), libvirtIpSubnet)
 
 	utils.LogDottedLineDelimitedText(qemuHooksFile)
 
@@ -120,7 +107,7 @@ func PrivateIPAddrAllVMs(print bool) []IPAddressWithSubnet {
 
 	if print {
 		for _, addr := range ipAddresses {
-			log.Printf("%s/%s\n", addr.IP, addr.Subnet)
+			log.Printf("%s/%d\n", addr.IP, addr.Subnet)
 		}
 	}
 
@@ -173,10 +160,15 @@ func ParseIpAddrWithSubnet(output string) []IPAddressWithSubnet {
 	matches := ipRegex.FindAllStringSubmatch(output, -1)
 	for _, match := range matches {
 		ip := net.ParseIP(match[1])
+		subnet, err := strconv.Atoi(match[2])
+		if err != nil {
+			log.Printf("Failed to convert Subnet to valid int")
+			continue
+		}
 		if ip != nil {
 			ipAddresses = append(ipAddresses, IPAddressWithSubnet{
 				IP:     ip,
-				Subnet: match[2],
+				Subnet: subnet,
 			})
 		}
 	}
@@ -186,10 +178,10 @@ func ParseIpAddrWithSubnet(output string) []IPAddressWithSubnet {
 
 // GetHostIP finds the host's primary IP address in CIDR notation and optionally prints it.
 // It returns the first non-loopback IPv4 address found with its subnet mask, which is often used by the default network interface.
-func GetHostIP(print bool) (string, error) {
+func GetHostIP() (*IPAddressWithSubnet, error) {
 	interfaces, err := net.Interfaces()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	for _, iface := range interfaces {
@@ -200,7 +192,7 @@ func GetHostIP(print bool) (string, error) {
 
 		addrs, err := iface.Addrs()
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 
 		for _, addr := range addrs {
@@ -209,17 +201,19 @@ func GetHostIP(print bool) (string, error) {
 				ip := v.IP
 				if ip != nil && ip.To4() != nil && !ip.IsLoopback() {
 					ones, _ := v.Mask.Size() // Correctly handle the multiple return values here
-					cidr := fmt.Sprintf("%s/%d", ip.String(), ones)
-					if print {
-						log.Printf("Host IP with Subnet: %s\n", cidr)
-					}
-					return cidr, nil
+
+					return &IPAddressWithSubnet{
+						IP:     ip,
+						Subnet: ones,
+					}, nil
+
+					// return cidr, nil
 				}
 			}
 		}
 	}
 
-	return "", fmt.Errorf("no suitable IP address with subnet found")
+	return nil, fmt.Errorf("no suitable IP address with subnet found")
 }
 
 /*

@@ -15,18 +15,27 @@ type Distro interface {
 	DefaultCloudInit() string
 	GetRunCmd(constants.Dependency) string
 	GetPackage(dep constants.CloudInitPkg) string
+	GetInitSvc(svc constants.InitSvc) string
 }
 
 type ConfigBuilder struct {
 	distro   Distro
 	deps     []constants.Dependency
 	pkgs     []constants.CloudInitPkg
+	initsvc  []constants.InitSvc
 	username string
 	password string
 	hostname string
 }
 
-func NewConfigBuilder(distro constants.Distro, deps []constants.Dependency, pkgs []constants.CloudInitPkg, username, password, hostname string) (*ConfigBuilder, error) {
+func NewConfigBuilder(distro constants.Distro,
+	deps []constants.Dependency,
+	pkgs []constants.CloudInitPkg,
+	initSvc []constants.InitSvc,
+	username,
+	password,
+	hostname string,
+) (*ConfigBuilder, error) {
 	var osdistro Distro
 
 	switch distro {
@@ -52,11 +61,29 @@ func (c *ConfigBuilder) CreateCloudInitData() string {
 	baseUserData := SubstituteHostNameAndFqdnUserdata(c.distro.DefaultCloudInit(), c.hostname)
 
 	userDataBuilder.WriteString(baseUserData + "\n")
+	userDataBuilder.WriteString(c.BuildInitSvc())
 
 	userDataBuilder.WriteString(c.BuildPackages())
 	userDataBuilder.WriteString(c.BuildRunCmds())
 
 	return userDataBuilder.String()
+}
+
+func (c *ConfigBuilder) BuildInitSvc() string {
+	var initSvcBuilder strings.Builder
+
+	initSvcBuilder.WriteString("\npackages:\n")
+
+	for _, svc := range c.initsvc {
+		initService := c.distro.GetInitSvc(svc)
+		if initService == "" {
+			log.Printf("No Run Command Found for Dependency")
+			continue
+		}
+		initSvcBuilder.WriteString("\n" + initService + "\n")
+	}
+
+	return initSvcBuilder.String()
 }
 
 func (c *ConfigBuilder) BuildPackages() string {
