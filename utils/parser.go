@@ -1,10 +1,8 @@
 package utils
 
 import (
-	"bufio"
 	"fmt"
 	"log"
-	"os"
 	"strings"
 
 	constants "kvmgo/constants/shell"
@@ -22,21 +20,12 @@ func GenerateDefaultCloudInitZshKernelUpgrade(hostname string) string {
 // ExtractAndCheckComments reads the specified file and checks if the content between
 // the start and end markers is fully commented out. It returns the content, a boolean
 // indicating if all lines are commented, and any error encountered.
-func ExtractAndCheckComments(filePath, startMarker, endMarker string) (string, bool, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", false, fmt.Errorf("failed to open file: %v", err)
-	}
-	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
+func ExtractAndCheckComments(content, startMarker, endMarker string) (string, bool, error) {
 	extracting := false
 	extractedContent := ""
 	allCommented := true
 
-	for scanner.Scan() {
-		line := scanner.Text()
-
+	for _, line := range strings.Split(content, "\n") {
 		if strings.Contains(line, startMarker) {
 			extracting = true
 			continue
@@ -54,8 +43,8 @@ func ExtractAndCheckComments(filePath, startMarker, endMarker string) (string, b
 		}
 	}
 
-	if err := scanner.Err(); err != nil {
-		return "", false, fmt.Errorf("error reading file: %v", err)
+	if extractedContent == "" {
+		return "", false, fmt.Errorf("no content extracted, check your markers")
 	}
 
 	return extractedContent, allCommented, nil

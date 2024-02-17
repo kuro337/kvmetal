@@ -1,0 +1,5 @@
+LIBVIRT_HOOK: 2024/02/16 19:38:44 Event received - Domain: spark, Action: prepare, Time: 2024-02-16T19:38:44-05:00
+LIBVIRT_HOOK: 2024/02/16 19:38:45 Event received - Domain: spark, Action: start, Time: 2024-02-16T19:38:45-05:00
+LIBVIRT_HOOK: 2024/02/16 19:38:45 Event received - Domain: spark, Action: started, Time: 2024-02-16T19:38:45-05:00
+LIBVIRT_HOOK: 2024/02/17 04:26:14 Event received - Domain: spark, Action: stopped, Time: 2024-02-17T04:26:14-05:00
+LIBVIRT_HOOK: 2024/02/17 04:26:14 Event received - Domain: spark, Action: release, Time: 2024-02-17T04:26:14-05:00

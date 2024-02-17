@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"log"
+	"strings"
 )
 
 const (
@@ -51,6 +52,191 @@ const (
 	SECTION      = "**********************************************************************"
 	DOTTED       = "-----------------------------------------------------"
 )
+
+// FormatOptions contains formatting options for a key-value pair.
+type FormatOptions struct {
+	Bold  bool
+	Color string
+}
+
+/*
+FormatKV formats a series of key-value pairs according to the given format options.
+
+	Usage:
+
+	fmt.Println(FormatKV(FormatOptions{Bold: true, Color: RED}, "Key1", "Value1", "Key2", "Value2"))
+	fmt.Println(FormatKV(FormatOptions{Bold: true}, "Key3", "Value3", "Key4", "Value4", "Key5", "Value5"))
+	fmt.Println(FormatKV(FormatOptions{Color: RED}, "Key6", "Value6"))
+*/
+func FormatKV(opts FormatOptions, kvs ...string) string {
+	var sb strings.Builder
+
+	for i := 0; i < len(kvs); i += 2 {
+		key := kvs[i]
+		var val string
+		if i+1 < len(kvs) {
+			val = kvs[i+1]
+		}
+
+		if opts.Bold {
+			sb.WriteString(BOLD)
+		}
+
+		if opts.Color != "" {
+			sb.WriteString(opts.Color)
+		}
+
+		sb.WriteString(key)
+		if opts.Color != "" || opts.Bold {
+			sb.WriteString(NC)
+		}
+
+		sb.WriteString(": ")
+
+		if opts.Bold {
+			sb.WriteString(BOLD)
+		}
+
+		if opts.Color != "" {
+			sb.WriteString(opts.Color)
+		}
+
+		sb.WriteString(val)
+		sb.WriteString(NC)
+
+		if i+2 < len(kvs) { // Add newline if not the last pair
+			sb.WriteString("\n")
+		}
+	}
+
+	return sb.String()
+}
+
+/*
+Prints a Formatted Result Block with a Title and K/V pairs of Header and []string
+
+Usage:
+
+	func main() {
+		stopsArr := []string{"Stop 1", "Stop 2"}
+		startsArr := []string{"Start 1", "Start 2"}
+
+		result := GetResultBlock("Results of Processing Something", "Stops", stopsArr, "Starts", startsArr)
+		fmt.Println(result)
+	}
+*/
+func GetResultBlock(title string, arrays ...interface{}) string {
+	var builder strings.Builder
+	mainTitle := TurnContentBoldColorDelimited(title, PURP_HI, PURP_DARK, 5)
+	builder.WriteString(mainTitle)
+
+	for i := 0; i < len(arrays); i += 2 {
+		arrayTitle, ok := arrays[i].(string)
+		if !ok || i+1 >= len(arrays) {
+			continue
+		}
+		arrayValues, ok := arrays[i+1].([]string)
+		if !ok {
+			continue // Skip if the next item is not an array of strings
+		}
+
+		// Add array title
+		builder.WriteString(TurnBoldBlueDelimited(arrayTitle))
+
+		// Add array values
+		for _, value := range arrayValues {
+			builder.WriteString(fmt.Sprintf("%s\n", value))
+		}
+	}
+
+	return builder.String()
+}
+
+func TurnKeyBold(key, val string) string {
+	return fmt.Sprintf("%s%s%s%s", BOLD, key, NC, val)
+}
+
+func GetDelimiter(color string, highlighted, dim bool) string {
+	delimiter := DELIMITER
+
+	if dim == true {
+		delimiter = DELIMITERDIM
+	}
+	str := fmt.Sprintf("%s%s%s", color, delimiter, NC)
+
+	if highlighted == true {
+		return fmt.Sprintf("%s%s", BOLD, str)
+	}
+	return str
+}
+
+/*
+TurnContentBoldColorDelimited returns a formatted string with bold color and delimiters, including leading spaces.
+Usage:
+
+	mainTitle := TurnContentBoldColorDelimited(title, PURP_HI, PURP_DARK, 5)
+*/
+func TurnContentBoldColorDelimited(msg, msgColor, delimiterColor string, spacing int) string {
+	return fmt.Sprintf("%s%s%s\n%s%*s%s%s%s\n%s%s%s%s\n", BOLD, delimiterColor, DELIMITERDIM, NC, spacing, BOLD, msgColor, msg, NC, BOLD, delimiterColor, DELIMITERDIM, NC)
+}
+
+func TurnError(msg string) string {
+	return fmt.Sprintf("%s%s%s", RED, msg, NC)
+}
+
+func TurnWarning(msg string) string {
+	return fmt.Sprintf("%s%s%s%s", DIM, YELLOW, msg, NC)
+}
+
+func TurnValBold(key, val string) string {
+	return fmt.Sprintf("%s%s%s%s", key, BOLD, val, NC)
+}
+
+func TurnKeyColor(key, val, color string) string {
+	return fmt.Sprintf("%s%s%s%s%s", BOLD, color, key, NC, val)
+}
+
+func TurnValColor(key, val, color string) string {
+	return fmt.Sprintf("%s%s%s%s%s", key, BOLD, color, val, NC)
+}
+
+func TurnValBoldColor(key, val, color string) string {
+	return fmt.Sprintf("%s%s%s%s%s", key, BOLD, color, val, NC)
+}
+
+func TurnKeyBoldColor(key, val, color string) string {
+	return fmt.Sprintf("%s%s%s%s%s", BOLD, color, key, NC, val)
+}
+
+func TurnBlueDelimited(msg string) string {
+	return fmt.Sprintf("%s%s\n%s%s\n%s%s%s\n", BLUE_DEEP, DELIMITERDIM, NC, msg, BLUE_DEEP, DELIMITERDIM, NC)
+}
+
+func TurnBoldColorDelimited(msg, color string) string {
+	return fmt.Sprintf("%s%s%s\n%s%s%s\n%s%s%s\n", BOLD, color, DELIMITERDIM, NC, BOLD, msg, color, DELIMITERDIM, NC)
+}
+
+func TurnBoldBlueDelimited(msg string) string {
+	return fmt.Sprintf("%s%s%s\n%s%s%s\n%s%s%s\n", BOLD, BLUE_DEEP, DELIMITERDIM, NC, BOLD, msg, BLUE_DEEP, DELIMITERDIM, NC)
+}
+
+func TurnColorDelimited(msg, color string) string {
+	return fmt.Sprintf("%s%s\n%s%s\n%s%s%s\n", color, DELIMITERDIM, NC, msg, color, DELIMITERDIM, NC)
+}
+
+func AddDelimiter(msg string) string {
+	return fmt.Sprintf("%s\n%s\n%s", DELIMITERDIM, msg, DELIMITERDIM)
+}
+
+func TurnBold(msg string) string { return fmt.Sprintf("%s%s%s", BOLD, msg, NC) }
+
+func TurnColorBold(msg, color string) string {
+	return fmt.Sprintf("%s%s%s%s%s\n", BOLD, color, msg, color, NC)
+}
+
+func TurnColor(msg, color string) string { return fmt.Sprintf("%s%s%s\n", color, msg, NC) }
+
+func TurnSand(msg string) string { return fmt.Sprintf("%s%s%s\n", SAND, msg, NC) }
 
 // Enables Logging Flags that display Date, Timestamp, Caller File, and Caller Line Number
 func EnableInfo() {

@@ -9,16 +9,6 @@ import (
 	"strings"
 )
 
-type Network struct {
-	XMLName xml.Name `xml:"network"`
-	IP      IP       `xml:"ip"`
-}
-
-type IP struct {
-	Address string `xml:"address,attr"`
-	Netmask string `xml:"netmask,attr"`
-}
-
 /*
 Get the IP Subnet that our Libvirt NAT bridge runs on
 

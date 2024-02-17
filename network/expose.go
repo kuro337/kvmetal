@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/exec"
 	"strings"
 
 	"kvmgo/utils"
@@ -33,46 +32,65 @@ func ExposeVM(vmname, vmPort, hostPort string) {
 	log.Printf("VM:%s\nIP Addr: %s", vmname, vmIP)
 
 	// step 2. Get Host IP
-	hostIP, _ := GetHostIP(false)
-	log.Printf("Host IP:%s", hostIP)
+	hostIP, _ := GetHostIP()
+	log.Printf("Host IP:%s", hostIP.String())
 
-	// now - we will construct the qemu hooks Rule for it
+	// AFTER READING write both to data/network/qemuhooks/ and data/network/ufw/
 
 	/* QEMU HOOKS */
+	// step 3. Create the Qemu Hooks File - 1 time thing as Host IP and Libvirt Subnet stays Static
+	// Dynamic is simply toggling it (commenting out/in)
+	qemuHooksFile := CreateQemuHooksFile()
+	utils.LogOffwhite("QEMU HOOKS FILE")
+
+	utils.LogDottedLineDelimitedText(qemuHooksFile)
+
+	/* UFW RULES */
+	// now - we will construct the UFW before Rule for it - goes in /etc/ufw/before.rules
+
 	// For Qemu Hooks : we have issues if its active - and we launch a VM with the same name
 	// We want to comment it out - if we dont need port forwarding anymore
 
-	qemuHooksRule := CreateUfwBeforeRule(vmIP, vmPort, hostPort, "Rule to expose Yarn UI")
+	utils.LogOffwhite("CURRENT UFW RULES:")
+	currentUfwRules, _ := GetCurrentUfwRules()
+	utils.LogDottedLineDelimitedText(currentUfwRules)
+
+	ufwBeforeRule := CreateUfwBeforeRule(vmIP.String(), vmPort, hostPort, "Rule to expose Yarn UI")
 
 	/* UFW: We want to add the Rule here - for each new VM - and delete it once we're done /etc/ufw/before.rules */
-
 	// If we have no more Active VM's : we will delete the Rule and also Comment out Qemu Hooks
 
-	log.Printf("Generated Rule:\n%s", qemuHooksRule)
+	log.Printf("Generated Rule:\n%s", ufwBeforeRule)
 
 	// check if the VM is already exposed
 
-	running := isVMExposed("", vmIP)
+	running := isVMExposed(currentUfwRules, "", vmIP.String())
 
 	if running == true {
 		log.Printf("VM is already Exposed")
 	} else {
 		log.Printf("VM is not Exposed")
+		log.Printf("Adding UFW Rule:")
+		newRuleAdded := AddUfwRule(currentUfwRules, ufwBeforeRule)
+		utils.LogOffwhite("Added new UFW Rule:")
+		utils.LogDottedLineDelimitedText(newRuleAdded)
+
 	}
 }
 
 // isVMExposed doesnt require the Private IP - it will extract it if required. But for performance pass it only the IP will work too
-func isVMExposed(vmName, ip string) bool {
+func isVMExposed(ufwFileContent, vmName, ip string) bool {
 	var vmIP string
 	if ip == "" {
 		if vmName == "" {
 			log.Printf("One of VMName or IP must be explicity passed to check if its exposed")
 			return false
 		}
-		vmIP, _ = GetVMIPAddr(vmName)
+		ip, _ := GetVMIPAddr(vmName)
+		vmIP = ip.String()
 	}
 
-	content, active, _ := CheckUfwBeforeHooksActive()
+	content, active, _ := CheckUfwBeforeHooksActive(ufwFileContent)
 
 	fmt.Printf("Content from ufw before:\n%s", content)
 
@@ -133,10 +151,10 @@ func QemuHooksCheck() {
 # COMMIT
 #KVM_GO_END
 */
-func CheckUfwBeforeHooksActive() (string, bool, error) {
-	content, commentedOut, err := utils.ExtractAndCheckComments("/etc/ufw/before.rules", "#KVM_GO_START", "#KVM_GO_END")
+func CheckUfwBeforeHooksActive(ufwFileContent string) (string, bool, error) {
+	content, commentedOut, err := utils.ExtractAndCheckComments(ufwFileContent, "#KVM_GO_START", "#KVM_GO_END")
 	if err != nil {
-		log.Printf("Err Reading and Checking UFW rules %s", err)
+		log.Printf("Err parsing and Checking UFW rules %s", err)
 		return content, false, err
 	}
 
@@ -153,6 +171,7 @@ func CheckUfwBeforeHooksActive() (string, bool, error) {
 	return content, true, err
 }
 
+/*
 func AddUfwBeforeRule(vmIP, vmPort, hostPort, description string) error {
 	rule := fmt.Sprintf("-A PREROUTING -p tcp --dport %s -j DNAT --to-destination %s:%s -m comment --comment \"%s\"", hostPort, vmIP, vmPort, description)
 	command := fmt.Sprintf("echo -e \"#\\n*nat\\n:PREROUTING ACCEPT [0:0]\\n%s\\nCOMMIT\\n#\" | sudo tee -a /etc/ufw/before.rules", rule)
@@ -169,6 +188,7 @@ func ReloadUfw() error {
 	}
 	return nil
 }
+*/
 
 func RemoveUfwBeforeRule(ufwBeforeRule string) error {
 	// find line with matching IP - in the rules

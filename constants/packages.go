@@ -13,10 +13,8 @@ Example of using packages in our Cloud Init Data
 	  	- git
 	  	- curl
 */
-// Define a custom type for your package names
 type CloudInitPkg string
 
-// Define constants of type PackageName
 const (
 	ZSH        CloudInitPkg = "zsh"
 	OpenJDK11  CloudInitPkg = "openjdk-11-jdk"

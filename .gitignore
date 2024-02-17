@@ -2,3 +2,5 @@ GO.mod
 go.sum 
 metallb/deployment_l2_actual.yaml
 data/images
+docs/duckdb
+docs/network/libvirt_qemu_py

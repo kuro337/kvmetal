@@ -648,7 +648,7 @@ func (s *VMConfig) GetSSHClient() (*network.VMClient, error) {
 	password := "password"
 	ip, _ := network.GetVMIPAddr(s.VMName)
 
-	client, err := network.NewInsecureSSHClientVM(s.VMName, ip, username, password)
+	client, err := network.NewInsecureSSHClientVM(s.VMName, ip.String(), username, password)
 	if err != nil {
 		log.Printf("Error creating SSH client:%s", err)
 		return nil, err

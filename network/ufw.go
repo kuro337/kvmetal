@@ -1,8 +1,36 @@
 package network
 
 import (
+	"bufio"
+	"fmt"
+	"io"
+	"os"
 	"strings"
 )
+
+// GetCurrentUfwRules reads the content of the current UFW Rules
+func GetCurrentUfwRules() (string, error) {
+	file, err := os.Open("/etc/ufw/before.rules")
+	if err != nil {
+		fmt.Printf("failed to open file: %v\n", err)
+		return "", err
+	}
+	defer file.Close()
+
+	var content string
+	reader := bufio.NewReader(file)
+	for {
+		line, err := reader.ReadString('\n')
+		content += line
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return "", fmt.Errorf("error reading file: %v", err)
+		}
+	}
+	return content, nil
+}
 
 const SampleUfwCommentedOutFile = `
 #KVM_GO_START

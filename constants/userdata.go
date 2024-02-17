@@ -1,5 +1,11 @@
 package constants
 
+type InitSvc string
+
+const (
+	Restart InitSvc = "Restart"
+)
+
 /*
 To Validate a User Data Schema for CloudInit
 
@@ -21,4 +27,13 @@ package-update: true
 package_upgrade: true
 password: password
 ssh_pwauth: true
-chpasswd: { expire: False }`
+chpasswd: { expire: False }
+
+`
+
+const RebootCloudInit = `
+power_state:
+  mode: reboot
+  message: Rebooting after cloud-init configuration
+  timeout: 15 
+  condition: True`

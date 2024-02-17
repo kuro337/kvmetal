@@ -20,6 +20,9 @@ func CreateHadoopUserData(username, pass, vmname string) string {
 			constants.Git,
 			constants.Curl,
 		},
+		[]constants.InitSvc{
+			constants.Restart,
+		},
 		username, pass, vmname)
 	if err != nil {
 		log.Printf("Failed to create Configuration")

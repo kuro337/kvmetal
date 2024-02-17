@@ -51,3 +51,13 @@ func (u *UbuntuConfig) GetRunCmd(dep constants.Dependency) string {
 		return ""
 	}
 }
+
+func (u *UbuntuConfig) GetInitSvc(dep constants.InitSvc) string {
+	switch dep {
+	case constants.Restart:
+		return constants.RebootCloudInit
+	default:
+		log.Printf("No Init Svc found for Cloud init Svc")
+		return ""
+	}
+}
