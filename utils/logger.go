@@ -184,6 +184,10 @@ func TurnError(msg string) string {
 	return fmt.Sprintf("%s%s%s", RED, msg, NC)
 }
 
+func TurnSuccess(msg string) string {
+	return fmt.Sprintf("%s%s%s", GREEN, msg, NC)
+}
+
 func TurnWarning(msg string) string {
 	return fmt.Sprintf("%s%s%s%s", DIM, YELLOW, msg, NC)
 }

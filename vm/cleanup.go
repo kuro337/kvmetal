@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"strings"
 
+	"kvmgo/network/qemu_hooks"
 	"kvmgo/utils"
 )
 
@@ -29,6 +30,11 @@ Destroys the VM and all resources associated with it.
 func RemoveVMCompletely(vmName string) error {
 	if err := utils.UndefineAndRemoveVM(vmName); err != nil {
 		return err
+	}
+
+	err := qemu_hooks.ClearVMConfig(vmName)
+	if err != nil {
+		log.Printf("Error clearing VM config: %v", err)
 	}
 
 	utils.LogStep("Checking if VM is still Mounted and Cleaning Mount Paths")

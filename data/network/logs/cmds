@@ -1,0 +1,29 @@
+# stop
+sudo iptables -t nat -D OUTPUT -d 192.168.1.194 -j DNAT-hadoop
+sudo iptables -t nat -D PREROUTING -d 192.168.1.194 -j DNAT-hadoop
+sudo iptables -t nat -D POSTROUTING -s 192.168.122.48 -d 192.168.122.48 -j SNAT-hadoop
+sudo iptables -t filter -D FORWARD -d 192.168.122.48 -j FWD-hadoop
+sudo iptables -t nat -F DNAT-hadoop
+sudo iptables -t nat -X DNAT-hadoop
+sudo iptables -t nat -F SNAT-hadoop
+sudo iptables -t nat -X SNAT-hadoop
+sudo iptables -t filter -F FWD-hadoop
+sudo iptables -t filter -X FWD-hadoop
+
+# start
+sudo iptables -t nat -N DNAT-hadoop
+sudo iptables -t nat -N SNAT-hadoop
+sudo iptables -t filter -N FWD-hadoop
+sudo iptables -t nat -A DNAT-hadoop -p tcp -d 192.168.1.194 --dport 9999 -j DNAT --to 192.168.122.48:8088 -s 192.168.1.225
+sudo iptables -t nat -A SNAT-hadoop -p tcp -s 192.168.122.48 --dport 8088 -j SNAT --to-source 192.168.1.194
+sudo iptables -t nat -A SNAT-hadoop -p tcp -s 192.168.122.48 -d 192.168.122.48 --dport 9999 -j MASQUERADE
+sudo iptables -t filter -A FWD-hadoop -p tcp -d 192.168.122.48 --dport 8088 -j ACCEPT -o virbr0
+sudo iptables -t nat -I OUTPUT -d 192.168.1.194 -j DNAT-hadoop
+sudo iptables -t nat -I PREROUTING -d 192.168.1.194 -j DNAT-hadoop
+sudo iptables -t nat -I POSTROUTING -s 192.168.122.48 -d 192.168.122.48 -j SNAT-hadoop
+sudo iptables -t filter -I FORWARD -d 192.168.122.48 -j FWD-hadoop
+
+# validate
+sudo iptables -t nat -L DNAT-hadoop -v -n
+sudo iptables -t nat -L SNAT-hadoop -v -n
+sudo iptables -t filter -L FWD-hadoop -v -n

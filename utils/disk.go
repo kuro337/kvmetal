@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -70,4 +71,26 @@ func PrintCurrentPath() {
 		return
 	}
 	log.Printf("Current Path:%s", dir)
+}
+
+// WriteArraytoFile writes the slice of strings to the specified file path.
+func WriteArraytoFile(commands []string, filePath string) error {
+	// Ensure the directory exists or create it
+	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
+		return fmt.Errorf("failed to create directory for commands file: %w", err)
+	}
+
+	file, err := os.OpenFile(filePath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return fmt.Errorf("failed to open commands file: %w", err)
+	}
+	defer file.Close()
+
+	for _, cmd := range commands {
+		if _, err := file.WriteString(cmd + "\n"); err != nil {
+			return fmt.Errorf("failed to write command to file: %w", err)
+		}
+	}
+
+	return nil
 }
