@@ -96,6 +96,16 @@ virsh snapshot-revert --domain vmName snapshotName
 virsh snapshot-list spark
 virsh domblklist spark
 
+# Detaching Disk and Attaching for Cloudinit
+virsh shutdown spark
+virsh detach-disk spark vdb --config
+# create new default cloudinit data
+
+sudo cloud-localds -v /home/kuro/Documents/Code/Go/kvmgo/data/artifacts/spark/userdata/user-data-new.img /home/kuro/Documents/Code/Go/kvmgo/data/artifacts/spark/userdata/user-data.txt
+
+virsh attach-disk spark /home/kuro/Documents/Code/Go/kvmgo/data/artifacts/spark/userdata/user-data-new.img vdb --config --driver qemu --subdriver raw --targetbus virtio --type disk --mode readonly
+
+virsh start spark
 
 ```
 
@@ -120,8 +130,9 @@ virsh undefine  # delete .qcow2 file after undefining to completely clear it
 virsh undefine hadoop --remove-all-storage # completely clears the VM including Snapshots
 
 # in case we ever lose access to a VM session and need to kill the console
-ps aux | grep 'virsh console hadoop'
+ps aux | grep 'virsh console spark'
 kill -9 pid
+kill -9 <_PID_>
 
 sudo arp-scan --interface=virbr0 --localnet | grep -f <(virsh dumpxml hadoop | awk -F"'" '/mac address/{print $2}') | awk '{print $1}'
 
@@ -137,6 +148,31 @@ sudo arp-scan --interface=virbr0 --localnet | grep "52:54:00:25:40:cb"
 sudo virt-ls -d vmname /home/ubuntu/
 sudo virt-copy-out -d vmname /root/init.log /tmp/extract/
 sudo virt-copy-in -a pathto/vm-disk.qcow2 file-to-copy /path/in/vm
+
+```
+
+## networking
+
+```bash
+virsh net-dhcp-leases default
+
+sudo iptables -t nat -L PREROUTING -n -v --line-number
+
+sudo iptables -L FORWARD -nv --line-number
+
+sudo iptables -t nat -L -v -n
+sudo iptables -L FORWARD -nv --line-number
+
+sudo iptables -t nat -L -v -n | grep 'DNAT'
+
+# search for specific rules
+sudo iptables -t nat -L -v -n | grep '192.168.1.194'
+
+# once rules applied view packet counts
+iptables -t nat -L DNAT-hadoop -v -n
+iptables -t nat -L SNAT-hadoop -v -n
+iptables -t filter -L FWD-hadoop -v -n
+
 
 ```
 

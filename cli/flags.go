@@ -26,20 +26,16 @@ Launch a new VM
 
 go run main.go --launch-vm=spark --mem=24576 --cpu=8
 
-Hadoop:
-go run main.go --launch-vm=hadoop --mem=12288 --cpu=4
-
 # remember to adjust logic to make sure we can set the userdata inline too
 go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --boot=data/scripts/defaults/shell.sh
 
 # test ZSH shell script
 go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
 
-
 # launches hadoop
 go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
 
-go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/bigdata/user-data.txt
+# HADOOP CURRENT CORRECT
 
 go run main.go --launch-vm=hadoop --preset=hadoop --mem=8192 --cpu=4
 
@@ -51,6 +47,8 @@ go run main.go --running
 To get detailed info about the VM
 
 virsh dominfo spark
+
+go run main.go --expose-vm=hadoop --port=8081 --hostport=8003 --external-ip=192.168.1.224 --protocol=tcp
 
 */
 
@@ -98,10 +96,22 @@ func ParseFlags() *Config {
 	preset := flag.String("preset", "", "Choose from a preconfigured Setup such as Hadoop, Spark, Kubernetes")
 	help := flag.Bool("help", false, "View Help for kVM application")
 	vm := flag.String("vm", "", "Virtual Machine (Domain Name)")
+	exposeVM := flag.String("expose-vm", "", "Name of the VM to expose ports for")
+	externalIP := flag.String("external-ip", "0.0.0.0", "External IP to map the port to, defaults to 0.0.0.0")
+	hostPort := flag.Int("hostport", 0, "Host port to map to the VM port")
+	vmPort := flag.Int("port", 0, "VM port to be exposed")
+	protocol := flag.String("protocol", "tcp", "Protocol for the port mapping, defaults to tcp")
 
 	flag.Parse()
 
 	utils.LogWhiteBlueBold(fmt.Sprintf("VM passed: %s", *vm))
+
+	if *exposeVM != "" && *hostPort != 0 && *vmPort != 0 {
+		netConfig := ParseNetExposeFlags(*exposeVM, *vmPort, *hostPort, *externalIP, *protocol)
+		if netConfig != nil {
+			CreateAndSetNetExposeConfig(*netConfig)
+		}
+	}
 
 	if *cluster {
 		action = Launch
@@ -120,12 +130,7 @@ func ParseFlags() *Config {
 		Cluster: *cluster,
 		Control: *control,
 		Workers: strings.Split(*workers, ","),
-		// Memory:       mem,
-		// CPU:          vcpu,
-		// BootScript:   absBootScriptPath,
-		// Userdata:     dynamicCloudInit,
-		// UserdataFile: absUserdataPath,
-		Help: *help,
+		Help:    *help,
 	}
 
 	if *memory != "" {

@@ -9,8 +9,8 @@ import (
 type NetProtocol string
 
 const (
-	TCP NetProtocol = "TCP"
-	UDP NetProtocol = "UDP"
+	TCP NetProtocol = "tcp"
+	UDP NetProtocol = "udp"
 )
 
 type Network struct {

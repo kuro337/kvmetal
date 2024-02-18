@@ -13,7 +13,7 @@ chpasswd: { expire: False }
 
 
 
-chpasswd: { expire: False }
+packages:
 
 packages:
   - openjdk-11-jdk

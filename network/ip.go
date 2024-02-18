@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	"kvmgo/utils"
 )
@@ -79,20 +80,20 @@ func getVMInterface(xmlFilePath string) (string, error) {
 
 func SimulateVMConfig() ForwardingConfig {
 	return ForwardingConfig{
-		VMName:     "spark",
-		Interface:  "virbr0",
-		PrivateIP:  net.ParseIP("192.168.124.200"),
-		HostIP:     net.ParseIP("192.168.124.10"),
-		ExternalIP: net.ParseIP("8.8.8.8"),
+		VMName:    "test",
+		Interface: "virbr0",
+		PrivateIP: net.ParseIP("127.0.0.1"),
+		HostIP:    net.ParseIP("192.168.1.1"),
+		// ExternalIP: net.ParseIP("8.8.8.8"),
 		PortMap: []PortMapping{
-			{Protocol: TCP, HostPort: 1100, VMPort: 3000},   // Maps host port 1100 to VM port 3000 over TCP
-			{Protocol: TCP, HostPort: 443, VMPort: 443},     // Maps host port 443 to VM port 443 over TCP
-			{Protocol: UDP, HostPort: 27016, VMPort: 27016}, // Maps host port 27016 to VM port 27016 over UDP
+			{Protocol: TCP, HostPort: 80, VMPort: 8080}, // Maps host port 1100 to VM port 3000 over TCP
+			{Protocol: TCP, HostPort: 443, VMPort: 443}, // Maps host port 443 to VM port 443 over TCP
+			{Protocol: UDP, HostPort: 53, VMPort: 53},   // Maps host port 27016 to VM port 27016 over UDP
 		},
-		PortRange: []PortRange{
-			{VMStartPort: 8888, VMEndPortNum: 8890, HostStartPortNum: 8888, HostEndPortNum: 8890, Protocol: TCP},     // TCP range mapping
-			{VMStartPort: 30000, VMEndPortNum: 30100, HostStartPortNum: 30000, HostEndPortNum: 30100, Protocol: UDP}, // UDP range mapping
-		},
+		// PortRange: []PortRange{
+		// 	{VMStartPort: 8888, VMEndPortNum: 8890, HostStartPortNum: 8888, HostEndPortNum: 8890, Protocol: TCP},     // TCP range mapping
+		// 	{VMStartPort: 30000, VMEndPortNum: 30100, HostStartPortNum: 30000, HostEndPortNum: 30100, Protocol: UDP}, // UDP range mapping
+		// },
 	}
 }
 
@@ -105,13 +106,14 @@ func CreatePortForwardingConfig(
 	rangePortMappings []PortRange,
 ) ForwardingConfig {
 	return ForwardingConfig{
-		VMName:     vmName,
-		HostIP:     hostIP,
-		PrivateIP:  vmIP,
-		ExternalIP: externalIP,
-		Interface:  vmNetInterface,
-		PortMap:    directPortMappings,
-		PortRange:  rangePortMappings,
+		VMName:      vmName,
+		HostIP:      hostIP,
+		PrivateIP:   vmIP,
+		ExternalIP:  externalIP,
+		Interface:   vmNetInterface,
+		PortMap:     directPortMappings,
+		PortRange:   rangePortMappings,
+		LastUpdated: time.Now().Format(time.RFC3339),
 	}
 }
 
@@ -119,7 +121,7 @@ func GeneratePortForwardingConfig(vmName string,
 	externalIp net.IP,
 	directPortMappings []PortMapping,
 	rangePortMappings []PortRange,
-) ForwardingConfig {
+) (*ForwardingConfig, error) {
 	// get Host IP , VM IP, and VM Subnet Dynamically
 
 	hostIP, err := GetHostIP()
@@ -127,14 +129,15 @@ func GeneratePortForwardingConfig(vmName string,
 		log.Printf(utils.TurnError("Failed to get Host IP"))
 	}
 
-	vmIpAddr, err := GetVMIPAddr("spark")
+	vmIpAddr, err := GetVMIPAddr(vmName)
 	if err != nil {
 		log.Printf(utils.TurnError("Failed to get VM Private IP"))
+		return nil, err
 	}
 
 	log.Printf("Host IP:%s\nVM IP Addr:%s\n", hostIP, vmIpAddr)
 
 	fwdConfig := CreatePortForwardingConfig(vmName, "virbr0", vmIpAddr.IP, hostIP.IP, externalIp, directPortMappings, rangePortMappings)
 
-	return fwdConfig
+	return &fwdConfig, nil
 }
