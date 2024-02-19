@@ -10,40 +10,6 @@ func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
 	cli.Evaluate()
-
-	// network.GetHostIP(true)
-	// network.PrivateIPAddrAllVMs(true)
-	// network.VMIpAddrInfoList(true)
-
-	// rule := network.CreateUfwBeforeRule("192.168.1.194", "8088", "9999")
-	// log.Printf("ufw rule: %s", rule)
-
-	// hadoop := utils.GenerateDefaultCloudInitZshKernelUpgrade("hadoop")
-	// log.Printf("%s", hadoop)
-	// os.WriteFile("test.txt", []byte(hadoop), 0o644)
-
-	// config, err := configuration.NewConfigBuilder(
-	// 	constants.Ubuntu,
-	// 	[]constants.Dependency{
-	// 		constants.Zsh,
-	// 		constants.Hadoop,
-	// 	},
-	// 	[]constants.CloudInitPkg{
-	// 		constants.OpenJDK11,
-	// 		constants.Git,
-	// 		constants.NetTools,
-	// 		constants.Curl,
-	// 	},
-	// 	"ubuntu", "password", "hadoop")
-	// if err != nil {
-	// 	log.Printf("Failed to create Configuration")
-	// }
-
-	// userdata := config.CreateCloudInitData()
-
-	// log.Printf("Userdata %s", userdata)
-
-	// os.WriteFile("testuserdata.yaml", []byte(userdata), 0o644)
 }
 
 /*

@@ -5,6 +5,7 @@ import (
 	"log"
 	"log/slog"
 
+	"kvmgo/network/qemu_hooks"
 	"kvmgo/utils"
 )
 
@@ -53,7 +54,14 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 
 	}
 
-	utils.IsVMRunning(vmConfig.VMName)
+	// for now create a default forwarding config
+
+	running, _ := utils.IsVMRunning(vmConfig.VMName)
+	if running == true {
+		if err := qemu_hooks.GenerateDefForwardConf(vmConfig.VMName); err != nil {
+			log.Printf("Failed Generating Default Forwarding Commands. ERROR:%s,", err)
+		}
+	}
 
 	slog.Info("VM created successfully")
 

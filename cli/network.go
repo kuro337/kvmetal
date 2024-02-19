@@ -43,6 +43,7 @@ func CreateAndSetNetExposeConfig(config NetworkExposeConfig) error {
 		nil)
 	if err != nil {
 		log.Printf("Failed to Generate Config ERROR:%s", err)
+		return fmt.Errorf("Failed to Generate Config ERROR:%s", err)
 	}
 
 	if err := qemu_hooks.UpdateConfig(*fwdingConfig); err != nil {

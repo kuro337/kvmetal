@@ -14,7 +14,7 @@ import (
 )
 
 /*
-	QEMU Hooks Port Forwarding Entry Point
+QEMU Hooks Port Forwarding Entry Point
 
 When placed in /etc/libvirt/hooks/<APP>
 
