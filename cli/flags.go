@@ -39,6 +39,8 @@ go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/sh
 
 go run main.go --launch-vm=hadoop --preset=hadoop --mem=8192 --cpu=4
 
+go run main.go --launch-vm=xmltest --preset=hadoop --mem=4086 --cpu=4
+
 Launch a new VM with Control Plane Setup
 go run main.go --cluster --control=kubecontrol --workers=kubeworker1,kubeworker2
 go run main.go --cluster --control=kubecontrol

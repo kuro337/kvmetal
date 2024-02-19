@@ -9,7 +9,7 @@ import (
 
 // This will generate the Forwarding Config - and also Write it to our Location
 func TestFwdConfigReadWrite(t *testing.T) {
-	err := qemu_hooks.ClearVMConfig("hadoop")
+	err := qemu_hooks.ClearVMForwardingConfig("hadoop")
 	if err != nil {
 		log.Printf("Error clearing VM config: %v", err)
 	}

@@ -117,6 +117,8 @@ func CreatePortForwardingConfig(
 	}
 }
 
+// Creates the Port Forwarding Config - that is used by the application to Expose VM's
+// Consider setting this to a default external IP and Host and call it upon VM Creation
 func GeneratePortForwardingConfig(vmName string,
 	externalIp net.IP,
 	directPortMappings []PortMapping,

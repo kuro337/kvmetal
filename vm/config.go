@@ -386,18 +386,22 @@ func (s *VMConfig) CreateVM() error {
 		"--graphics", "none",
 		"--boot", "hd,menu=on",
 		"--network", "network=default",
-		"--os-variant", "ubuntu18.04", "--noautoconsole")
+		"--os-variant", "ubuntu18.04", "--noautoconsole",
+		// "--print-xml", // to test the XML structure
+	)
 
 	log.Printf("%sCreating Virtual Machine%s %s%s%s%s: %s\n", utils.BOLD, utils.NC, utils.BOLD, utils.COOLBLUE, s.VMName, utils.NC, cmd.String())
 
 	var stderr bytes.Buffer // Capture stderr
 	cmd.Stderr = &stderr
+	cmd.Stdout = &stderr
 
 	err := cmd.Run()
 	if err != nil {
 		log.Printf("ERROR Failed to Create VM error=%q", stderr.String())
 		return err
 	}
+	log.Printf("VM XML Description:\n%s", stderr.String())
 
 	return nil
 }

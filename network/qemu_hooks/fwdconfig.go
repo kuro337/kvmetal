@@ -5,10 +5,12 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 
 	"kvmgo/network"
+	"kvmgo/utils"
 )
 
 const (
@@ -77,8 +79,8 @@ func ReadVMConfigFromFile(vmName string) (*network.ForwardingConfig, error) {
 	return nil, nil
 }
 
-// ClearVMConfig clears the configuration for a specific VM.
-func ClearVMConfig(vmName string) error {
+// ClearVMConfig clears the Forwarding Configuration for a specific VM.
+func ClearVMForwardingConfig(vmName string) error {
 	configs, err := ReadConfigsFromFile()
 	if err != nil {
 		return err
@@ -184,4 +186,35 @@ func mergeConfigs(original *network.ForwardingConfig, newConfig network.Forwardi
 	if len(newConfig.PortRange) > 0 {
 		original.PortRange = append(original.PortRange, newConfig.PortRange...)
 	}
+}
+
+func GenerateDefForwardConf(domain string) error {
+	external := net.ParseIP("192.168.1.225")
+
+	conf, err := network.GeneratePortForwardingConfig(domain, external, []network.PortMapping{
+		{Protocol: network.TCP, HostPort: 8080, VMPort: 9999},
+		{Protocol: network.TCP, HostPort: 8088, VMPort: 9988},
+	}, nil)
+	if err != nil {
+		log.Printf("Failed to Create Default Port Forwarding Config. ERROR:%s", err)
+		return err
+	}
+
+	if err := UpdateConfig(*conf); err != nil {
+		log.Printf("Error writing config: %s", err)
+		return err
+	}
+
+	cmds, err := HandleQemuHookEvent("start", domain)
+	if err != nil {
+		log.Printf("Error Creating Forward Hooks for Start Event ERROR:%s", err)
+	}
+
+	log.Printf("Successfully Created Default Forwarding Config")
+
+	if err := utils.WriteArraytoFile(cmds, CmdsFilePath); err != nil {
+		log.Printf("Failed writing generated forwarding commands to file %s ERROR:%s,", CmdsFilePath, err)
+	}
+	log.Printf("Successfully Generated Commands Logs file at %s", CmdsFilePath)
+	return nil
 }

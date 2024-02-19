@@ -40,6 +40,11 @@ virt-install --name ubuntu-vm \
   --graphics none \
   --noautoconsole
 
+# Add this to print XML output --print-xml"
+
+# to validate XML
+virt-xml-validate
+
 ```
 
 ssh to node

@@ -32,7 +32,7 @@ func RemoveVMCompletely(vmName string) error {
 		return err
 	}
 
-	err := qemu_hooks.ClearVMConfig(vmName)
+	err := qemu_hooks.ClearVMForwardingConfig(vmName)
 	if err != nil {
 		log.Printf("Error clearing VM config: %v", err)
 	}
