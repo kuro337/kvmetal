@@ -17,58 +17,78 @@ import (
 )
 
 /*
-Clean up running VMs
-go run main.go --cleanup=kubecontrol,kubeworker
-go run main.go --cleanup=spark
-go run main.go --cleanup=hadoop
+-- Presets
 
-#### PRESETS
-go run main.go --launch-vm=control --preset=kubecontrol --mem=4096 --cpu=2
-go run main.go --launch-vm=worker --preset=kubeworker --mem=4096 --cpu=2
+-- Kubernetes Control Plane + Worker
 
-go run main.go --launch-vm=hadoop --preset=hadoop --mem=8192 --cpu=4
+	go run main.go --launch-vm=control  --preset=kubecontrol --mem=4096 --cpu=2
+	go run main.go --launch-vm=worker   --preset=kubeworker  --mem=4096 --cpu=2
 
-#### KUBE PORT ####
+-- Full Cluster
 
-go run main.go --launch-vm=kubecontrol --mem=4086 --cpu=4 --userdata=data/userdata/kube/control.txt
-go run main.go --cleanup=kubecontrol
+	go run main.go --cluster --control=kubecontrol --workers=kubeworker1,kubeworker2
 
-Launch a new VM
+-- Data Streaming, Processing
 
-go run main.go --launch-vm=spark --mem=24576 --cpu=8
+	go run main.go --launch-vm=spark      --preset=spark 		  --mem=8192 --cpu=4
+	go run main.go --launch-vm=opensearch --preset=opensearch --mem=8192 --cpu=4
+	go run main.go --launch-vm=kafka      --preset=kafka      --mem=8192 --cpu=4
+	go run main.go --launch-vm=hadoop     --preset=hadoop     --mem=8192 --cpu=4
 
-# remember to adjust logic to make sure we can set the userdata inline too
-go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --boot=data/scripts/defaults/shell.sh
+-- Expose a VM
+go run main.go --expose-vm=hadoop --port=8081 --hostport=8003 --external-ip=192.168.1.224 --protocol=tcp
 
-# test ZSH shell script
-go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
+-- Clean up running VMs
+
+	go run main.go --cleanup=kubecontrol,kubeworker
+	go run main.go --cleanup=spark
+	go run main.go --cleanup=hadoop
+
+-- Launching VM with Userdata Defined
+
+	go run main.go --launch-vm=kubecontrol --mem=4086 --cpu=4 --userdata=data/userdata/kube/control.txt
+
+-- Launch a new VM
+
+	go run main.go --launch-vm=spark --mem=24576 --cpu=8
+
+# VM with zsh
+
+	go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
 
 # launches hadoop
-go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
 
-# HADOOP CURRENT CORRECT
-
-go run main.go --launch-vm=hadoop --preset=hadoop --mem=8192 --cpu=4
-
-go run main.go --launch-vm=xmltest --preset=hadoop --mem=4086 --cpu=4
-
-Launch a new VM with Control Plane Setup
-go run main.go --cluster --control=kubecontrol --workers=kubeworker1,kubeworker2
-go run main.go --cluster --control=kubecontrol
-go run main.go --running
+	go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
 
 To get detailed info about the VM
 
-virsh dominfo spark
-
-go run main.go --expose-vm=hadoop --port=8081 --hostport=8003 --external-ip=192.168.1.224 --protocol=tcp
-
+	virsh dominfo spark
 */
+func Evaluate() {
+	config := ParseFlags()
+	if config.Help == true {
+		utils.MockANSIPrint()
+	}
+	switch config.Action {
+	case Launch:
+		launchCluster(config.Control, config.Workers)
+	case Cleanup:
+		cleanupNodes(config.Cleanup)
+	case Running:
+		utils.ListVMs(2, true)
+	case New:
+
+		launchVM(*config)
+
+	default:
+		log.Println("No action specified or recognized.")
+	}
+}
 
 type Action int
 
 const (
-	Unknown Action = iota // Default value, represents no action or unrecognized action
+	Unknown Action = iota
 	Launch
 	Cleanup
 	Metadata
@@ -204,42 +224,6 @@ func ParseFlags() *Config {
 	}
 
 	return config
-}
-
-/*
-Control VMs from Command Line Usage
-
-	// Clean up running VMs
-	go run main.go --cleanup=kubecontrol,kubeworker
-
-	// Launch a new VM
-	go run main.go --launch-vm=spark
-
-	// Launch a new VM with Control Plane Setup
-	go run main.go --cluster --control=kubecontrol --workers=kubeworker1,kubeworker2
-
-	go run main.go --cluster --control=kubecontrol
-	go run main.go --running
-*/
-func Evaluate() {
-	config := ParseFlags()
-	if config.Help == true {
-		utils.MockANSIPrint()
-	}
-	switch config.Action {
-	case Launch:
-		launchCluster(config.Control, config.Workers)
-	case Cleanup:
-		cleanupNodes(config.Cleanup)
-	case Running:
-		utils.ListVMs(2, true)
-	case New:
-
-		launchVM(*config)
-
-	default:
-		log.Println("No action specified or recognized.")
-	}
 }
 
 // launchVM launches a new Virtual Machine

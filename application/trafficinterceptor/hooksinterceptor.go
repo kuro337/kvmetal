@@ -16,9 +16,7 @@ import (
 /*
 QEMU Hooks Port Forwarding Entry Point
 
-When placed in /etc/libvirt/hooks/<APP>
-
-And linked with /etc/libvirt/hooks/qemu and /etc/libvirt/hooks/lxc
+When placed in /etc/libvirt/hooks/<APP> & linked with /etc/libvirt/hooks/qemu and /etc/libvirt/hooks/lxc
 
 The <APP> is ran in response to any qemu and lxc event
 
@@ -184,10 +182,14 @@ func StartForwarding(
 	rangePortMappings []network.PortRange,
 	net_interface string,
 ) []string {
-	// err := DisableBridgeFiltering()
-	// if err != nil {
-	// 	log.Printf("Failed Disabling Bridge ERROR:%s", err)
-	// }
+	/*
+		On Certain Machines if UFW is enabled - use this
+
+			err := DisableBridgeFiltering()
+			if err != nil {
+				log.Printf("Failed Disabling Bridge ERROR:%s", err)
+			}
+	*/
 
 	dnatCmd := dnatChain.CreateChain("nat")
 	snatCmd := snatChain.CreateChain("nat")
@@ -348,10 +350,6 @@ func StopForwarding(dnatChain, snatChain, fwdChain LibvirtChain,
 	insertChains := InsertChains(DELETE,
 		dnatChain, snatChain, fwdChain, hostIp, vmPrivateIp)
 
-	//	dnatCmd := dnatChain.DeleteChain("nat")
-	//	snatCmd := snatChain.DeleteChain("nat")
-	//	fwdCmd := fwdChain.DeleteChain("filter")
-
 	return append(insertChains,
 		dnatChain.DeleteChain("nat"),
 		snatChain.DeleteChain("nat"),
@@ -381,52 +379,3 @@ func ValidatingRules() {
 		iptables -t filter -L FWD-hadoop -v -n
 	*/
 }
-
-/*
-
-sudo cp qemuhookintercept /etc/libvirt/hooks
-sudo chmod +x /etc/libvirt/hooks/qemuhookintercept
-sudo ln -sf /etc/libvirt/hooks/qemuhookintercept /etc/libvirt/hooks/qemu
-sudo ln -sf /etc/libvirt/hooks/qemuhookintercept /etc/libvirt/hooks/lxc
-sudo service libvirtd restart
-
-Cleanup/Disable
-
-sudo rm -f /etc/libvirt/hooks/qemu
-sudo rm -f /etc/libvirt/hooks/lxc
-sudo rm -f /etc/libvirt/hooks/qemuhookintercept
-
-go build -o qemuhookintercept hooksinterceptor.go
-sudo cp qemuhookintercept /etc/libvirt/hooks/
-sudo chmod +x /etc/libvirt/hooks/qemuhookintercept
-# confirm File was updated
-ls -l /etc/libvirt/hooks/qemuhookintercept
-
-virsh start spark
-
-To compile whole dir
-
-go build -o qemuhookintercept .
-# optionally
-sudo systemctl stop libvirtd & sudo systemctl stop libvirtd before and after copy
-
-sudo cp qemuhookintercept /etc/libvirt/hooks/
-sudo chmod +x /etc/libvirt/hooks/qemuhookintercept
-
-# confirm File was updated
-ls -l /etc/libvirt/hooks/qemuhookintercept
-
-virsh start spark
-
-go clean -i ./...
-go build -o qemuhookintercept
-
-
-1. example log
-LIBVIRT_HOOK: 2024/02/16 19:38:44 Event received - Domain: spark, Action: prepare, Time: 2024-02-16T19:38:44-05:00
-LIBVIRT_HOOK: 2024/02/16 19:38:45 Event received - Domain: spark, Action: start, Time: 2024-02-16T19:38:45-05:00
-LIBVIRT_HOOK: 2024/02/16 19:38:45 Event received - Domain: spark, Action: started, Time: 2024-02-16T19:38:45-05:00
-
-os.Args[1] is "spark"
-os.Args[2] : Action = "prepare" , "start" , "started" etc.
-*/

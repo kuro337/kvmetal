@@ -1,10 +1,16 @@
 package tests
 
 import (
+	"fmt"
 	"log"
+	"net"
+	"os"
+	"strings"
 	"testing"
 
+	"kvmgo/network"
 	"kvmgo/network/qemu_hooks"
+	"kvmgo/utils"
 )
 
 // This will generate the Forwarding Config - and also Write it to our Location
@@ -14,32 +20,28 @@ func TestFwdConfigReadWrite(t *testing.T) {
 		log.Printf("Error clearing VM config: %v", err)
 	}
 
-	// externalIp := net.ParseIP("192.168.1.225")
+	externalIp := net.ParseIP("192.168.1.225")
 
-	// fwdingConfig, err := network.GeneratePortForwardingConfig("hadoop",
-	// 	externalIp,
-	// 	[]network.PortMapping{
-	// 		{Protocol: network.TCP, HostPort: 9999, VMPort: 8088},
-	// 	},
-	// 	[]network.PortRange{})
-	// if err != nil {
-	// 	log.Printf("Failed to Generate Config ERROR:%s", err)
-	// 	os.Exit(1)
-	// }
+	fwdingConfig, err := network.GeneratePortForwardingConfigExtractDomainIP("hadoop",
+		externalIp,
+		[]network.PortMapping{
+			{Protocol: network.TCP, HostPort: 9999, VMPort: 8088},
+		}, nil)
+	if err != nil {
+		log.Printf("Failed to Generate Config ERROR:%s", err)
+		os.Exit(1)
+	}
 
-	// if err := qemu_hooks.WriteConfigToFile(*fwdingConfig); err != nil {
-	// 	t.Errorf("Error writing config: %s", err)
-	// 	return
-	// }
+	if err := qemu_hooks.WriteConfigToFile(*fwdingConfig); err != nil {
+		t.Errorf("Error writing config: %s", err)
+		return
+	}
 
-	// readConfig, err := qemu_hooks.ReadVMConfigFromFile("hadoop")
-	// if err != nil {
-	// 	t.Errorf("Error reading config:%s", err)
-	// 	return
-	// }
-
-	// fmt.Printf("Read config: %+v\n", readConfig)
-	t.Errorf("trigger")
+	readConfig, err := qemu_hooks.ReadVMConfigFromFile("hadoop")
+	if err != nil {
+		t.Errorf("Error reading config %v:%s", readConfig, err)
+		return
+	}
 }
 
 /*
@@ -50,65 +52,65 @@ iptables -t nat -A DNAT-spark -p TCP -d 192.168.1.194 --dport 8888:8890 -j DNAT 
 iptables -t nat -A SNAT-spark -p UDP -s 192.168.122.101 --dport 30000:30100 -j SNAT --to-source 192.168.1.225
 */
 
-// func TestGeneratingForwardingActionsFromExistingConfig(t *testing.T) {
-// 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+func TestGeneratingForwardingActionsFromExistingConfig(t *testing.T) {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-// 	cmds, err := qemu_hooks.HandleQemuHookEvent("start", "spark")
-// 	if err != nil {
-// 		t.Errorf("Failed to Handle Qemu Start Event Hook ERROR:%s", err)
-// 	}
+	cmds, err := qemu_hooks.HandleQemuHookEvent("start", "spark")
+	if err != nil {
+		t.Errorf("Failed to Handle Qemu Start Event Hook ERROR:%s", err)
+	}
 
-// 	if err := utils.WriteArraytoFile(cmds, qemu_hooks.CmdsFilePath); err != nil {
-// 		t.Errorf("Failed writing generated forwarding commands to file ERROR:%s,", err)
-// 	}
-// }
+	if err := utils.WriteArraytoFile(cmds, qemu_hooks.CmdsFilePath); err != nil {
+		t.Errorf("Failed writing generated forwarding commands to file ERROR:%s,", err)
+	}
+}
 
-// func TestSimulatedDomainConfig(t *testing.T) {
-// 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
+func TestSimulatedDomainConfig(t *testing.T) {
+	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-// 	domainConfig := network.SimulateVMConfig()
+	domainConfig := network.SimulateVMConfig()
 
-// 	startCmds := qemu_hooks.HandleForwardingEvent(qemu_hooks.Start, &domainConfig)
+	startCmds := qemu_hooks.HandleForwardingEvent(qemu_hooks.Start, &domainConfig)
 
-// 	var populateChain strings.Builder
-// 	for _, chain := range startCmds {
-// 		populateChain.Write([]byte(chain + "\n"))
-// 	}
-// 	fmt.Println(utils.TurnBlueDelimited(populateChain.String()))
+	var populateChain strings.Builder
+	for _, chain := range startCmds {
+		populateChain.Write([]byte(chain + "\n"))
+	}
+	fmt.Println(utils.TurnBlueDelimited(populateChain.String()))
 
-// 	stopCmds := qemu_hooks.HandleForwardingEvent(qemu_hooks.Stopped, &domainConfig)
+	stopCmds := qemu_hooks.HandleForwardingEvent(qemu_hooks.Stopped, &domainConfig)
 
-// 	reconnectedCmds := qemu_hooks.HandleForwardingEvent(qemu_hooks.Reconnect, &domainConfig)
+	reconnectedCmds := qemu_hooks.HandleForwardingEvent(qemu_hooks.Reconnect, &domainConfig)
 
-// 	result := utils.GetResultBlock("Forwarding Command Results",
-// 		"Start Event", startCmds,
-// 		"Stop Event", stopCmds,
-// 		"Reconnect Event", reconnectedCmds)
+	result := utils.GetResultBlock("Forwarding Command Results",
+		"Start Event", startCmds,
+		"Stop Event", stopCmds,
+		"Reconnect Event", reconnectedCmds)
 
-// 	fmt.Printf(result)
+	fmt.Printf(result)
 
-// 	// t.Errorf("Trigger")
-// }
+	// t.Errorf("Trigger")
+}
 
-// func TestVMNetworkMetadata(t *testing.T) {
-// 	hostIP, err := network.GetHostIP()
-// 	if err != nil {
-// 		t.Errorf("failed to get host IP")
-// 	}
-// 	libvirtIpSubnet, err := network.GetLibvirtIpSubnet()
-// 	if err != nil {
-// 		t.Errorf("Failed to get Nat Subnet")
-// 	}
+func TestVMNetworkMetadata(t *testing.T) {
+	hostIP, err := network.GetHostIP()
+	if err != nil {
+		t.Errorf("failed to get host IP")
+	}
+	libvirtIpSubnet, err := network.GetLibvirtIpSubnet()
+	if err != nil {
+		t.Errorf("Failed to get Nat Subnet")
+	}
 
-// 	vmIpAddr, err := network.GetVMIPAddr("spark")
-// 	if err != nil {
-// 		t.Errorf("Failed to get Nat Subnet")
-// 	}
+	vmIpAddr, err := network.GetVMIPAddr("spark")
+	if err != nil {
+		t.Errorf("Failed to get Nat Subnet")
+	}
 
-// 	log.Printf("Host IP:%s\nLibvirt Subnet:%s\nVM IP Addr:%s\n", hostIP, libvirtIpSubnet, vmIpAddr)
+	log.Printf("Host IP:%s\nLibvirt Subnet:%s\nVM IP Addr:%s\n", hostIP, libvirtIpSubnet, vmIpAddr)
 
-// 	t.Errorf("trigger")
-// }
+	t.Errorf("trigger")
+}
 
 // go test -v
 // go test
