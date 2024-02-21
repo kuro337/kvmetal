@@ -23,7 +23,7 @@ WORKER_IP=$(sudo arp-scan --interface=virbr0 --localnet | grep -f <(virsh dumpxm
 Make sure SSH is active on Node
 systemctl status ssh
 
-sudo arp-scan --interface=virbr0 --localnet | grep -f <(virsh dumpxml spark | awk -F"'" '/mac address/{print $2}') | awk '{print $1}'
+sudo arp-scan --interface=virbr0 --localnet | grep -f <(virsh dumpxml worker | awk -F"'" '/mac address/{print $2}') | awk '{print $1}'
 
 sudo apt-get install openssh-server
 */
@@ -119,7 +119,7 @@ func CreatePortForwardingConfig(
 
 // Creates the Port Forwarding Config - that is used by the application to Expose VM's
 // Consider setting this to a default external IP and Host and call it upon VM Creation
-func GeneratePortForwardingConfig(vmName string,
+func GeneratePortForwardingConfigExtractDomainIP(vmName string,
 	externalIp net.IP,
 	directPortMappings []PortMapping,
 	rangePortMappings []PortRange,
@@ -139,7 +139,22 @@ func GeneratePortForwardingConfig(vmName string,
 
 	log.Printf("Host IP:%s\nVM IP Addr:%s\n", hostIP, vmIpAddr)
 
-	fwdConfig := CreatePortForwardingConfig(vmName, "virbr0", vmIpAddr.IP, hostIP.IP, externalIp, directPortMappings, rangePortMappings)
+	fwdConfig := CreatePortForwardingConfig(vmName, "virbr0",
+		vmIpAddr.IP, hostIP.IP, externalIp, directPortMappings, rangePortMappings)
+
+	return &fwdConfig, nil
+}
+
+// Creates the Port Forwarding Config - that is used by the application to Expose VM's
+// Consider setting this to a default external IP and Host and call it upon VM Creation
+func GenerateDefaultPortForwardingConfig(domain string, domainIP,
+	externalIp,
+	hostIP net.IP,
+	directPortMappings []PortMapping,
+	rangePortMappings []PortRange,
+) (*ForwardingConfig, error) {
+	fwdConfig := CreatePortForwardingConfig(domain, "virbr0", domainIP,
+		hostIP, externalIp, directPortMappings, rangePortMappings)
 
 	return &fwdConfig, nil
 }

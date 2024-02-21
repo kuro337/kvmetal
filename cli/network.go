@@ -37,7 +37,7 @@ func ParseNetExposeFlags(vmName string, vmPort, hostPort int, externalIp string,
 }
 
 func CreateAndSetNetExposeConfig(config NetworkExposeConfig) error {
-	fwdingConfig, err := network.GeneratePortForwardingConfig(config.VM,
+	fwdingConfig, err := network.GeneratePortForwardingConfigExtractDomainIP(config.VM,
 		config.ExternalIP,
 		[]network.PortMapping{config.PortMapping},
 		nil)

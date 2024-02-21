@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"log"
+	"net"
 
 	"libvirt.org/go/libvirt"
 )
@@ -63,6 +64,28 @@ func ConvertDomainState(domainState libvirt.DomainState) (string, string) {
 	}
 }
 
+func ListDomainIP(conn *libvirt.Connect, dom *libvirt.Domain) (net.IP, error) {
+	netinfo, err := dom.ListAllInterfaceAddresses(libvirt.DOMAIN_INTERFACE_ADDRESSES_SRC_LEASE)
+	if err != nil {
+		log.Printf("Failed to get Net Info ERROR:%s", err)
+		return nil, err
+	}
+
+	for _, ni := range netinfo {
+		log.Printf("%+v", ni)
+		for _, domnetinfo := range ni.Addrs {
+
+			log.Printf("IP Addr:%s Prefix:%d", domnetinfo.Addr, domnetinfo.Prefix)
+			ip := net.ParseIP(domnetinfo.Addr)
+			if ip != nil {
+				return ip, nil
+			}
+
+		}
+	}
+	return nil, fmt.Errorf("Failed to Obtain IP Addr from Libvirt Domain API")
+}
+
 func ListDomainXML(conn *libvirt.Connect, domain *libvirt.Domain) error {
 	flags := libvirt.DOMAIN_XML_SECURE | libvirt.DOMAIN_XML_INACTIVE
 	xmlDesc, err := domain.GetXMLDesc(flags)
@@ -85,7 +108,7 @@ func GetDomainInfo(conn *libvirt.Connect, domain string) error {
 		return err
 	}
 
-	ListDomainXML(conn, dom)
+	// ListDomainXML(conn, dom)
 
 	// guestinfo, err := dom.GetGuestInfo(libvirt.DOMAIN_GUEST_INFO_OS|libvirt.DOMAIN_GUEST_INFO_TIMEZONE, 0) // Assuming 0 for flags; adjust as needed
 	// if err != nil {

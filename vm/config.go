@@ -394,14 +394,14 @@ func (s *VMConfig) CreateVM() error {
 
 	var stderr bytes.Buffer // Capture stderr
 	cmd.Stderr = &stderr
-	cmd.Stdout = &stderr
+	// cmd.Stdout = &stderr if we need to print XML
 
 	err := cmd.Run()
 	if err != nil {
 		log.Printf("ERROR Failed to Create VM error=%q", stderr.String())
 		return err
 	}
-	log.Printf("VM XML Description:\n%s", stderr.String())
+	//	log.Printf("VM XML Description:\n%s", stderr.String())
 
 	return nil
 }

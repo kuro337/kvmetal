@@ -11,6 +11,8 @@ import (
 
 	"kvmgo/network"
 	"kvmgo/utils"
+
+	"libvirt.org/go/libvirt"
 )
 
 const (
@@ -188,19 +190,56 @@ func mergeConfigs(original *network.ForwardingConfig, newConfig network.Forwardi
 	}
 }
 
-func GenerateDefForwardConf(domain string) error {
-	external := net.ParseIP("192.168.1.225")
-
-	conf, err := network.GeneratePortForwardingConfig(domain, external, []network.PortMapping{
-		{Protocol: network.TCP, HostPort: 8080, VMPort: 9999},
-		{Protocol: network.TCP, HostPort: 8088, VMPort: 9988},
-	}, nil)
+// Uses Libvirt Client to get the Domain IP, Gets Host IP, and Writes Default Forwarding Config
+func DomainAddForwardingConfigIfRunning(domain string) error {
+	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
-		log.Printf("Failed to Create Default Port Forwarding Config. ERROR:%s", err)
+		log.Printf("Error Connecting %s", err)
+	}
+	defer conn.Close()
+
+	dom, err := conn.LookupDomainByName(domain)
+	if err != nil {
+		log.Printf("Failed to get Domain ERROR:%s", err)
+		return err
+	}
+	info, err := dom.GetInfo()
+	if err != nil {
+		log.Printf("Failed to list domain info ERROR:%s", err)
 		return err
 	}
 
-	if err := UpdateConfig(*conf); err != nil {
+	if info.State != libvirt.DOMAIN_RUNNING {
+		stateName, stateDesc := utils.ConvertDomainState(info.State)
+		infoString := "Domain not detected as Running: " + domain +
+			"\nState: " + stateName + " (" + stateDesc + ")\n"
+		log.Printf(infoString)
+	}
+
+	log.Printf(utils.TurnSuccess(fmt.Sprintf("Domain %s is Running", domain)))
+
+	domainIP, err := utils.ListDomainIP(conn, dom)
+	if err != nil || domainIP == nil {
+		log.Printf("Failed to Get IP ERROR:%s", err)
+		return err
+	}
+
+	hostIP, err := network.GetHostIP()
+	if err != nil {
+		log.Printf("Failed Getting Host IP. ERROR:%s", err)
+	}
+
+	forwadingConfig, err := network.GenerateDefaultPortForwardingConfig(domain, domainIP, net.ParseIP("192.168.1.225"),
+		hostIP.IP,
+		[]network.PortMapping{
+			{Protocol: network.TCP, HostPort: 8080, VMPort: 9999},
+			{Protocol: network.TCP, HostPort: 8088, VMPort: 9988},
+		}, nil)
+	if err != nil {
+		log.Printf("Failed to Generate Default Port Forwarding Config. ERROR:%s", err)
+	}
+
+	if err := UpdateConfig(*forwadingConfig); err != nil {
 		log.Printf("Error writing config: %s", err)
 		return err
 	}

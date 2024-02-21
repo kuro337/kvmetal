@@ -70,7 +70,3 @@ echo -e "${RED}To join the cluster, use the join command provided by the control
 
 
 echo -e "${BLUE}*** Joining worker node to Kubernetes Cluster initiated by kubecontrol ***${NC}"
-sudo kubeadm join 192.168.122.91:6443 --token ye241e.xn06jhqclksbzrio  --discovery-token-ca-cert-hash sha256:a522570d51c447f47d2ac3c54be9c01fc7becab2ea047f484284d5d9bb5f37a9
-
-# MASTER_VM: kubecontrol
-# TIMESTAMP: 2024-02-09T23:34:20-05:00

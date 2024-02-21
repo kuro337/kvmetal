@@ -16,10 +16,15 @@ Example of using packages in our Cloud Init Data
 type CloudInitPkg string
 
 const (
-	ZSH        CloudInitPkg = "zsh"
-	OpenJDK11  CloudInitPkg = "openjdk-11-jdk"
-	Git        CloudInitPkg = "git"
-	Curl       CloudInitPkg = "curl"
-	NetTools   CloudInitPkg = "net-tools"
-	BuildTools CloudInitPkg = "build-tools"
+	ZSH            CloudInitPkg = "zsh"
+	OpenJDK11      CloudInitPkg = "openjdk-11-jdk"
+	Git            CloudInitPkg = "git"
+	Curl           CloudInitPkg = "curl"
+	NetTools       CloudInitPkg = "net-tools"
+	BuildTools     CloudInitPkg = "build-tools"
+	Containerd     CloudInitPkg = "containerd"
+	TransportHttps CloudInitPkg = "apt-transport-https"
+	Kubelet        CloudInitPkg = "kubelet"
+	Kubeadm        CloudInitPkg = "kubeadm"
+	Kubectl        CloudInitPkg = "kubectl"
 )
