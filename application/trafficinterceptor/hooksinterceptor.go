@@ -15,13 +15,13 @@ import (
 )
 
 /*
-QEMU Hooks Port Forwarding Entry Point
-
-When placed in /etc/libvirt/hooks/<APP> & linked with /etc/libvirt/hooks/qemu and /etc/libvirt/hooks/lxc
-
-The <APP> is ran in response to any qemu and lxc event
+	QEMU Hooks Port Forwarding Entry Point
 
 Reference: https://www.libvirt.org/hooks.html
+
+/etc/libvirt/hooks/<APP> & linked with /etc/libvirt/hooks/qemu and /etc/libvirt/hooks/lxc
+
+<APP> is ran in response to any qemu and lxc event
 */
 func main() {
 	if len(os.Args) < 3 {
@@ -35,7 +35,7 @@ func main() {
 	logger, err := LogHookEvent(virDomain, action)
 
 	if err != nil || logger == nil {
-		os.Exit(1) // this means it wont log our actions
+		os.Exit(1)
 	}
 
 	cmds, err := HandleQemuHookEvent(action, virDomain)
@@ -49,39 +49,6 @@ func main() {
 	}
 	logger.Printf("Successfully Generated Commands Logs file at %s", constants.CmdsFilePath)
 }
-
-func HandleQemuHookEvent(action, domain string) ([]string, error) {
-	readConfig, err := qemu_hooks.ReadVMConfigFromFile(domain)
-	if err != nil {
-		fmt.Println("Error reading config:", err)
-		return []string{}, err
-	}
-
-	if readConfig == nil {
-		fmt.Printf("No current Config for Domain %s\n", domain)
-		return []string{}, fmt.Errorf("No current Config for Domain %s\n", domain)
-	}
-	switch action {
-	case "start":
-		return HandleForwardingEvent(Start, readConfig), nil
-	case "stopped":
-		return HandleForwardingEvent(Stopped, readConfig), nil
-	case "reconnect":
-		return HandleForwardingEvent(Reconnect, readConfig), nil
-	}
-	return []string{}, nil
-}
-
-// https://www.libvirt.org/hooks.html
-
-const (
-	logfileDir   = "/set/to/a/path/for/interceptlogs"
-	CmdsFilePath = "/set/to/path/for/interceptcmds"
-)
-
-/* IMPORTANT: Do NOT call any Libvirt API within a Hook
-
-This will cause DEADLOCKS */
 
 type HookAction string
 
@@ -109,6 +76,34 @@ type ChainAction string
 const (
 	INSERT ChainAction = "-I"
 	DELETE ChainAction = "-D"
+)
+
+/* Handler for OS Virtualization Events */
+func HandleQemuHookEvent(action, domain string) ([]string, error) {
+	readConfig, err := qemu_hooks.ReadVMConfigFromFile(domain)
+	if err != nil {
+		fmt.Println("Error reading config:", err)
+		return []string{}, err
+	}
+
+	if readConfig == nil {
+		fmt.Printf("No current Config for Domain %s\n", domain)
+		return []string{}, fmt.Errorf("No current Config for Domain %s\n", domain)
+	}
+	switch action {
+	case "start":
+		return HandleForwardingEvent(Start, readConfig), nil
+	case "stopped":
+		return HandleForwardingEvent(Stopped, readConfig), nil
+	case "reconnect":
+		return HandleForwardingEvent(Reconnect, readConfig), nil
+	}
+	return []string{}, nil
+}
+
+const (
+	logfileDir   = "/set/to/a/path/for/interceptlogs"
+	CmdsFilePath = "/set/to/path/for/interceptcmds"
 )
 
 // table = "nat"/"filter", name = dnat/snat/fwd chain
@@ -183,12 +178,12 @@ func StartForwarding(
 	net_interface string,
 ) []string {
 	/*
-		On Certain Machines if UFW is enabled - use this
+		Depending on the OS and if ufw (Uncomplicated Firewall) is enabled - disable bridge forwarding
 
-			err := DisableBridgeFiltering()
-			if err != nil {
-				log.Printf("Failed Disabling Bridge ERROR:%s", err)
-			}
+		err := DisableBridgeFiltering()
+					if err != nil {
+						log.Printf("Failed Disabling Bridge ERROR:%s", err)
+					}
 	*/
 
 	dnatCmd := dnatChain.CreateChain("nat")
@@ -221,7 +216,7 @@ func PopulateChains(
 ) []string {
 	var commands []string
 
-	// Handle individual port mappings
+	/* Individual Port Mappings */
 	for _, mapping := range directPortMappings {
 		vmIPandPort := fmt.Sprintf("%s:%d", vmPrivateIP.String(), mapping.VMPort)
 
@@ -233,12 +228,12 @@ func PopulateChains(
 			mapping.HostPort,
 			vmIPandPort)
 
-		// Only enable access from Specified Whitelisted External IP if specified - else open
+		/* Optionally Enable Access from Specified Whitelisted External IP if specified - else open */
 		if externalIP != nil {
 			dnatCmd += fmt.Sprintf(" -s %s", externalIP.String())
 		}
 
-		// Masquerade outgoing VM Traffic as coming from the Host to communicate with External Clients
+		/* Masquerade Outgoing Traffic as coming from the Host to communicate with External Clients */
 		snatCmd := fmt.Sprintf("iptables -t nat -A %s -p %s -s %s --dport %d -j SNAT --to-source %s",
 			snatChain.String(),
 			mapping.Protocol,
@@ -265,7 +260,7 @@ func PopulateChains(
 		commands = append(commands, dnatCmd, snatCmd, masqCmd, fwdCmd)
 	}
 
-	// Handle port ranges
+	/* Port Ranges */
 	for _, rangeMapping := range rangePortMappings {
 
 		if rangeMapping.HostStartPortNum == 0 || rangeMapping.HostEndPortNum == 0 ||
@@ -282,7 +277,6 @@ func PopulateChains(
 			dnatChain.String(), protocol,
 			hostIP.String(), portRange, vmPortRange)
 
-		// SNAT command for outgoing traffic to be masqueraded as from the host
 		snatCmd := fmt.Sprintf("iptables -t nat -A %s -p %s -s %s --dport %s -j SNAT --to-source %s",
 			snatChain.String(),
 			rangeMapping.Protocol,
@@ -303,7 +297,6 @@ func PopulateChains(
 			vmPrivateIP.String(),
 			portRange)
 
-		// Conditionally add interface specification
 		if net_interface != "" {
 			fwdCmd += fmt.Sprintf(" -o %s", net_interface)
 		}
@@ -341,7 +334,6 @@ func InsertChains(action ChainAction, dnatChain, snatChain, fwdChain LibvirtChai
 			privateIP.String(),
 			fwdChain.String()),
 	}
-	// return commands
 }
 
 func StopForwarding(dnatChain, snatChain, fwdChain LibvirtChain,
@@ -372,10 +364,5 @@ func LogHookEvent(domain, action string) (*log.Logger, error) {
 	return logger, nil
 }
 
-func ValidatingRules() {
-	/*
-		iptables -t nat -L DNAT-hadoop -v -n
-		iptables -t nat -L SNAT-hadoop -v -n
-		iptables -t filter -L FWD-hadoop -v -n
-	*/
-}
+/* IMPORTANT: Do NOT Call the Libvirt API Recursively within a Hook
+This will cause DEADLOCKS */
