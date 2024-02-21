@@ -22,6 +22,17 @@ go run main.go --cleanup=kubecontrol,kubeworker
 go run main.go --cleanup=spark
 go run main.go --cleanup=hadoop
 
+#### PRESETS
+go run main.go --launch-vm=control --preset=kubecontrol --mem=4096 --cpu=2
+go run main.go --launch-vm=worker --preset=kubeworker --mem=4096 --cpu=2
+
+go run main.go --launch-vm=hadoop --preset=hadoop --mem=8192 --cpu=4
+
+#### KUBE PORT ####
+
+go run main.go --launch-vm=kubecontrol --mem=4086 --cpu=4 --userdata=data/userdata/kube/control.txt
+go run main.go --cleanup=kubecontrol
+
 Launch a new VM
 
 go run main.go --launch-vm=spark --mem=24576 --cpu=8
@@ -157,7 +168,12 @@ func ParseFlags() *Config {
 		case "hadoop":
 			utils.LogRichLightPurple("Preset: Hadoop")
 			config.Userdata = presets.CreateHadoopUserData("ubuntu", "password", *launch_vm)
-			os.WriteFile("currRun.yaml", []byte(config.Userdata), 0o644)
+		case "kubecontrol":
+			utils.LogRichLightPurple("Preset: Kube Control Plane")
+			config.Userdata = presets.CreateKubeControlPlaneUserData("ubuntu", "password", *launch_vm)
+		case "kubeworker":
+			utils.LogRichLightPurple("Preset: Kube Worker Node")
+			config.Userdata = presets.CreateKubeWorkerUserData("ubuntu", "password", *launch_vm)
 		default:
 			utils.LogError("Invalid Preset Passed")
 		}
@@ -239,8 +255,12 @@ func launchCluster(controlNode string, workerNodes []string) {
 	fmt.Printf("Launching control node: %s\n", controlNode)
 	for _, worker := range workerNodes {
 		if worker != "" {
-			fmt.Printf("Launching worker node: %s with control node: %s\n", worker, controlNode)
+			fmt.Printf("NOTE:PLACEHOLDER. Actually Launches 1 Control + 1 Worker.Launching worker node: %s with control node: %s\n", worker, controlNode)
 		}
+	}
+	err := vm.LaunchCluster(controlNode, "worker")
+	if err != nil {
+		log.Printf(utils.TurnError("Failed to Launch k8 Cluster"))
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 
 	"kvmgo/constants"
 	"kvmgo/constants/bigdata"
+	"kvmgo/constants/kube"
 	"kvmgo/constants/shell"
 )
 
@@ -32,6 +33,16 @@ func (u *UbuntuConfig) GetPackage(dep constants.CloudInitPkg) string {
 		return string(constants.Git)
 	case constants.Curl:
 		return string(constants.Curl)
+	case constants.Containerd:
+		return string(constants.Containerd)
+	case constants.TransportHttps:
+		return string(constants.TransportHttps)
+	case constants.Kubeadm:
+		return string(constants.Kubeadm)
+	case constants.Kubectl:
+		return string(constants.Kubectl)
+	case constants.Kubelet:
+		return string(constants.Kubelet)
 	default:
 		log.Printf("No Default Package Found")
 		return ""
@@ -46,6 +57,10 @@ func (u *UbuntuConfig) GetRunCmd(dep constants.Dependency) string {
 		return bigdata.HADOOP_UBUNTU_RUNCMD
 	case constants.Spark:
 		return bigdata.SPARK_UBUNTU_RUNCMD
+	case constants.KubernetesControl:
+		return kube.KUBE_CONTROL_UBUNTU_RUNCMD
+	case constants.KubeWorker:
+		return kube.KUBE_WORKER_UBUNTU_RUNCMD
 	default:
 		log.Printf("No Run Command found for Dependency")
 		return ""
