@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"kvmgo/constants"
 	"kvmgo/network"
 	"kvmgo/network/qemu_hooks"
 	"kvmgo/utils"
@@ -42,11 +43,11 @@ func main() {
 		logger.Printf("Error Handling Qemu Hooks Event for %s ERROR:%s", action, err)
 	}
 	if len(cmds) > 1 {
-		if err := utils.WriteArraytoFile(cmds, CmdsFilePath); err != nil {
-			logger.Printf("Failed writing generated forwarding commands to file %s ERROR:%s,", CmdsFilePath, err)
+		if err := utils.WriteArraytoFile(cmds, constants.CmdsFilePath); err != nil {
+			logger.Printf("Failed writing generated forwarding commands to file %s ERROR:%s,", constants.CmdsFilePath, err)
 		}
 	}
-	logger.Printf("Successfully Generated Commands Logs file at %s", CmdsFilePath)
+	logger.Printf("Successfully Generated Commands Logs file at %s", constants.CmdsFilePath)
 }
 
 func HandleQemuHookEvent(action, domain string) ([]string, error) {
@@ -73,11 +74,10 @@ func HandleQemuHookEvent(action, domain string) ([]string, error) {
 
 // https://www.libvirt.org/hooks.html
 
-// !!!! When a VM is shutdown - make sure to call  qemu_hooks.ClearVMConfig("spark") !!!!
-
-const logfileDir = "/home/kuro/Documents/Code/Go/kvmgo/data/network/logs/"
-
-const CmdsFilePath = "/home/kuro/Documents/Code/Go/kvmgo/data/network/logs/cmds"
+const (
+	logfileDir   = "/set/to/a/path/for/interceptlogs"
+	CmdsFilePath = "/set/to/path/for/interceptcmds"
+)
 
 /* IMPORTANT: Do NOT call any Libvirt API within a Hook
 
@@ -357,7 +357,7 @@ func StopForwarding(dnatChain, snatChain, fwdChain LibvirtChain,
 }
 
 func LogHookEvent(domain, action string) (*log.Logger, error) {
-	logfilePath := filepath.Join(logfileDir, "libvirtHookEvents.log")
+	logfilePath := filepath.Join(constants.LogfileDir, "libvirtHookEvents.log")
 	logFile, err := os.OpenFile(logfilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
 		log.Printf("Failed to open log file: %v", err)
