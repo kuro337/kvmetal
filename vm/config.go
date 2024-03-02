@@ -82,6 +82,7 @@ func (config *VMConfig) SetBootServices(services []string) *VMConfig {
 	return config
 }
 
+// Set Images Dir where VM's image files are created and stored data/images
 func (config *VMConfig) SetImagesDir(dir string) *VMConfig {
 	config.ImagesDir = dir
 	return config
@@ -168,7 +169,9 @@ func (config *VMConfig) GenerateCustomUserDataImg(bootScriptPath string) error {
 
 // Create Image from Direct Provided User Data Image
 func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) error {
-	// Create the directory for userdata if it doesn't exist
+	// Create the directory for userdata if it doesn't exist fpr VM
+	// data/artifacts/<vmname>/userdata
+
 	userdataDirPath := filepath.Join(config.artifactPath, config.VMName, "userdata")
 	if err := os.MkdirAll(userdataDirPath, 0o755); err != nil {
 		return fmt.Errorf("failed to create userdata directory: %v", err)
@@ -176,12 +179,16 @@ func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) err
 
 	var userDataContent string
 
+	// If Preset is used - we set UserData in Memory on the Config
 	// Check if --preset flag is used to override the manually passed File and Log a Warning
 	if config.InlineUserdata != "" {
 		userDataContent = config.InlineUserdata
 		if userDataPathAbs != "" {
-			utils.LogOffwhiteBold("If setting the User Data Dynamically - do not use --user-data to point to a File. The inline Cloud Init Data will be prioritized over it.")
-			log.Printf("Using Inline Dynamic User Data , Ignoring userdata file passed : %s", userDataPathAbs)
+			utils.LogOffwhiteBold("If setting the User Data Dynamically - do not use " +
+				"--user-data to point to a File. The inline Cloud Init Data will be prioritized over it.")
+
+			log.Printf("Using Inline Dynamic User Data , Ignoring userdata file passed : %s",
+				userDataPathAbs)
 		}
 	} else {
 		// We use the Default UserData or UserData Passed according to the Flag
@@ -212,6 +219,8 @@ func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) err
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("failed to run cloud-localds: %v", err)
 	}
+
+	log.Printf("Successfully Created Cloud-Init user-data .img file: %s", userDataPathAbs)
 
 	return nil
 }
@@ -297,6 +306,7 @@ func (config *VMConfig) GenerateUserDataImgDefault() error {
 	return cmd.Run()
 }
 
+// Navigates to Dir for VM and creates the base image using qemu-img create -b
 func (s *VMConfig) CreateBaseImage() error {
 	log.Print("Creating Base Image")
 
@@ -308,9 +318,11 @@ func (s *VMConfig) CreateBaseImage() error {
 		return err
 	}
 
-	log.Printf("Created new Base Image at %s/%s", s.ImagesDir, modifiedImageOutputPath)
+	log.Printf("Successfully Created new Base Image at %s/%s",
+		s.ImagesDir, modifiedImageOutputPath)
 
 	s.navigateToRoot()
+
 	return nil
 }
 
@@ -691,6 +703,7 @@ func (s *VMConfig) navigateToBootupDir() error {
 	return nil
 }
 
+// Navigates to the Path where we cache all the Base OS Images - so we can extend it to create an Image for the VM (data/images)
 func (s *VMConfig) navigateToDirWithISOImages() error {
 	if err := os.Chdir(s.ImagesDir); err != nil {
 
@@ -702,6 +715,7 @@ func (s *VMConfig) navigateToDirWithISOImages() error {
 	return nil
 }
 
+// Navigate back to Root Dir as Commands are Path Relevant for QEMU/KVM
 func (s *VMConfig) navigateToRoot() error {
 	if err := os.Chdir(s.RootDir); err != nil {
 

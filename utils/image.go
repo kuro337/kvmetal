@@ -23,6 +23,7 @@ var (
 	artifacts         = "data/artifacts"
 )
 
+// Downloads Base Linux Cloud Image to data/images - only done once and shared among VM's in data/images/ubuntu.img
 func PullImage(url, dir string) error {
 	imageName := filepath.Base(url)
 	imagePath := filepath.Join(dir, imageName)
@@ -116,14 +117,21 @@ func CreateUserDataFile(userData, filePath string) error {
 	return err
 }
 
-// CreateBaseImage creates an Image for the VM from a Distro such as Ubuntu or any other one
+/*
+CreateBaseImage creates an Image from the base Image for the VM
+
+	// qemu-img create -b <base_img>_cloudimg-amd64.img -F qcow2 -f qcow2 <new_vm>-vm-disk.qcow2 20G
+*/
 func CreateBaseImage(imageURL, vmName string) (string, error) {
 	baseImageName := filepath.Base(imageURL)
 	modifiedImageName := vmName + "-vm-disk.qcow2"
 
-	// Generate the modified image
-	qemuCmd := fmt.Sprintf("qemu-img create -b %s -F qcow2 -f qcow2 %s 20G", baseImageName, modifiedImageName)
+	// Generate the modified image - from a Base Image in the QCOW2 format
+	qemuCmd := fmt.Sprintf("qemu-img create -b %s -F qcow2 -f qcow2 %s 20G",
+		baseImageName, modifiedImageName)
+
 	log.Printf("Running qemu-img: %s", qemuCmd)
+
 	cmd := exec.Command("sh", "-c", qemuCmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

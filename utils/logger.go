@@ -232,7 +232,7 @@ func AddDelimiter(msg string) string {
 	return fmt.Sprintf("%s\n%s\n%s", DELIMITERDIM, msg, DELIMITERDIM)
 }
 
-func TurnBold(msg string) string { return fmt.Sprintf("%s%s%s", BOLD, msg, NC) }
+func TurnBold(msg string) string { return fmt.Sprintf("%s%s%s\n", BOLD, msg, NC) }
 
 func TurnColorBold(msg, color string) string {
 	return fmt.Sprintf("%s%s%s%s%s\n", BOLD, color, msg, color, NC)
@@ -289,16 +289,16 @@ func LogWarning(msg string) {
 	log.Printf("%s%s%s%s", DIM, YELLOW, msg, NC)
 }
 
-func LogMainAction(msg string) {
-	fmt.Printf("%s\n%s%s%s%s\n%s\n", DELIMITER, BOLD, WHITEBLUE, msg, NC, DELIMITER)
+func LogMainAction(msg string) string {
+	return fmt.Sprintf("%s\n%s%s%s%s\n%s\n", DELIMITER, BOLD, WHITEBLUE, msg, NC, DELIMITER)
 }
 
 func LogDottedLineDelimitedText(msg string) {
 	fmt.Printf("%s\n%s\n%s\n", DOTTED, msg, DOTTED)
 }
 
-func LogSection(msg string) {
-	fmt.Printf("%s%s%s\n%s%s%s%s\n%s%s%s\n", DIM, DELIMITER, NC, BOLD, GREEN_HI, msg, NC, DIM, DELIMITER, NC)
+func LogSection(msg string) string {
+	return fmt.Sprintf("%s%s%s\n%s%s%s%s\n%s%s%s\n", DIM, DELIMITER, NC, BOLD, GREEN_HI, msg, NC, DIM, DELIMITER, NC)
 }
 
 func LogStep(msg string) {

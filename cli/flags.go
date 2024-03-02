@@ -77,9 +77,7 @@ func Evaluate() {
 	case Running:
 		utils.ListVMs(2, true)
 	case New:
-
 		launchVM(*config)
-
 	default:
 		log.Println("No action specified or recognized.")
 	}
@@ -116,6 +114,7 @@ type Config struct {
 
 func ParseFlags() *Config {
 	var action Action
+
 	cluster := flag.Bool("cluster", false, "Launch a cluster with control and worker nodes")
 	cleanup := flag.String("cleanup", "", "Cleanup nodes by name, comma-separated")
 	control := flag.String("control", "", "Name of the control node")
@@ -171,7 +170,7 @@ func ParseFlags() *Config {
 		if err != nil {
 			log.Printf("Failed to parse memory value: %v.Setting default memory as 2048mb", err)
 		}
-		config.Memory = parsedMem
+		config.Memory = parsedMem // config.Memory , log color , and Config linen 228
 	}
 
 	if *cpu != "" {
