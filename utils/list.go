@@ -20,7 +20,7 @@ func ListAllDomains(conn *libvirt.Connect) {
 		if err == nil {
 			fmt.Printf("  %s\n", name)
 		}
-		dom.Free()
+		_ = dom.Free()
 	}
 
 	doms, err = conn.ListAllDomains(libvirt.CONNECT_LIST_DOMAINS_SHUTOFF)
@@ -31,13 +31,13 @@ func ListAllDomains(conn *libvirt.Connect) {
 	fmt.Printf(TurnBold("%d shutdown domains:\n"), len(doms))
 	for _, dom := range doms {
 
-		dom.Shutdown()
+		_ = dom.Shutdown()
 
 		name, err := dom.GetName()
 		if err == nil {
 			fmt.Printf("  %s\n", name)
 		}
-		dom.Free()
+		_ = dom.Free()
 	}
 }
 
@@ -135,6 +135,6 @@ func GetDomainInfo(conn *libvirt.Connect, domain string) error {
 		"Number of Virtual CPUs: " + fmt.Sprintf("%d", info.NrVirtCpu) + "\n" +
 		"CPU Time: " + fmt.Sprintf("%d", info.CpuTime) + " ns\n"
 
-	log.Printf(infoString)
+	log.Print(infoString)
 	return nil
 }

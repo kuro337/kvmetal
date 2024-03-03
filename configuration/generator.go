@@ -28,6 +28,14 @@ type ConfigBuilder struct {
 	hostname string
 }
 
+/*
+Build the Configuration with Run Commands, Packages, and Metadata for the VM
+Pass a Dependency List and a Package List to configure VM at Boot
+
+Check for samples of using the ConfigBuilder
+  - cli.configuration.presets.CreateKubeControlPlaneUserData
+  - cli.configuration.presets.CreateHadoopUserData
+*/
 func NewConfigBuilder(distro constants.Distro,
 	deps []constants.Dependency,
 	pkgs []constants.CloudInitPkg,
@@ -89,7 +97,7 @@ func (c *ConfigBuilder) BuildInitSvc() string {
 func (c *ConfigBuilder) BuildPackages() string {
 	var pkgBuilder strings.Builder
 
-	pkgBuilder.WriteString("\npackages:\n")
+	//	pkgBuilder.WriteString("\npackages:\n") Already do this in BuildInitSvc
 
 	for _, pkg := range c.pkgs {
 		pkgCode := c.distro.GetPackage(pkg)
@@ -103,6 +111,10 @@ func (c *ConfigBuilder) BuildPackages() string {
 	return pkgBuilder.String()
 }
 
+/*
+Generate the runCmd that specifies Boot Instructions to install deps.
+Multiple Dependencies can be passed.
+*/
 func (c *ConfigBuilder) BuildRunCmds() string {
 	var runCmdBuilder strings.Builder
 	runCmdBuilder.WriteString("\nruncmd:\n")

@@ -39,14 +39,15 @@ sudo iptables -D FORWARD 1  # Note: After deleting the first rule, the next rule
 
 
 
-*/
+
 
 const sampleQemuHooksFile = `#!/bin/bash
-	
+
 v=$(/sbin/iptables -L FORWARD -n -v | /usr/bin/grep 192.168.122.0/24 | /usr/bin/wc -l)
 
 [ $v -le 2 ] && /sbin/iptables -I FORWARD 1 -o virbr0 -m state -s 192.168.1.0/24 -d 192.168.122.0/24 --state NEW,RELATED,ESTABLISHED -j ACCEPT
 `
+*/
 
 func CreateQemuHooksFile() string {
 	hostIP, _ := GetHostIP()

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"kvmgo/network"
-	"kvmgo/utils"
 )
 
 /*
@@ -23,6 +22,7 @@ The <APP> is ran in response to any qemu and lxc event
 
 Reference: https://www.libvirt.org/hooks.html
 */
+/*
 func main() {
 	if len(os.Args) < 3 {
 		fmt.Println("Usage: program <domain> <action>")
@@ -47,13 +47,22 @@ func main() {
 	}
 	logger.Printf("Successfully Generated Commands Logs file at %s", CmdsFilePath)
 }
+*/
 
+/*
+Creates the Forwarding Rules according to the Action for the Host
+  - Reads the current Config of the Host passed
+  - Generates and Returns the Array containing the Commands
+*/
 func HandleQemuHookEvent(action, domain string) ([]string, error) {
 	readConfig, err := ReadVMConfigFromFile(domain)
 	if err != nil {
 		fmt.Println("Error reading config:", err)
 		return []string{}, err
 	}
+
+	table := network.CreateTableFromConfig(*readConfig)
+	fmt.Println(table)
 
 	switch action {
 	case "start":
@@ -195,7 +204,8 @@ func StartForwarding(
 		dnatChain, snatChain, fwdChain,
 		hostIp, vmPrivateIp)
 
-	var combinedCmds []string
+	combinedCmds := []string{"\n================================\nBegin Port Forwarding Commands:\n================================\n"}
+
 	combinedCmds = append(combinedCmds, dnatCmd, snatCmd, fwdCmd)
 	combinedCmds = append(combinedCmds, populated...)
 	combinedCmds = append(combinedCmds, insertChains...)
@@ -332,17 +342,16 @@ func InsertChains(action ChainAction, dnatChain, snatChain, fwdChain LibvirtChai
 func StopForwarding(dnatChain, snatChain, fwdChain LibvirtChain,
 	hostIp, vmPrivateIp net.IP,
 ) []string {
-	insertChains := InsertChains(DELETE,
-		dnatChain, snatChain, fwdChain, hostIp, vmPrivateIp)
+	stopCommands := []string{"\n===============================\nStop Port Forwarding Commands:\n===============================\n"}
+	stopCommands = append(stopCommands,
+		InsertChains(DELETE,
+			dnatChain, snatChain, fwdChain, hostIp, vmPrivateIp)...)
 
-	//	dnatCmd := dnatChain.DeleteChain("nat")
-	//	snatCmd := snatChain.DeleteChain("nat")
-	//	fwdCmd := fwdChain.DeleteChain("filter")
-
-	return append(insertChains,
+	return append(stopCommands,
 		dnatChain.DeleteChain("nat"),
 		snatChain.DeleteChain("nat"),
-		fwdChain.DeleteChain("filter"))
+		fwdChain.DeleteChain("filter"),
+	)
 }
 
 func LogHookEvent(domain, action string) (*log.Logger, error) {

@@ -7,12 +7,20 @@ import (
 	"kvmgo/constants"
 )
 
-func CreateKubeControlPlaneUserData(username, pass, vmname string) string {
+func CreateKubeControlPlaneUserData(username, pass, vmname string, cilium bool) string {
+	var clusterNetworking constants.Dependency
+
+	if cilium {
+		clusterNetworking = constants.KubernetesControlCilium
+	} else {
+		clusterNetworking = constants.KubernetesControlCalico
+	}
+
 	config, err := configuration.NewConfigBuilder(
 		constants.Ubuntu,
 		[]constants.Dependency{
 			constants.Zsh,
-			constants.KubernetesControl,
+			clusterNetworking,
 		},
 		[]constants.CloudInitPkg{
 			constants.Containerd,
@@ -40,6 +48,7 @@ func CreateKubeWorkerUserData(username, pass, vmname string) string {
 			constants.KubeWorker,
 		},
 		[]constants.CloudInitPkg{
+			constants.Git,
 			constants.Containerd,
 			constants.TransportHttps,
 			constants.ZSH,

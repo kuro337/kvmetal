@@ -17,28 +17,28 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 
 	if err := vmConfig.CreateBaseImage(); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Setup VM ERROR:%s", err))
-		Cleanup(vmConfig.VMName)
+		_ = Cleanup(vmConfig.VMName)
 		return nil, err
 	}
 
-	fmt.Printf(utils.LogSection("SETTING UP VM"))
+	fmt.Print(utils.LogSection("SETTING UP VM"))
 
 	if err := vmConfig.SetupVM(); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Setup VM ERROR:%s", err))
-		Cleanup(vmConfig.VMName)
+		_ = Cleanup(vmConfig.VMName)
 		return nil, err
 
 	}
 
-	fmt.Printf(utils.LogSection("GENERATING CLOUDINIT USERDATA"))
+	fmt.Print(utils.LogSection("GENERATING CLOUDINIT USERDATA"))
 
 	if err := vmConfig.GenerateCloudInitImgFromPath(vmConfig.UserData); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Generate Cloud-Init Disk ERROR:%s", err))
-		Cleanup(vmConfig.VMName)
+		_ = Cleanup(vmConfig.VMName)
 		return nil, err
 	}
 
-	fmt.Printf(utils.LogSection("LAUNCHING VM"))
+	fmt.Print(utils.LogSection("LAUNCHING VM"))
 
 	if err := vmConfig.CreateVM(); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Create VM ERROR:%s", err))
@@ -54,7 +54,7 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 
 	slog.Info("VM created successfully")
 
-	fmt.Printf(utils.TurnBold("For VM Boot Logs: Check /var/log/cloud-init-output.log to view boot logs."))
+	log.Print(utils.TurnBold("For VM Boot Logs: Check /var/log/cloud-init-output.log to view boot logs."))
 
 	return vmConfig, nil
 }

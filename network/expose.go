@@ -66,7 +66,7 @@ func ExposeVM(vmname, vmPort, hostPort string) {
 
 	running := isVMExposed(currentUfwRules, "", vmIP.String())
 
-	if running == true {
+	if running {
 		log.Printf("VM is already Exposed")
 	} else {
 		log.Printf("VM is not Exposed")
@@ -94,8 +94,8 @@ func isVMExposed(ufwFileContent, vmName, ip string) bool {
 
 	fmt.Printf("Content from ufw before:\n%s", content)
 
-	if strings.Contains(content, vmIP) == true {
-		if active == true {
+	if strings.Contains(content, vmIP) {
+		if active {
 
 			log.Printf("VM is active and included in UFW Before Rules for Port Forwarding.")
 			return true
@@ -158,7 +158,7 @@ func CheckUfwBeforeHooksActive(ufwFileContent string) (string, bool, error) {
 		return content, false, err
 	}
 
-	if commentedOut == true {
+	if commentedOut {
 		log.Printf("UFW Rules are currently inactive")
 		return content, false, err
 

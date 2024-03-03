@@ -87,7 +87,7 @@ func TestSimulatedDomainConfig(t *testing.T) {
 		"Stop Event", stopCmds,
 		"Reconnect Event", reconnectedCmds)
 
-	fmt.Printf(result)
+	log.Print(result)
 
 	// t.Errorf("Trigger")
 }

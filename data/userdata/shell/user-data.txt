@@ -1,17 +1,12 @@
 #cloud-config
 
-users:
-  - name: ubuntu
-    shell: /usr/bin/zsh
-    sudo: ['ALL=(ALL) NOPASSWD:ALL']
-    groups: sudo
-    password: password 
-    lock_passwd: false
-
+passwd: password  
+lock_passwd: false
+sudo: ALL=(ALL) NOPASSWD:ALL
+package-update: true
 package_upgrade: true
-package_update: true
-ssh_pwauth: true
 password: password
+ssh_pwauth: true
 chpasswd: { expire: False }
 
 packages:

@@ -57,10 +57,16 @@ func (u *UbuntuConfig) GetRunCmd(dep constants.Dependency) string {
 		return bigdata.HADOOP_UBUNTU_RUNCMD
 	case constants.Spark:
 		return bigdata.SPARK_UBUNTU_RUNCMD
-	case constants.KubernetesControl:
-		return kube.KUBE_CONTROL_UBUNTU_RUNCMD
+	case constants.KubernetesControlCalico:
+		return kube.KUBE_CONTROL_CALICO_UBUNTU_RUNCMD
+	case constants.KubernetesControlCilium:
+		return kube.KUBE_CONTROL_CILIUM_UBUNTU_RUNCMD
 	case constants.KubeWorker:
 		return kube.KUBE_WORKER_UBUNTU_RUNCMD
+	case constants.Calico:
+		return kube.CALICO_LINUX_RUNCMD
+	case constants.Cilium:
+		return kube.CILIUM_LINUX_RUNCMD
 	default:
 		log.Printf("No Run Command found for Dependency")
 		return ""

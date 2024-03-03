@@ -32,12 +32,12 @@ func SnapshotBegin(vmName, snapshotName, userdataAbsPath, desc string) error {
 		return err
 	}
 
-	if is_running == false {
+	if !is_running {
 		utils.LogError("VM must be in the Running State to take a Snapshot")
 		return fmt.Errorf("VM must be in the Running State to take a Snapshot")
 	}
 
-	if utils.PathResolvable(userdataAbsPath) == false {
+	if !utils.PathResolvable(userdataAbsPath) {
 		utils.LogError("User Data Raw Disk Path cannot be Resolved - make sure this is valid before initiating snapshots. Otherwise the disk will not be able to be Reattached to the VM - potentially making it inaccessible normally.")
 		return fmt.Errorf("User Data Raw Disk Path cannot be Resolved - make sure this is valid before initiating snapshots. Otherwise the disk will not be able to be Reattached to the VM - potentially making it inaccessible normally.")
 	}

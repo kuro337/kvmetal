@@ -101,7 +101,7 @@ func (config *VMConfig) SetArtifacts(artifacts []string) *VMConfig {
 func (config *VMConfig) SetUserData(userData string) *VMConfig {
 	config.UserData = userData
 	if userData == "" {
-		log.Printf("Setting to default Cloud init data")
+		log.Print("No User Data Passed - Setting Default CloudInit UserData")
 		config.DefaultUserData()
 	}
 	return config
@@ -183,26 +183,24 @@ func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) err
 	// Check if --preset flag is used to override the manually passed File and Log a Warning
 	if config.InlineUserdata != "" {
 		userDataContent = config.InlineUserdata
-		if userDataPathAbs != "" {
-			utils.LogOffwhiteBold("If setting the User Data Dynamically - do not use " +
-				"--user-data to point to a File. The inline Cloud Init Data will be prioritized over it.")
-
-			log.Printf("Using Inline Dynamic User Data , Ignoring userdata file passed : %s",
-				userDataPathAbs)
-		}
 	} else {
-		// We use the Default UserData or UserData Passed according to the Flag
-		log.Printf("Using UserData from Disk")
-		log.Printf("UserDataPath Abs : %s", userDataPathAbs)
+		log.Printf("Using Default UserData from Disk : %s", userDataPathAbs)
 		userDataBytes, err := os.ReadFile(userDataPathAbs)
 		if err != nil {
 			return fmt.Errorf("failed to read boot script: %v", err)
 		}
-		userDataContent = configuration.SubstituteHostnameUserData(string(userDataBytes), config.VMName)
+		userDataContent = configuration.SubstituteHostnameUserData(
+			string(userDataBytes),
+			config.VMName)
 	}
 
-	utils.LogOffwhite("CloudInit UserData set to:")
-	utils.LogDottedLineDelimitedText(userDataContent)
+	log.Print(utils.StructureResultWithHeadingAndColoredMsg(
+		"CloudInit UserData Set To", utils.PEACH,
+		userDataContent,
+	))
+
+	// utils.LogOffwhite("CloudInit UserData set to:")
+	// utils.LogDottedLineDelimitedText(userDataContent)
 
 	// Create a temporary user-data file
 	userDataFilePath := filepath.Join(userdataDirPath, "user-data.txt")
@@ -310,7 +308,7 @@ func (config *VMConfig) GenerateUserDataImgDefault() error {
 func (s *VMConfig) CreateBaseImage() error {
 	log.Print("Creating Base Image")
 
-	s.navigateToDirWithISOImages()
+	_ = s.navigateToDirWithISOImages()
 
 	modifiedImageOutputPath, err := utils.CreateBaseImage(s.ImageURL, s.VMName)
 	if err != nil {
@@ -321,7 +319,7 @@ func (s *VMConfig) CreateBaseImage() error {
 	log.Printf("Successfully Created new Base Image at %s/%s",
 		s.ImagesDir, modifiedImageOutputPath)
 
-	s.navigateToRoot()
+	_ = s.navigateToRoot()
 
 	return nil
 }
@@ -330,7 +328,7 @@ func (s *VMConfig) CreateBaseImage() error {
 func (s *VMConfig) SetupVM() error {
 	utils.LogStep("MOUNTING IMAGE")
 
-	s.navigateToDirWithISOImages()
+	_ = s.navigateToDirWithISOImages()
 
 	modifiedImagePath := filepath.Join(s.VMName + "-vm-disk.qcow2")
 	log.Printf("modified Image Path %s", modifiedImagePath)
@@ -343,7 +341,7 @@ func (s *VMConfig) SetupVM() error {
 		return err
 	}
 
-	s.navigateToRoot()
+	_ = s.navigateToRoot()
 
 	// If Boot Files Present Copy Them
 	if s.BootFilesDir != "" {
@@ -377,14 +375,17 @@ func (s *VMConfig) SetupVM() error {
 		return err
 	}
 
-	s.navigateToRoot()
+	_ = s.navigateToRoot()
 
 	return nil
 }
 
 // CreateVM() uses libvirtd to create the VM and boot it. The state will change to Running and the boot scripts will run followed by systemd services
 func (s *VMConfig) CreateVM() error {
-	s.navigateToRoot()
+	err := s.navigateToRoot()
+	if err != nil {
+		log.Printf("Failed to Navigate to Root Dir. Virt-install must be ran with relative pathing. :%s", err)
+	}
 
 	modifiedImagePath := filepath.Join(s.ImagesDir, s.VMName+"-vm-disk.qcow2")
 	vm_userdata_img := filepath.Join("data", "artifacts", s.VMName, "userdata", "user-data.img")
@@ -408,7 +409,7 @@ func (s *VMConfig) CreateVM() error {
 	cmd.Stderr = &stderr
 	// cmd.Stdout = &stderr if we need to print XML
 
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		log.Printf("ERROR Failed to Create VM error=%q", stderr.String())
 		return err
@@ -465,8 +466,9 @@ func (s *VMConfig) PullArtifacts() error {
 	log.Printf("Waiting for VM to complete initialization before pulling artifacts")
 	time.Sleep(3 * time.Second)
 
-	timeout := time.After(30 * time.Minute)
-	tick := time.Tick(15 * time.Second)
+	timeout := time.After(3 * time.Minute)
+
+	tick := time.NewTicker(15 * time.Second)
 
 	vmChecked := false
 	checkCount := 0
@@ -475,7 +477,7 @@ func (s *VMConfig) PullArtifacts() error {
 		select {
 		case <-timeout:
 			return fmt.Errorf("timeout waiting for VM and artifacts to be ready")
-		case <-tick:
+		case <-tick.C:
 
 			log.Printf("%sChecking for VM and Artifacts readiness... %s%s", utils.SAND, utils.NC, strings.Repeat(utils.BOLD+utils.YELLOW+"."+utils.NC, checkCount))
 			checkCount++
@@ -510,6 +512,27 @@ func (s *VMConfig) PullArtifacts() error {
 	}
 }
 
+func CheckTimeout() error {
+	timeout := time.After(30 * time.Minute)
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+
+	count := 0
+	for {
+		select {
+		case <-timeout:
+			log.Printf("Timed out - returning")
+			return fmt.Errorf("Timed Out")
+		case <-ticker.C:
+			log.Printf("Ticked, check something")
+			count += 10
+			if count > 20 {
+				return nil
+			}
+		}
+	}
+}
+
 func (s *VMConfig) PullArtifactsOg() error {
 	if len(s.Artifacts) == 0 {
 		log.Printf("No Artifacts Specified...")
@@ -519,13 +542,17 @@ func (s *VMConfig) PullArtifactsOg() error {
 	time.Sleep(3 * time.Second)
 
 	timeout := time.After(30 * time.Minute)
-	tick := time.Tick(15 * time.Second)
+
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
 		case <-timeout:
+
 			return fmt.Errorf("timeout waiting for VM and artifacts to be ready")
-		case <-tick:
+		case <-ticker.C:
+
 			if running, _ := utils.IsVMRunning(s.VMName); running {
 				allArtifactsExist := true
 				for _, artifact := range s.Artifacts {
@@ -654,7 +681,7 @@ func (s *VMConfig) GetSSHClient() (*network.VMClient, error) {
 		return nil, err
 	}
 
-	if vm_running == false {
+	if !vm_running {
 		log.Printf("VM %s is not running - an SSH Client can only be created for an active booted VM.", s.VMName)
 	}
 
@@ -685,7 +712,7 @@ func (s *VMConfig) PullFromVMToPath(path, local string) error {
 
 	log.Printf("Running command: %s\n", cmd.String())
 
-	cmd.Run()
+	_ = cmd.Run()
 
 	//	sudo virt-copy-out -d kubecontrol /home/ubuntu/kubeadm-init.log .
 

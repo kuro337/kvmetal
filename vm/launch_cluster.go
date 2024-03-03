@@ -39,7 +39,7 @@ func LaunchCluster(master_name, worker_name string) error {
 
 	healthy, _ := ClusterHealthCheck(master_client, worker.VMName)
 
-	if healthy == true {
+	if healthy {
 		log.Printf("Kubernetes Cluster Successfully Launched and Healthy")
 	} else {
 		utils.LogError("Cluster Health Checks Failed")

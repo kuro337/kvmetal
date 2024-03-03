@@ -1,11 +1,5 @@
 package bigdata
 
-type Hadoop struct {
-	packages    []string
-	runCmd      string
-	shellScript string
-}
-
 const HADOOP_UBUNTU_RUNCMD = `   # Set up environment variables
   - |
     export JAVA_HOME=$(dirname $(dirname $(readlink -f /usr/bin/java)))

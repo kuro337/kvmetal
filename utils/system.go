@@ -19,7 +19,7 @@ func ExecCmd(command string, print bool) (string, error) {
 	err := cmd.Run()
 
 	// Log the output, whether successful or not
-	if print == true {
+	if print {
 		log.Printf("%s", out.String())
 	}
 

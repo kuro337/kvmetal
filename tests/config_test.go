@@ -44,7 +44,7 @@ func TestCloudInitValidSchema(t *testing.T) {
 		log.Fatalf("cmd.Run() failed with %s\n%s", err, stderr.String())
 	}
 
-	log.Printf(hadoop_userdata)
+	log.Print(hadoop_userdata)
 	// Check command output for success message
 	if !strings.Contains(out.String(), "Valid cloud-config") {
 		t.Errorf("cloud-init schema validation failed: %s", out.String())

@@ -41,6 +41,6 @@ func DisableBridgeFiltering() error {
 	} else {
 		return fmt.Errorf(utils.TurnError(fmt.Sprintf("Failed to check if %s exists: %v", procFile, err)))
 	}
-	log.Printf(utils.TurnSuccess("Successfully Disabled Bridge Filtering"))
+	log.Print(utils.TurnSuccess("Successfully Disabled Bridge Filtering"))
 	return nil
 }
