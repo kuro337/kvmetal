@@ -72,7 +72,7 @@ func (vm *VMClient) RunCommand(command string) (string, string, error) {
 	session.Stdout = &stdoutBuf
 	session.Stderr = &stderrBuf
 
-	if vm.printFlag == true {
+	if vm.printFlag {
 		log.Printf("Running Command:%s", command)
 	}
 	err = session.Run(command)
@@ -92,7 +92,7 @@ func (vm *VMClient) Uptime(print bool) (string, error) {
 		log.Printf("Error running command:%s", err)
 		return "", err
 	}
-	if print == true {
+	if print {
 		log.Printf("%s", output)
 	}
 
@@ -110,7 +110,7 @@ func (vm *VMClient) CheckConnection() bool {
 
 func (vm *VMClient) CheckNodeReadiness(vmName string) (bool, error) {
 	output, _, err := vm.RunCommand(fmt.Sprintf("kubectl get nodes %s -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'", vmName))
-	if vm.printFlag == true {
+	if vm.printFlag {
 		log.Printf("kubectl get nodes output: %s", output)
 	}
 

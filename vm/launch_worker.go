@@ -13,7 +13,11 @@ import (
 )
 
 func LaunchKubeWorkerNode(worker_name, master_name string) (*VMConfig, error) {
-	StageWorkerArtifacts(master_name)
+	err := StageWorkerArtifacts(master_name)
+	if err != nil {
+		log.Printf("Failed to Stage Worker Artifacts ERROR:%s", err)
+		return nil, err
+	}
 
 	config := NewVMConfig(worker_name).
 		SetImageURL("https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img").
@@ -30,7 +34,7 @@ func LaunchKubeWorkerNode(worker_name, master_name string) (*VMConfig, error) {
 
 	if err := config.CreateBaseImage(); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Setup VM ERROR:%s", err))
-		Cleanup(config.VMName)
+		_ = Cleanup(config.VMName)
 		return nil, err
 	}
 	log.Printf("Modified Base Image Creation Success at %s", config.ImagesDir)
@@ -39,7 +43,8 @@ func LaunchKubeWorkerNode(worker_name, master_name string) (*VMConfig, error) {
 
 	if err := config.SetupVM(); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Setup VM ERROR:%s", err))
-		Cleanup(config.VMName)
+		_ = Cleanup(config.VMName)
+
 		return nil, err
 
 	}
@@ -48,7 +53,8 @@ func LaunchKubeWorkerNode(worker_name, master_name string) (*VMConfig, error) {
 
 	if err := config.GenerateCustomUserDataImg(""); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Generate Cloud-Init Disk ERROR:%s", err))
-		Cleanup(config.VMName)
+		_ = Cleanup(config.VMName)
+
 		return nil, err
 
 	}
@@ -63,7 +69,13 @@ func LaunchKubeWorkerNode(worker_name, master_name string) (*VMConfig, error) {
 
 	}
 
-	utils.IsVMRunning(config.VMName)
+	running, err := utils.IsVMRunning(config.VMName)
+	if err != nil {
+		log.Printf("Could not Check VM Status:%s", err)
+	}
+	if running {
+		log.Printf("VM is Running.")
+	}
 
 	slog.Info("VM created successfully")
 

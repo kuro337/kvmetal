@@ -13,11 +13,38 @@ import (
 	"kvmgo/configuration/presets"
 	"kvmgo/utils"
 	"kvmgo/vm"
+
 	kvm "kvmgo/vm"
 )
 
 /*
 -- Presets
+
+#cloud-config
+
+hostname: worker
+fqdn: worker.kuro.com
+passwd: password
+lock_passwd: false
+sudo: ALL=(ALL) NOPASSWD:ALL
+package-update: true
+package_upgrade: true
+password: password
+ssh_pwauth: true
+chpasswd: { expire: False }
+
+#cloud-config
+
+hostname: control
+fqdn: control.kuro.com
+passwd: password
+lock_passwd: false
+sudo: ALL=(ALL) NOPASSWD:ALL
+package-update: true
+package_upgrade: true
+password: password
+ssh_pwauth: true
+chpasswd: { expire: False }
 
 -- Kubernetes Control Plane + Worker
 
@@ -38,6 +65,12 @@ import (
 -- Expose a VM
 go run main.go --expose-vm=hadoop --port=8081 --hostport=8003 --external-ip=192.168.1.224 --protocol=tcp
 
+go run main.go --expose-vm=worker \
+--port=8088 \
+--hostport=9000 \
+--external-ip=192.168.1.225 \
+--protocol=tcp
+
 -- Clean up running VMs
 
 	go run main.go --cleanup=kubecontrol,kubeworker
@@ -54,7 +87,7 @@ go run main.go --expose-vm=hadoop --port=8081 --hostport=8003 --external-ip=192.
 
 # VM with zsh
 
-	go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
+	go run main.go --launch-vm=cilium --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
 
 # launches hadoop
 
@@ -65,17 +98,23 @@ To get detailed info about the VM
 	virsh dominfo spark
 */
 func Evaluate() {
-	config := ParseFlags()
-	if config.Help == true {
+	config, err := ParseFlags()
+	if err != nil {
+		log.Print("Parsing Failed - Exiting")
+		os.Exit(1)
+	}
+
+	if config.Help {
 		utils.MockANSIPrint()
 	}
+
 	switch config.Action {
 	case Launch:
 		launchCluster(config.Control, config.Workers)
 	case Cleanup:
 		cleanupNodes(config.Cleanup)
 	case Running:
-		utils.ListVMs(2, true)
+		_, _ = utils.ListVMs(2, true)
 	case New:
 		launchVM(*config)
 	default:
@@ -112,36 +151,34 @@ type Config struct {
 	Preset       string
 }
 
-func ParseFlags() *Config {
+func ParseFlags() (*Config, error) {
 	var action Action
 
+	vm := flag.String("vm", "", "Virtual Machine (Domain Name)")
+	cpu := flag.String("cpu", "", "Specify Cores for the VM")
+	help := flag.Bool("help", false, "View Help for kVM application")
+	preset := flag.String("preset", "", "Choose from a preconfigured Setup such as Hadoop, Spark, Kubernetes")
+	memory := flag.String("mem", "", "Specify Memory for the VM")
+	vmPort := flag.Int("port", 0, "VM port to be exposed")
+	hostPort := flag.Int("hostport", 0, "Host port to map to the VM port")
 	cluster := flag.Bool("cluster", false, "Launch a cluster with control and worker nodes")
 	cleanup := flag.String("cleanup", "", "Cleanup nodes by name, comma-separated")
 	control := flag.String("control", "", "Name of the control node")
 	workers := flag.String("workers", "", "Names of the worker nodes, comma-separated")
 	running := flag.Bool("running", false, "View virtual machines running")
-	launch_vm := flag.String("launch-vm", "", "Launch a new VM with the specified name")
-	memory := flag.String("mem", "", "Specify Memory for the VM")
-	cpu := flag.String("cpu", "", "Specify Cores for the VM")
-	bootScript := flag.String("boot", "", "Path to the custom boot script")
 	userdata := flag.String("userdata", "", "Path to the User Data Cloud init script to be used Directly")
-	preset := flag.String("preset", "", "Choose from a preconfigured Setup such as Hadoop, Spark, Kubernetes")
-	help := flag.Bool("help", false, "View Help for kVM application")
-	vm := flag.String("vm", "", "Virtual Machine (Domain Name)")
-	exposeVM := flag.String("expose-vm", "", "Name of the VM to expose ports for")
-	externalIP := flag.String("external-ip", "0.0.0.0", "External IP to map the port to, defaults to 0.0.0.0")
-	hostPort := flag.Int("hostport", 0, "Host port to map to the VM port")
-	vmPort := flag.Int("port", 0, "VM port to be exposed")
 	protocol := flag.String("protocol", "tcp", "Protocol for the port mapping, defaults to tcp")
+	exposeVM := flag.String("expose-vm", "", "Name of the VM to expose ports for")
+	launch_vm := flag.String("launch-vm", "", "Launch a new VM with the specified name")
+	bootScript := flag.String("boot", "", "Path to the custom boot script")
+	externalIP := flag.String("external-ip", "0.0.0.0", "External IP to map the port to, defaults to 0.0.0.0")
 
 	flag.Parse()
 
-	utils.LogWhiteBlueBold(fmt.Sprintf("VM passed: %s", *vm))
-
 	if *exposeVM != "" && *hostPort != 0 && *vmPort != 0 {
-		netConfig := ParseNetExposeFlags(*exposeVM, *vmPort, *hostPort, *externalIP, *protocol)
-		if netConfig != nil {
-			CreateAndSetNetExposeConfig(*netConfig)
+		err := HandleVMNetworkExposure(*exposeVM, *vmPort, *hostPort, *externalIP, *protocol)
+		if err != nil {
+			log.Printf("Failed To Create Forwarding Config ERROR:%s,", err)
 		}
 	}
 
@@ -156,94 +193,57 @@ func ParseFlags() *Config {
 	}
 
 	config := &Config{
-		Action:  action,
 		VM:      *vm,
 		Name:    *launch_vm,
+		Action:  action,
 		Cluster: *cluster,
 		Control: *control,
 		Workers: strings.Split(*workers, ","),
 		Help:    *help,
 	}
 
-	if *memory != "" {
-		parsedMem, err := strconv.Atoi(*memory)
-		if err != nil {
-			log.Printf("Failed to parse memory value: %v.Setting default memory as 2048mb", err)
-		}
-		config.Memory = parsedMem // config.Memory , log color , and Config linen 228
-	}
-
-	if *cpu != "" {
-		parsedCpu, err := strconv.Atoi(*cpu)
-		if err != nil {
-			log.Fatalf("Failed to parse CPU value: %v. Setting to default as 2", err)
-		}
-		config.CPU = parsedCpu
-
-	}
+	mem, vcpu := ParseMemoryCPU(*memory, *cpu)
+	config.CPU = vcpu
+	config.Memory = mem
 
 	if *preset != "" {
-		switch *preset {
-		case "hadoop":
-			utils.LogRichLightPurple("Preset: Hadoop")
-			config.Userdata = presets.CreateHadoopUserData("ubuntu", "password", *launch_vm)
-		case "kubecontrol":
-			utils.LogRichLightPurple("Preset: Kube Control Plane")
-			config.Userdata = presets.CreateKubeControlPlaneUserData("ubuntu", "password", *launch_vm)
-		case "kubeworker":
-			utils.LogRichLightPurple("Preset: Kube Worker Node")
-			config.Userdata = presets.CreateKubeWorkerUserData("ubuntu", "password", *launch_vm)
-		default:
-			utils.LogError("Invalid Preset Passed")
-		}
+		config.Userdata = CreateUserdataFromPreset(*preset, config.Name)
 	}
 
 	if *userdata != "" {
-
-		absUserdataPath, err := filepath.Abs(*userdata)
-		if err != nil {
-			log.Printf("Path could not be resolved. Make sure --userdata path is valid.")
-			absUserdataPath = ""
-		}
-		config.UserdataFile = absUserdataPath
+		resolvedPath, _ := ResolvePath(*userdata, "--userdata")
+		config.UserdataFile = resolvedPath
 	}
 
 	if *bootScript != "" {
-
-		absBootScriptPath, err := filepath.Abs(*bootScript)
-		if err != nil {
-			log.Printf("Path could not be resolved. Make sure --boot path is valid.")
-			absBootScriptPath = ""
-		}
-		config.BootScript = absBootScriptPath
+		resolvedPath, _ := ResolvePath(*bootScript, "--boot")
+		config.BootScript = resolvedPath
 	}
 
 	if *cleanup != "" {
 		config.Cleanup = strings.Split(*cleanup, ",")
 	}
 
-	return config
+	return config, nil
 }
 
-// launchVM launches a new Virtual Machine
 func launchVM(launchConfig Config) {
-	log.Printf("Launching new VM: %s\n", launchConfig.Name)
-
 	vmConfig := CreateVMConfig(launchConfig)
-
-	vm.LaunchNewVM(vmConfig)
+	if _, err := vm.LaunchNewVM(vmConfig); err != nil {
+		log.Printf("Failed vm.LaunchNewVM(vmConfig) go_err ERROR:%s,", err)
+	}
 }
 
 func launchCluster(controlNode string, workerNodes []string) {
 	fmt.Printf("Launching control node: %s\n", controlNode)
 	for _, worker := range workerNodes {
 		if worker != "" {
-			fmt.Printf("NOTE:PLACEHOLDER. Actually Launches 1 Control + 1 Worker.Launching worker node: %s with control node: %s\n", worker, controlNode)
+			log.Printf("NOTE:PLACEHOLDER. Actually Launches 1 Control + 1 Worker.Launching worker node: %s with control node: %s\n", worker, controlNode)
 		}
 	}
 	err := vm.LaunchCluster(controlNode, "worker")
 	if err != nil {
-		log.Printf(utils.TurnError("Failed to Launch k8 Cluster"))
+		log.Print(utils.TurnError("Failed to Launch k8 Cluster"))
 	}
 }
 
@@ -264,7 +264,7 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 func cleanupNodes(nodes []string) {
 	vms, err := utils.ListVMs(2, false)
 	if err != nil {
-		fmt.Printf("Error listing VMs: %v\n", err)
+		log.Printf("Error listing VMs: %v\n", err)
 		return
 	}
 
@@ -280,7 +280,7 @@ func cleanupNodes(nodes []string) {
 		state, exists := vmMap[nodeName]
 		if nodeName != "" && exists {
 			log.Printf(" %s %s (%s)\n", utils.TICK_GREEN, nodeName, state)
-			foundVMNames = append(foundVMNames, nodeName) // Append only the VM name
+			foundVMNames = append(foundVMNames, nodeName)
 		} else {
 			log.Printf("VM not found: %s %s\n", nodeName, utils.CROSS_RED)
 		}
@@ -315,4 +315,51 @@ func askForConfirmation() bool {
 	}
 	response = strings.TrimSpace(response)
 	return response == "y" || response == "Y"
+}
+
+// Generates the VM according to Presets such as Kubernetes, Spark, Hadoop, and more
+func CreateUserdataFromPreset(preset, launch_vm string) string {
+	switch preset {
+	case "hadoop":
+		utils.LogRichLightPurple("Preset: Hadoop")
+		return presets.CreateHadoopUserData("ubuntu", "password", launch_vm)
+	case "kubecontrol":
+		utils.LogRichLightPurple("Preset: Kube Control Plane")
+		return presets.CreateKubeControlPlaneUserData("ubuntu", "password", launch_vm, true)
+	case "kubeworker":
+		utils.LogRichLightPurple("Preset: Kube Worker Node")
+		return presets.CreateKubeWorkerUserData("ubuntu", "password", launch_vm)
+	default:
+		utils.LogError("Invalid Preset Passed")
+		return ""
+	}
+}
+
+func ParseMemoryCPU(mem, cpu string) (int, int) {
+	memory := 2048
+	vcpu := 2
+
+	parsedMem, err := strconv.Atoi(mem)
+	if err != nil && mem != "" {
+		log.Printf("Failed to parse memory value: %v.Setting default memory as 2048mb", err)
+	} else {
+		memory = parsedMem
+	}
+	parsedCpu, err := strconv.Atoi(cpu)
+	if err != nil && cpu != "" {
+		log.Printf("Failed to parse CPU value: %v. Setting to default as 2", err)
+	} else {
+		vcpu = parsedCpu
+	}
+
+	return memory, vcpu
+}
+
+func ResolvePath(path, cliflag string) (string, error) {
+	absBootScriptPath, err := filepath.Abs(path)
+	if err != nil {
+		log.Printf("Path could not be resolved. Make sure %s path is valid.", cliflag)
+		return "", err
+	}
+	return absBootScriptPath, err
 }

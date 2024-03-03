@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -15,13 +14,7 @@ import (
 	"time"
 )
 
-var (
-	images_dir        = "data/images"
-	modified_img_dir  = "data/images/modified"
-	userdata_file     = "data/userdata/default/user-data.txt"
-	userdata_img_path = "data/userdata/default/user-data.img"
-	artifacts         = "data/artifacts"
-)
+const artifacts = "data/artifacts"
 
 // Downloads Base Linux Cloud Image to data/images - only done once and shared among VM's in data/images/ubuntu.img
 func PullImage(url, dir string) error {
@@ -29,7 +22,7 @@ func PullImage(url, dir string) error {
 	imagePath := filepath.Join(dir, imageName)
 
 	if ImageExists(imageName, dir) {
-		slog.Info("Image already exists:", "image", imageName)
+		log.Printf("Image %s already exist", imageName)
 		return nil
 	}
 
@@ -73,8 +66,11 @@ func MountImage(imagePath, mountPath string) error {
 		return err
 	}
 
-	log.Printf("Mounting image: sudo guestmount -a %s -i --rw %s", absImagePath, mountPath)
-	cmd := exec.Command("sudo", "guestmount", "-a", absImagePath, "-i", "--rw", mountPath)
+	log.Printf("Mounting image: sudo guestmount -a %s -i --rw %s",
+		absImagePath, mountPath)
+
+	cmd := exec.Command("sudo", "guestmount", "-a", absImagePath,
+		"-i", "--rw", mountPath)
 
 	// Capture standard error
 	var stderr bytes.Buffer
@@ -166,20 +162,16 @@ func PullFromRunningVM(vm_name, path string) error {
 
 	log.Printf("Running command: %s\n", cmd.String())
 
-	cmd.Run()
+	_ = cmd.Run()
 
 	return nil
 }
 
-// RebootVM restarts the VM. This is useful for rebooting once boot scripts are finished.
+// RebootVM restarts the VM. This is useful for rebooting once boot scripts are finished : virsh reboot vmname
 func RebootVM(vm_name, path string) error {
-	// virsh reboot vmname
-
 	cmd := exec.Command("virsh", "reboot", vm_name)
-
 	log.Printf("Running command: %s\n", cmd.String())
-
-	cmd.Run()
+	_ = cmd.Run()
 
 	return nil
 }
@@ -229,12 +221,9 @@ func IsVMRunning(vmName string) (bool, error) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.Contains(line, vmName) && strings.Contains(line, "running") {
-			//	log.Printf("%s is running!", vmName)
 			return true, nil
 		}
 	}
-	// log.Printf("%s is not running.", vmName)
-
 	return false, scanner.Err()
 }
 

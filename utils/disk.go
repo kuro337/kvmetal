@@ -8,6 +8,20 @@ import (
 	"path/filepath"
 )
 
+/*
+Creates an Absolute Path - based on Path provided during Execution Relative to currdir
+
+	relativePath := "data/images"
+	absPath, err := CreateAbsPathFromRoot(relativePath)
+*/
+func CreateAbsPathFromRoot(path string) (string, error) {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", err
+	}
+	return absPath, nil
+}
+
 func CreateDirIfNotExist(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		log.Printf("Dir %s did not exist - creating.", path)
@@ -73,7 +87,12 @@ func PrintCurrentPath() {
 	log.Printf("Current Path:%s", dir)
 }
 
-// WriteArraytoFile writes the slice of strings to the specified file path.
+/*
+WriteArraytoFile writes the slice of strings to the specified file path.
+Usage:
+
+	err := WriteArraytoFile(arr,"/home/user/commands.txt")
+*/
 func WriteArraytoFile(commands []string, filePath string) error {
 	// Ensure the directory exists or create it
 	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {

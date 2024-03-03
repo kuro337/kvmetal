@@ -17,7 +17,7 @@ func main() {
 
 	utils.ListAllDomains(conn)
 
-	utils.GetDomainInfo(conn, "worker")
+	_ = utils.GetDomainInfo(conn, "worker")
 
 	// doms, err := conn.ListAllDomains(libvirt.CONNECT_LIST_DOMAINS_SHUTOFF)
 	// if err != nil {

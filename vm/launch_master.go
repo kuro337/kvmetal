@@ -36,7 +36,7 @@ func LaunchKubeControlNode(master_name string) (*VMConfig, error) {
 
 	if err := config.CreateBaseImage(); err != nil {
 		slog.Error("Failed to Setup VM", "error", err)
-		Cleanup(config.VMName)
+		_ = Cleanup(config.VMName)
 		return nil, err
 	}
 	utils.LogStepSuccess(fmt.Sprintf("Modified Base Image Creation Success at %s", config.ImagesDir))
@@ -45,7 +45,7 @@ func LaunchKubeControlNode(master_name string) (*VMConfig, error) {
 
 	if err := config.SetupVM(); err != nil {
 		slog.Error("Failed to Setup VM", "error", err)
-		Cleanup(config.VMName)
+		_ = Cleanup(config.VMName)
 		return nil, err
 
 	}
@@ -54,7 +54,7 @@ func LaunchKubeControlNode(master_name string) (*VMConfig, error) {
 
 	if err := config.GenerateCustomUserDataImg(""); err != nil {
 		slog.Error("Failed to Generate Cloud-Init Disk", "error", err)
-		Cleanup(config.VMName)
+		_ = Cleanup(config.VMName)
 		return nil, err
 	}
 
@@ -71,7 +71,7 @@ func LaunchKubeControlNode(master_name string) (*VMConfig, error) {
 
 	utils.LogSection("PULLING ARTIFACTS")
 
-	config.PullArtifacts()
+	_ = config.PullArtifacts()
 
 	utils.LogStepSuccess("VM Healthy and Boot Artifacts Pulled Successfully.")
 
@@ -86,7 +86,7 @@ func ClusterHealthCheck(master_client *network.VMClient, worker_name string) (bo
 		return false, err
 	}
 
-	if deployment_success == false {
+	if !deployment_success {
 		log.Printf("Health Checks were Unsuccessful for Cluster")
 		return false, nil
 	}

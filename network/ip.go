@@ -3,11 +3,9 @@ package network
 import (
 	"bufio"
 	"bytes"
-	"encoding/xml"
 	"fmt"
 	"log"
 	"net"
-	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -64,20 +62,21 @@ func GetVMIPAddr(vmName string) (*IPAddressWithSubnet, error) {
 	return nil, fmt.Errorf("no IP address found for VM: %s", vmName)
 }
 
-func getVMInterface(xmlFilePath string) (string, error) {
-	xmlFile, err := os.ReadFile(xmlFilePath)
-	if err != nil {
-		return "", err
+/*
+	func getVMInterface(xmlFilePath string) (string, error) {
+		xmlFile, err := os.ReadFile(xmlFilePath)
+		if err != nil {
+			return "", err
+		}
+
+		var iface NetworkInterfaceVM
+		if err := xml.Unmarshal(xmlFile, &iface); err != nil {
+			return "", err
+		}
+
+		return iface.Bridge.Name, nil
 	}
-
-	var iface NetworkInterfaceVM
-	if err := xml.Unmarshal(xmlFile, &iface); err != nil {
-		return "", err
-	}
-
-	return iface.Bridge.Name, nil
-}
-
+*/
 func SimulateVMConfig() ForwardingConfig {
 	return ForwardingConfig{
 		VMName:    "test",
@@ -128,12 +127,12 @@ func GeneratePortForwardingConfigExtractDomainIP(vmName string,
 
 	hostIP, err := GetHostIP()
 	if err != nil {
-		log.Printf(utils.TurnError("Failed to get Host IP"))
+		log.Print(utils.TurnError("Failed to get Host IP"))
 	}
 
 	vmIpAddr, err := GetVMIPAddr(vmName)
 	if err != nil {
-		log.Printf(utils.TurnError("Failed to get VM Private IP"))
+		log.Print(utils.TurnError("Failed to get VM Private IP"))
 		return nil, err
 	}
 

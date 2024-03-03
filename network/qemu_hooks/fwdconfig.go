@@ -169,9 +169,8 @@ func UpdateConfig(newConfig network.ForwardingConfig) error {
 	return WriteConfigsToFile(configs)
 }
 
-// Merges new configuration fields into the original configuration.
+// Merges new configuration fields into the original configuration without duplicating port mappings or port ranges.
 func mergeConfigs(original *network.ForwardingConfig, newConfig network.ForwardingConfig) {
-	// Only update fields that are explicitly set in newConfig.
 	if newConfig.HostIP != nil {
 		original.HostIP = newConfig.HostIP
 	}
@@ -182,11 +181,34 @@ func mergeConfigs(original *network.ForwardingConfig, newConfig network.Forwardi
 		original.ExternalIP = newConfig.ExternalIP
 	}
 
-	if len(newConfig.PortMap) > 0 {
-		original.PortMap = append(original.PortMap, newConfig.PortMap...)
+	// Update PortMapping by checking for duplicates
+	for _, newPM := range newConfig.PortMap {
+		exists := false
+		for _, origPM := range original.PortMap {
+			if newPM.HostPort == origPM.HostPort && newPM.VMPort == origPM.VMPort && newPM.Protocol == origPM.Protocol {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			original.PortMap = append(original.PortMap, newPM)
+		}
 	}
-	if len(newConfig.PortRange) > 0 {
-		original.PortRange = append(original.PortRange, newConfig.PortRange...)
+
+	// Update PortRange by checking for duplicates
+	for _, newPR := range newConfig.PortRange {
+		exists := false
+		for _, origPR := range original.PortRange {
+			if newPR.VMStartPort == origPR.VMStartPort && newPR.VMEndPortNum == origPR.VMEndPortNum &&
+				newPR.HostStartPortNum == origPR.HostStartPortNum && newPR.HostEndPortNum == origPR.HostEndPortNum &&
+				newPR.Protocol == origPR.Protocol {
+				exists = true
+				break
+			}
+		}
+		if !exists {
+			original.PortRange = append(original.PortRange, newPR)
+		}
 	}
 }
 
@@ -213,10 +235,10 @@ func DomainAddForwardingConfigIfRunning(domain string) error {
 		stateName, stateDesc := utils.ConvertDomainState(info.State)
 		infoString := "Domain not detected as Running: " + domain +
 			"\nState: " + stateName + " (" + stateDesc + ")\n"
-		log.Printf(infoString)
+		log.Print(infoString)
 	}
 
-	log.Printf(utils.TurnSuccess(fmt.Sprintf("Domain %s is Running", domain)))
+	log.Print(utils.TurnSuccess(fmt.Sprintf("Domain %s is Running", domain)))
 
 	domainIP, err := utils.ListDomainIP(conn, dom)
 	if err != nil || domainIP == nil {

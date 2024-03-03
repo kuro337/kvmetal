@@ -83,7 +83,7 @@ type VM struct {
 	State string
 }
 
-var allVMs []VM // Global State for Virtual Machines
+// var allVMs []VM // Global State for Virtual Machines
 
 // ListVMs parses the output string and returns a slice of VM structs.
 // If print is true, it also prints the VMs in a formatted table.

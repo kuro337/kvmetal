@@ -1,11 +1,5 @@
 package shell
 
-type Zsh struct {
-	packages    []string
-	runCmd      string
-	shellScript string
-}
-
 const ZSH_UBUNTU_RUNCMD_NOINDENT = `
 sudo -u ubuntu sh -c 'RUNZSH=no sh -c "$(curl -fsSL https://raw.github.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"'
 sudo -u ubuntu git clone https://github.com/zsh-users/zsh-autosuggestions /home/ubuntu/.oh-my-zsh/custom/plugins/zsh-autosuggestions

@@ -159,12 +159,12 @@ func TurnKeyBold(key, val string) string {
 func GetDelimiter(color string, highlighted, dim bool) string {
 	delimiter := DELIMITER
 
-	if dim == true {
+	if dim {
 		delimiter = DELIMITERDIM
 	}
 	str := fmt.Sprintf("%s%s%s", color, delimiter, NC)
 
-	if highlighted == true {
+	if highlighted {
 		return fmt.Sprintf("%s%s", BOLD, str)
 	}
 	return str
@@ -178,6 +178,26 @@ Usage:
 */
 func TurnContentBoldColorDelimited(msg, msgColor, delimiterColor string, spacing int) string {
 	return fmt.Sprintf("%s%s%s\n%s%*s%s%s%s\n%s%s%s%s\n", BOLD, delimiterColor, DELIMITERDIM, NC, spacing, BOLD, msgColor, msg, NC, BOLD, delimiterColor, DELIMITERDIM, NC)
+}
+
+/*
+Returns a String with the msg , a newline, and a delimiter, then a newline
+Usage:
+*/
+func TurnColorWithNewlineDelimiter(msg, color string) string {
+	return fmt.Sprintf("%s%s%s\n%s\n", BOLD, color, msg, DOTTED)
+}
+
+/*
+Structures the Result with a Colored Heading and surrounds it with Delimiters
+
+		log.Print(utils.StructureResultWithHeadingAndColoredMsg(
+		"CloudInit UserData Set To", utils.PEACH,
+		userDataContent,
+	))
+*/
+func StructureResultWithHeadingAndColoredMsg(msg, color, content string) string {
+	return fmt.Sprintf("%s%s%s%s\n%s\n%s\n%s\n", BOLD, color, msg, NC, DOTTED, content, DOTTED)
 }
 
 func TurnError(msg string) string {
@@ -389,7 +409,7 @@ func LogEvent(pairs ...interface{}) {
 		}
 		message += fmt.Sprintf("%s%s%s: %s ", BOLD, desc, NC, valueStr)
 	}
-	log.Printf(message)
+	log.Print(message)
 }
 
 func LogEventCoded(ansicolor string, pairs ...interface{}) {
@@ -406,7 +426,7 @@ func LogEventCoded(ansicolor string, pairs ...interface{}) {
 		}
 		message += fmt.Sprintf("%s%s%s: %s ", BOLD, desc, NC, valueStr)
 	}
-	log.Printf(message)
+	log.Print(message)
 }
 
 func Help() {
