@@ -44,12 +44,11 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 		utils.LogError(fmt.Sprintf("Failed to Create VM ERROR:%s", err))
 		log.Printf("Check sudo cat /var/log/libvirt/qemu/%s.log for verbose failure logs", vmConfig.VMName)
 		return nil, err
-
 	}
 
 	// for now create a default forwarding config
 	if err := qemu_hooks.DomainAddForwardingConfigIfRunning(vmConfig.VMName); err != nil {
-		log.Printf("Could Not Generating Default Forwarding Commands. ERROR:%s,", err)
+		log.Printf("Could Not Generate Default Forwarding Commands. ERROR:%s,", err)
 	}
 
 	slog.Info("VM created successfully")

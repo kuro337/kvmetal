@@ -7,7 +7,7 @@ import (
 	"kvmgo/constants"
 )
 
-func CreateKubeControlPlaneUserData(username, pass, vmname string, cilium bool) string {
+func CreateKubeControlPlaneUserData(username, pass, vmname, sshpub string, cilium bool) string {
 	var clusterNetworking constants.Dependency
 
 	if cilium {
@@ -31,7 +31,7 @@ func CreateKubeControlPlaneUserData(username, pass, vmname string, cilium bool) 
 		[]constants.InitSvc{
 			constants.Restart,
 		},
-		username, pass, vmname)
+		username, pass, vmname, sshpub)
 	if err != nil {
 		log.Printf("Failed to create Configuration")
 	}
@@ -40,7 +40,7 @@ func CreateKubeControlPlaneUserData(username, pass, vmname string, cilium bool) 
 	return userdata
 }
 
-func CreateKubeWorkerUserData(username, pass, vmname string) string {
+func CreateKubeWorkerUserData(username, pass, vmname, sshpub string) string {
 	config, err := configuration.NewConfigBuilder(
 		constants.Ubuntu,
 		[]constants.Dependency{
@@ -57,7 +57,7 @@ func CreateKubeWorkerUserData(username, pass, vmname string) string {
 		[]constants.InitSvc{
 			constants.Restart,
 		},
-		username, pass, vmname)
+		username, pass, vmname, sshpub)
 	if err != nil {
 		log.Printf("Failed to create Configuration")
 	}

@@ -113,3 +113,11 @@ func WriteArraytoFile(commands []string, filePath string) error {
 
 	return nil
 }
+
+func ReadFileFatal(path string) string {
+	content, err := os.ReadFile(path)
+	if err != nil {
+		log.Fatalf("Failed to read qemu hooks %s", err)
+	}
+	return string(content)
+}

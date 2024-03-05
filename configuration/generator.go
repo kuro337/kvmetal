@@ -19,13 +19,15 @@ type Distro interface {
 }
 
 type ConfigBuilder struct {
-	distro   Distro
-	deps     []constants.Dependency
-	pkgs     []constants.CloudInitPkg
-	initsvc  []constants.InitSvc
-	username string
-	password string
-	hostname string
+	distro    Distro
+	deps      []constants.Dependency
+	pkgs      []constants.CloudInitPkg
+	initsvc   []constants.InitSvc
+	discovery string
+	username  string
+	password  string
+	hostname  string
+	sshpubkey string
 }
 
 /*
@@ -42,7 +44,7 @@ func NewConfigBuilder(distro constants.Distro,
 	initSvc []constants.InitSvc,
 	username,
 	password,
-	hostname string,
+	hostname, sshkey string,
 ) (*ConfigBuilder, error) {
 	var osdistro Distro
 
@@ -55,18 +57,22 @@ func NewConfigBuilder(distro constants.Distro,
 	}
 
 	return &ConfigBuilder{
-		distro:   osdistro,
-		deps:     deps,
-		pkgs:     pkgs,
-		username: username,
-		password: password,
-		hostname: hostname,
+		distro:    osdistro,
+		deps:      deps,
+		pkgs:      pkgs,
+		username:  username,
+		password:  password,
+		hostname:  hostname,
+		sshpubkey: sshkey,
 	}, nil
 }
 
 func (c *ConfigBuilder) CreateCloudInitData() string {
 	var userDataBuilder strings.Builder
-	baseUserData := SubstituteHostNameAndFqdnUserdata(c.distro.DefaultCloudInit(), c.hostname)
+	baseUserData := SubstituteHostNameAndFqdnUserdataSSHPublicKey(
+		c.distro.DefaultCloudInit(),
+		c.hostname,
+		c.sshpubkey)
 
 	userDataBuilder.WriteString(baseUserData + "\n")
 	userDataBuilder.WriteString(c.BuildInitSvc())

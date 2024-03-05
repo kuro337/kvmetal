@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"kvmgo/network"
@@ -343,15 +344,26 @@ func StopForwarding(dnatChain, snatChain, fwdChain LibvirtChain,
 	hostIp, vmPrivateIp net.IP,
 ) []string {
 	stopCommands := []string{"\n===============================\nStop Port Forwarding Commands:\n===============================\n"}
-	stopCommands = append(stopCommands,
-		InsertChains(DELETE,
-			dnatChain, snatChain, fwdChain, hostIp, vmPrivateIp)...)
+	// stopCommands = append(stopCommands,
+	// 	InsertChains(DELETE,
+	// 		dnatChain, snatChain, fwdChain, hostIp, vmPrivateIp)...)
 
-	return append(stopCommands,
-		dnatChain.DeleteChain("nat"),
-		snatChain.DeleteChain("nat"),
-		fwdChain.DeleteChain("filter"),
+	return slices.Concat(
+		stopCommands,
+		InsertChains(DELETE,
+			dnatChain, snatChain, fwdChain, hostIp, vmPrivateIp),
+		[]string{
+			dnatChain.DeleteChain("nat"),
+			snatChain.DeleteChain("nat"),
+			fwdChain.DeleteChain("filter"),
+		},
 	)
+
+	// return append(stopCommands,
+	// 	dnatChain.DeleteChain("nat"),
+	// 	snatChain.DeleteChain("nat"),
+	// 	fwdChain.DeleteChain("filter"),
+	// )
 }
 
 func LogHookEvent(domain, action string) (*log.Logger, error) {
