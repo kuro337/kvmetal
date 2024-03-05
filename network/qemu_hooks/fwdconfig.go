@@ -225,6 +225,8 @@ func DomainAddForwardingConfigIfRunning(domain string) error {
 		log.Printf("Failed to get Domain ERROR:%s", err)
 		return err
 	}
+	defer dom.Free()
+
 	info, err := dom.GetInfo()
 	if err != nil {
 		log.Printf("Failed to list domain info ERROR:%s", err)
@@ -245,6 +247,8 @@ func DomainAddForwardingConfigIfRunning(domain string) error {
 		log.Printf("Failed to Get IP ERROR:%s", err)
 		return err
 	}
+
+	log.Printf(fmt.Sprintf("Domain IP Retrieved: %s", utils.TurnSuccess("")))
 
 	hostIP, err := network.GetHostIP()
 	if err != nil {

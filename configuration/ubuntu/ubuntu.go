@@ -12,7 +12,7 @@ import (
 type UbuntuConfig struct{}
 
 func (u *UbuntuConfig) DefaultCloudInit() string {
-	return constants.CloudInitUbuntu
+	return constants.DefaultUserdata
 }
 
 func (u *UbuntuConfig) GetImageUrl() string {

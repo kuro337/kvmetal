@@ -7,7 +7,7 @@ import (
 	"kvmgo/constants"
 )
 
-func CreateHadoopUserData(username, pass, vmname string) string {
+func CreateHadoopUserData(username, pass, vmname, sshpub string) string {
 	config, err := configuration.NewConfigBuilder(
 		constants.Ubuntu,
 		[]constants.Dependency{
@@ -23,7 +23,7 @@ func CreateHadoopUserData(username, pass, vmname string) string {
 		[]constants.InitSvc{
 			constants.Restart,
 		},
-		username, pass, vmname)
+		username, pass, vmname, sshpub)
 	if err != nil {
 		log.Printf("Failed to create Configuration")
 	}

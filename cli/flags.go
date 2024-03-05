@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"kvmgo/configuration/presets"
+	"kvmgo/constants"
 	"kvmgo/utils"
 	"kvmgo/vm"
 
@@ -83,6 +84,10 @@ go run main.go --expose-vm=worker \
 
 -- Launch a new VM
 
+	go run main.go --launch-vm=test   --mem=1024 --cpu=1
+	go run main.go --launch-vm=consul   --mem=2048 --cpu=2
+	go run main.go --launch-vm=postgres --mem=8192 --cpu=4
+
 	go run main.go --launch-vm=spark --mem=24576 --cpu=8
 
 # VM with zsh
@@ -144,6 +149,7 @@ type Config struct {
 	Name         string
 	Memory       int
 	CPU          int
+	SSH          string
 	BootScript   string
 	Userdata     string
 	UserdataFile string
@@ -205,9 +211,10 @@ func ParseFlags() (*Config, error) {
 	mem, vcpu := ParseMemoryCPU(*memory, *cpu)
 	config.CPU = vcpu
 	config.Memory = mem
+	config.SSH = utils.ReadFileFatal(constants.SshPub)
 
 	if *preset != "" {
-		config.Userdata = CreateUserdataFromPreset(*preset, config.Name)
+		config.Userdata = CreateUserdataFromPreset(*preset, config.Name, config.SSH)
 	}
 
 	if *userdata != "" {
@@ -258,6 +265,7 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 		SetUserData(config.UserdataFile).
 		SetCores(config.CPU).
 		SetMemory(config.Memory).
+		SetPubkey(constants.SshPub).
 		SetCloudInitDataInline(config.Userdata)
 }
 
@@ -318,17 +326,17 @@ func askForConfirmation() bool {
 }
 
 // Generates the VM according to Presets such as Kubernetes, Spark, Hadoop, and more
-func CreateUserdataFromPreset(preset, launch_vm string) string {
+func CreateUserdataFromPreset(preset, launch_vm, sshpub string) string {
 	switch preset {
 	case "hadoop":
 		utils.LogRichLightPurple("Preset: Hadoop")
-		return presets.CreateHadoopUserData("ubuntu", "password", launch_vm)
+		return presets.CreateHadoopUserData("ubuntu", "password", launch_vm, sshpub)
 	case "kubecontrol":
 		utils.LogRichLightPurple("Preset: Kube Control Plane")
-		return presets.CreateKubeControlPlaneUserData("ubuntu", "password", launch_vm, true)
+		return presets.CreateKubeControlPlaneUserData("ubuntu", "password", launch_vm, sshpub, true)
 	case "kubeworker":
 		utils.LogRichLightPurple("Preset: Kube Worker Node")
-		return presets.CreateKubeWorkerUserData("ubuntu", "password", launch_vm)
+		return presets.CreateKubeWorkerUserData("ubuntu", "password", sshpub, launch_vm)
 	default:
 		utils.LogError("Invalid Preset Passed")
 		return ""

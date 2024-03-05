@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"kvmgo/configuration"
+	"kvmgo/constants"
 	"kvmgo/network"
 	"kvmgo/utils"
 )
@@ -33,6 +34,7 @@ type VMConfig struct {
 	EnableServices []string
 	Artifacts      []string
 
+	sshPub       string
 	artifactPath string
 }
 
@@ -56,6 +58,12 @@ func NewKVM(vmName string) *VMConfig {
 
 func (config *VMConfig) SetImageURL(url string) *VMConfig {
 	config.ImageURL = url
+	return config
+}
+
+// Sets the Public Key to be used for secure SSH access
+func (config *VMConfig) SetPubkey(sshpubpath string) *VMConfig {
+	config.sshPub = utils.ReadFileFatal(sshpubpath)
 	return config
 }
 
@@ -179,19 +187,16 @@ func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) err
 
 	var userDataContent string
 
-	// If Preset is used - we set UserData in Memory on the Config
-	// Check if --preset flag is used to override the manually passed File and Log a Warning
 	if config.InlineUserdata != "" {
 		userDataContent = config.InlineUserdata
 	} else {
-		log.Printf("Using Default UserData from Disk : %s", userDataPathAbs)
-		userDataBytes, err := os.ReadFile(userDataPathAbs)
-		if err != nil {
-			return fmt.Errorf("failed to read boot script: %v", err)
-		}
-		userDataContent = configuration.SubstituteHostnameUserData(
-			string(userDataBytes),
-			config.VMName)
+
+		log.Print("Using Default UserData")
+
+		userDataContent = configuration.SubstituteHostNameAndFqdnUserdataSSHPublicKey(
+			constants.DefaultUserdata,
+			config.VMName,
+			config.sshPub)
 	}
 
 	log.Print(utils.StructureResultWithHeadingAndColoredMsg(

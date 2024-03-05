@@ -11,16 +11,21 @@ import (
 	"testing"
 
 	"kvmgo/configuration/presets"
+	"kvmgo/constants"
+	"kvmgo/utils"
 )
 
 func TestCloudInitValidSchema(t *testing.T) {
-	hadoop_userdata := presets.CreateHadoopUserData("ubuntu", "password", "hadoop")
+	hadoop_userdata := presets.CreateHadoopUserData("ubuntu", "password", "hadoop", utils.ReadFileFatal(constants.SshPub))
 
 	//	os.WriteFile("testfile.yaml", []byte(hadoop_userdata), 0o644)
 	tmpfile, err := os.CreateTemp("", "testfile.yaml")
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	log.Printf(hadoop_userdata)
+
 	defer os.Remove(tmpfile.Name()) // clean up
 
 	if _, err := tmpfile.Write([]byte(hadoop_userdata)); err != nil {
@@ -54,7 +59,7 @@ func TestCloudInitValidSchema(t *testing.T) {
 	if !strings.Contains(hadoop_userdata, "hadoop") {
 		t.Errorf("Parsing and Substitution Failed")
 	}
-
+	t.Error("trigger")
 	// Your additional validation logic here
 	if !strings.Contains(hadoop_userdata, "hadoop.kuro.com") {
 		t.Errorf("Parsing and Substitution Failed")

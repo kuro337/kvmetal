@@ -2,12 +2,54 @@ package tests
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"testing"
 
+	"kvmgo/lib"
 	"kvmgo/network"
 	"kvmgo/utils"
 )
+
+/* Uses Both Methods to get the IP Address of a running Domain */
+func TestDomainIPExtractionAligned(t *testing.T) {
+	domain := "test"
+
+	vmIpAddr, err := network.GetVMIPAddr(domain)
+	if err != nil {
+		t.Errorf("Failed to get Nat Subnet")
+	}
+
+	vmIPSyscall := vmIpAddr.IP.String()
+	conn, _ := lib.ConnectLibvirt()
+	results, _ := conn.GetIPFromDHCPLeases(domain)
+
+	if len(results) == 0 {
+		t.Error("Libvirt Failed to get any IP")
+	}
+	found := false
+
+	for _, x := range results {
+		if x == vmIPSyscall {
+			found = true
+		}
+	}
+
+	if found == false {
+		t.Errorf("Misalignment in IP Extraction.\nSystem IP :%s\nLibVirt IP :%s\n", vmIPSyscall, results[0])
+	}
+}
+
+// Gets the IP using a Syscall
+func TestGetVMIPAddress(t *testing.T) {
+	domain := "consul"
+
+	vmIpAddr, err := network.GetVMIPAddr(domain)
+	if err != nil {
+		t.Errorf("Failed to get Nat Subnet")
+	}
+	log.Printf("Domain %s IP is %s\n", domain, vmIpAddr)
+}
 
 func TestAddUfwRule(t *testing.T) {
 	content := network.SampleUfwCommentedOutFile
