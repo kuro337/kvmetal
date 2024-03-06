@@ -113,6 +113,11 @@ func CreateUserDataFile(userData, filePath string) error {
 	return err
 }
 
+// / The Name of the Image file for each VM : e.g myvm-vm-disk.qcow2
+func ModifiedImageName(vmName string) string {
+	return vmName + "-vm-disk.qcow2"
+}
+
 /*
 CreateBaseImage creates an Image from the base Image for the VM
 

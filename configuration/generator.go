@@ -132,7 +132,7 @@ func (c *ConfigBuilder) BuildRunCmds() string {
 			log.Printf("No Run Command Found for Dependency")
 			continue
 		}
-		runCmdBuilder.WriteString("\n  ## Run Command for Dependency: " + string(dependency) + runCmd)
+		runCmdBuilder.WriteString("\n  # Run Command for Dependency: " + string(dependency) + runCmd)
 	}
 
 	return runCmdBuilder.String()

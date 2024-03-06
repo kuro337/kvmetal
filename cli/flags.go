@@ -327,15 +327,15 @@ func askForConfirmation() bool {
 
 // Generates the VM according to Presets such as Kubernetes, Spark, Hadoop, and more
 func CreateUserdataFromPreset(preset, launch_vm, sshpub string) string {
+	log.Print(utils.TurnRichLightPurple(fmt.Sprintf("Preset: %s", preset)))
 	switch preset {
+	case "kafka":
+		return presets.CreateKafkaUserData("ubuntu", "password", launch_vm, sshpub)
 	case "hadoop":
-		utils.LogRichLightPurple("Preset: Hadoop")
 		return presets.CreateHadoopUserData("ubuntu", "password", launch_vm, sshpub)
 	case "kubecontrol":
-		utils.LogRichLightPurple("Preset: Kube Control Plane")
 		return presets.CreateKubeControlPlaneUserData("ubuntu", "password", launch_vm, sshpub, true)
 	case "kubeworker":
-		utils.LogRichLightPurple("Preset: Kube Worker Node")
 		return presets.CreateKubeWorkerUserData("ubuntu", "password", sshpub, launch_vm)
 	default:
 		utils.LogError("Invalid Preset Passed")

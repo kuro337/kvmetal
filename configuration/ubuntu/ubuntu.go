@@ -5,6 +5,8 @@ import (
 
 	"kvmgo/constants"
 	"kvmgo/constants/bigdata"
+	"kvmgo/constants/jvm"
+	"kvmgo/constants/kafka"
 	"kvmgo/constants/kube"
 	"kvmgo/constants/shell"
 )
@@ -24,35 +26,47 @@ func (u *UbuntuConfig) GetVersion() string {
 }
 
 func (u *UbuntuConfig) GetPackage(dep constants.CloudInitPkg) string {
-	switch dep {
-	case constants.OpenJDK11:
-		return string(constants.OpenJDK11)
-	case constants.ZSH:
-		return string(constants.ZSH)
-	case constants.Git:
-		return string(constants.Git)
-	case constants.Curl:
-		return string(constants.Curl)
-	case constants.Containerd:
-		return string(constants.Containerd)
-	case constants.TransportHttps:
-		return string(constants.TransportHttps)
-	case constants.Kubeadm:
-		return string(constants.Kubeadm)
-	case constants.Kubectl:
-		return string(constants.Kubectl)
-	case constants.Kubelet:
-		return string(constants.Kubelet)
-	default:
-		log.Printf("No Default Package Found")
-		return ""
-	}
+	return string(dep)
+
+	// switch dep {
+	// case constants.OpenJDK11:
+	// 	return string(constants.OpenJDK11)
+	// case constants.ZSH:
+	// 	return string(constants.ZSH)
+	// case constants.Git:
+	// 	return string(constants.Git)
+	// case constants.Curl:
+	// 	return string(constants.Curl)
+	// case constants.Containerd:
+	// 	return string(constants.Containerd)
+	// case constants.TransportHttps:
+	// 	return string(constants.TransportHttps)
+	// case constants.Kubeadm:
+	// 	return string(constants.Kubeadm)
+	// case constants.Kubectl:
+	// 	return string(constants.Kubectl)
+	// case constants.Kubelet:
+	// 	return string(constants.Kubelet)
+	// case constants.DefaultJre:
+	// 	return string(constants.DefaultJre)
+	// case constants.Tar:
+	// 	return string(constants.Tar)
+	// case constants.Wget:
+	// 	return string(constants.Wget)
+	// default:
+	// 	log.Printf("No Default Package Found")
+	// 	return ""
+	// }
 }
 
 func (u *UbuntuConfig) GetRunCmd(dep constants.Dependency) string {
 	switch dep {
 	case constants.Zsh:
 		return shell.ZSH_UBUNTU_RUNCMD
+	case constants.JDK_SCALA:
+		return jvm.JDK_SCALA_RUNCMD
+	case constants.Kafka:
+		return kafka.KAFKA_KRAFT_RUNCMD
 	case constants.Hadoop:
 		return bigdata.HADOOP_UBUNTU_RUNCMD
 	case constants.Spark:

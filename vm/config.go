@@ -115,6 +115,19 @@ func (config *VMConfig) SetUserData(userData string) *VMConfig {
 	return config
 }
 
+/*
+Generate Metadata File to Resolve VM behavior of setting the FQDN Properly on Boot
+Responsible for sending DHCP Request and Boot Scripts
+
+	// meta-data (data/artifacts/<vm>)
+	instance-id: ubuntu-vm
+	local-hostname: ubuntu-vm
+*/
+func (config *VMConfig) SmbiosMetadata() string {
+	return fmt.Sprintf("instance-id: %s\nlocal-hostname: %s\n",
+		config.VMName, config.VMName)
+}
+
 func (config *VMConfig) DefaultUserData() *VMConfig {
 	config.UserData = "/home/kuro/Documents/Code/Go/kvmgo/data/userdata/default/user_data.txt"
 	return config
@@ -175,8 +188,14 @@ func (config *VMConfig) GenerateCustomUserDataImg(bootScriptPath string) error {
 	return nil
 }
 
-// Create Image from Direct Provided User Data Image
-func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) error {
+/*
+Create Image from UserData for VM
+
+  - userdata.img , user-data.txt, meta-data
+
+    data/artifacts/<vmname>/userdata
+*/
+func (config *VMConfig) GenerateCloudInitImgFromPath() error {
 	// Create the directory for userdata if it doesn't exist fpr VM
 	// data/artifacts/<vmname>/userdata
 
@@ -204,8 +223,9 @@ func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) err
 		userDataContent,
 	))
 
-	// utils.LogOffwhite("CloudInit UserData set to:")
-	// utils.LogDottedLineDelimitedText(userDataContent)
+	/// 1. Creates user-data & metedata temp files
+	//  2. Runs cloud-localds user-data.img user-data meta-data to create the UserData Disk
+	//  3. This is the persistent Disk required to access the VM
 
 	// Create a temporary user-data file
 	userDataFilePath := filepath.Join(userdataDirPath, "user-data.txt")
@@ -214,16 +234,35 @@ func (config *VMConfig) GenerateCloudInitImgFromPath(userDataPathAbs string) err
 		return fmt.Errorf("failed to write user-data file: %v", err)
 	}
 
-	// Path for the output user-data.img
-	outputImgPath := filepath.Join(userdataDirPath, "user-data.img")
+	// Path for the meta-data file
+	metaDataFilePath := filepath.Join(userdataDirPath, "meta-data")
+	metaDataContent := config.SmbiosMetadata()
 
-	// Generate the user-data.img
-	cmd := exec.Command("cloud-localds", outputImgPath, userDataFilePath)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to run cloud-localds: %v", err)
+	// Write the meta-data content to a file
+	err = os.WriteFile(metaDataFilePath, []byte(metaDataContent), 0o644)
+	if err != nil {
+		return fmt.Errorf("failed to write meta-data file: %v", err)
 	}
 
-	log.Printf("Successfully Created Cloud-Init user-data .img file: %s", userDataPathAbs)
+	// Now, use both user-data and meta-data to generate the cloud-init disk
+	outputImgPath := filepath.Join(userdataDirPath, "user-data.img")
+	cmd := exec.Command("cloud-localds", outputImgPath, userDataFilePath, metaDataFilePath)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run cloud-localds with meta-data: %v", err)
+	}
+
+	log.Printf("Successfully created cloud-init disk with user-data and meta-data: %s", outputImgPath)
+
+	// Path for the output user-data.img
+	//	outputImgPath := filepath.Join(userdataDirPath, "user-data.img")
+
+	// Generate the user-data.img
+	//	cmd := exec.Command("cloud-localds", outputImgPath, userDataFilePath)
+	// if err := cmd.Run(); err != nil {
+	// 	return fmt.Errorf("failed to run cloud-localds: %v", err)
+	// }
+
+	// log.Printf("Successfully Created Cloud-Init user-data .img file: %s", userDataPathAbs)
 
 	return nil
 }
@@ -325,6 +364,34 @@ func (s *VMConfig) CreateBaseImage() error {
 		s.ImagesDir, modifiedImageOutputPath)
 
 	_ = s.navigateToRoot()
+
+	return nil
+}
+
+/*
+Uses virt-customize to truncate the Cloud Image
+Patches the Hostname FQDN not being set during Boot
+
+	sudo virt-customize -a myvm-disk.qcow2 --truncate /etc/machine-id
+
+See: https://bugs.launchpad.net/cloud-init/+bug/1739516
+*/
+func (s *VMConfig) ResolveFQDNBootBehaviorImg() error {
+	log.Print("Creating Base Image")
+
+	_ = s.navigateToDirWithISOImages()
+
+	if err := exec.Command(
+		"sudo",
+		"virt-customize",
+		"-a",
+		utils.ModifiedImageName(s.VMName),
+		"--truncate",
+		"/etc/machine-id",
+	).Run(); err != nil {
+		log.Printf("Error creating directory: %v", err)
+		return err
+	}
 
 	return nil
 }

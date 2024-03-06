@@ -367,8 +367,8 @@ func LogRichLightPurpleBold(msg string) {
 	log.Printf("%s%s%s%s", BOLD, PURP_HI, msg, NC)
 }
 
-func LogRichLightPurple(msg string) {
-	log.Printf("%s%s%s", PURP_HI, msg, NC)
+func TurnRichLightPurple(msg string) string {
+	return fmt.Sprintf("%s%s%s", PURP_HI, msg, NC)
 }
 
 func LogTealDark(msg string) {
