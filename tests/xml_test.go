@@ -11,7 +11,7 @@ import (
 
 /* Recommended Way to Get a Domain IP */
 func TestGetHostIpRecommended(t *testing.T) {
-	domain := "test"
+	domain := "kafka"
 
 	conn, _ := lib.ConnectLibvirt()
 

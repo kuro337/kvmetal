@@ -27,4 +27,7 @@ const (
 	Kubelet        CloudInitPkg = "kubelet"
 	Kubeadm        CloudInitPkg = "kubeadm"
 	Kubectl        CloudInitPkg = "kubectl"
+	Wget           CloudInitPkg = "wget"
+	DefaultJre     CloudInitPkg = "default-jre"
+	Tar            CloudInitPkg = "tar"
 )

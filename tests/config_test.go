@@ -16,7 +16,10 @@ import (
 )
 
 func TestCloudInitValidSchema(t *testing.T) {
-	hadoop_userdata := presets.CreateHadoopUserData("ubuntu", "password", "hadoop", utils.ReadFileFatal(constants.SshPub))
+	hadoop_userdata := presets.CreateKafkaUserData("ubuntu",
+		"password",
+		"kafka",
+		utils.ReadFileFatal(constants.SshPub))
 
 	//	os.WriteFile("testfile.yaml", []byte(hadoop_userdata), 0o644)
 	tmpfile, err := os.CreateTemp("", "testfile.yaml")

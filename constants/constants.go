@@ -15,6 +15,7 @@ const (
 	KubernetesControlCalico Dependency = "KubernetesControlPlaneCalico"
 	KubernetesControlCilium Dependency = "KubernetesControlPlaneCilium"
 	KubeWorker              Dependency = "KubernetesWorkerNode"
+	Kafka                   Dependency = "Kafka"
 	Calico                  Dependency = "Calico"
 	Cilium                  Dependency = "Cilium"
 	Spark                   Dependency = "Spark"
@@ -22,4 +23,5 @@ const (
 	Scala                   Dependency = "Scala"
 	Sbt                     Dependency = "Sbt"
 	Helm                    Dependency = "Helm"
+	JDK_SCALA               Dependency = "Jdk_Scala"
 )
