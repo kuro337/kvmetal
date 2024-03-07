@@ -9,6 +9,7 @@ import (
 
 func CreateHadoopUserData(username, pass, vmname, sshpub string) string {
 	config, err := configuration.NewConfigBuilder(
+		configuration.DefaultPreset{},
 		constants.Ubuntu,
 		[]constants.Dependency{
 			constants.Zsh,

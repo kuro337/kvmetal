@@ -12,6 +12,7 @@ import (
 
 	"kvmgo/configuration/presets"
 	"kvmgo/constants"
+	"kvmgo/network/qemu_hooks"
 	"kvmgo/utils"
 	"kvmgo/vm"
 
@@ -72,6 +73,12 @@ go run main.go --expose-vm=worker \
 --external-ip=192.168.1.225 \
 --protocol=tcp
 
+go run main.go --expose-vm=kafkatest \
+--port=9092 \
+--hostport=9092 \
+--external-ip=192.168.1.225 \
+--protocol=tcp
+
 -- Clean up running VMs
 
 	go run main.go --cleanup=kubecontrol,kubeworker
@@ -98,9 +105,22 @@ go run main.go --expose-vm=worker \
 
 	go run main.go --launch-vm=hadoop --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
 
+	go run main.go --disable-bridge-filtering
+
 To get detailed info about the VM
 
 	virsh dominfo spark
+
+
+	KAFKA
+
+go run main.go --launch-vm=kafka --preset=kafka --mem=8192 --cpu=4
+
+go run main.go --expose-vm=kafka \
+--port=9095 \
+--hostport=9094 \
+--external-ip=192.168.1.225 \
+--protocol=tcp
 */
 func Evaluate() {
 	config, err := ParseFlags()
@@ -178,6 +198,7 @@ func ParseFlags() (*Config, error) {
 	launch_vm := flag.String("launch-vm", "", "Launch a new VM with the specified name")
 	bootScript := flag.String("boot", "", "Path to the custom boot script")
 	externalIP := flag.String("external-ip", "0.0.0.0", "External IP to map the port to, defaults to 0.0.0.0")
+	DisableBridgeFiltering := flag.Bool("disable-bridge-filtering", false, "Disable bridge filtering for Port Forwarding")
 
 	flag.Parse()
 
@@ -186,6 +207,15 @@ func ParseFlags() (*Config, error) {
 		if err != nil {
 			log.Printf("Failed To Create Forwarding Config ERROR:%s,", err)
 		}
+	}
+
+	if *DisableBridgeFiltering {
+
+		err := qemu_hooks.DisableBridgeFiltering()
+		if err != nil {
+			log.Printf("Failed to Disable Bridge Filtering for Port Forwarding Enablement. ERROR:%s", err)
+		}
+		log.Printf(utils.TurnSuccess("Successfully Disabled Bridge Filtering"))
 	}
 
 	if *cluster {

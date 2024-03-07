@@ -118,15 +118,15 @@ const (
 
 // table = "nat"/"filter", name = dnat/snat/fwd chain
 func (c *LibvirtChain) CreateChain(table string) string {
-	chain := fmt.Sprintf("iptables -t %s -N %s", table, c.String())
+	chain := fmt.Sprintf("sudo iptables -t %s -N %s", table, c.String())
 	fmt.Println(chain)
 	return chain
 }
 
 func (c *LibvirtChain) DeleteChain(table string) string {
-	return fmt.Sprintf("iptables -t %s -F %s", table, c.String()) +
+	return fmt.Sprintf("sudo iptables -t %s -F %s", table, c.String()) +
 		"\n" +
-		fmt.Sprintf("iptables -t %s -X %s", table, c.String())
+		fmt.Sprintf("sudo iptables -t %s -X %s", table, c.String())
 }
 
 func (c *LibvirtChain) String() string {
@@ -228,7 +228,7 @@ func PopulateChains(
 		vmIPandPort := fmt.Sprintf("%s:%d", vmPrivateIP.String(), mapping.VMPort)
 
 		// Enable Forwarding of Traffic on Host Ports to VM Ports
-		dnatCmd := fmt.Sprintf("iptables -t nat -A %s -p %s -d %s --dport %d -j DNAT --to %s",
+		dnatCmd := fmt.Sprintf("sudo iptables -t nat -A %s -p %s -d %s --dport %d -j DNAT --to %s",
 			dnatChain.String(),
 			mapping.Protocol,
 			hostIP.String(),
@@ -241,20 +241,20 @@ func PopulateChains(
 		}
 
 		// Masquerade outgoing VM Traffic as coming from the Host to communicate with External Clients
-		snatCmd := fmt.Sprintf("iptables -t nat -A %s -p %s -s %s --dport %d -j SNAT --to-source %s",
+		snatCmd := fmt.Sprintf("sudo iptables -t nat -A %s -p %s -s %s --dport %d -j SNAT --to-source %s",
 			snatChain.String(),
 			mapping.Protocol,
 			vmPrivateIP.String(),
 			mapping.VMPort,
 			hostIP.String())
 
-		masqCmd := fmt.Sprintf("iptables -t nat -A %s -p %s -s %s -d %s --dport %d -j MASQUERADE",
+		masqCmd := fmt.Sprintf("sudo iptables -t nat -A %s -p %s -s %s -d %s --dport %d -j MASQUERADE",
 			snatChain.String(),
 			mapping.Protocol,
 			vmPrivateIP.String(),
 			vmPrivateIP.String(), mapping.HostPort)
 
-		fwdCmd := fmt.Sprintf("iptables -t filter -A %s -p %s -d %s --dport %d -j ACCEPT",
+		fwdCmd := fmt.Sprintf("sudo iptables -t filter -A %s -p %s -d %s --dport %d -j ACCEPT",
 			fwdChain.String(),
 			mapping.Protocol,
 			vmPrivateIP.String(),
@@ -274,26 +274,26 @@ func PopulateChains(
 		vmPortRange := fmt.Sprintf("%s:%d-%d", vmPrivateIP.String(), rangeMapping.VMStartPort, rangeMapping.VMEndPortNum)
 		protocol := string(rangeMapping.Protocol)
 
-		dnatCmd := fmt.Sprintf("iptables -t nat -A %s -p %s -d %s --dport %s -j DNAT --to %s",
+		dnatCmd := fmt.Sprintf("sudo iptables -t nat -A %s -p %s -d %s --dport %s -j DNAT --to %s",
 			dnatChain.String(), protocol,
 			hostIP.String(), portRange, vmPortRange)
 
 		// SNAT command for outgoing traffic to be masqueraded as from the host
-		snatCmd := fmt.Sprintf("iptables -t nat -A %s -p %s -s %s --dport %s -j SNAT --to-source %s",
+		snatCmd := fmt.Sprintf("sudo iptables -t nat -A %s -p %s -s %s --dport %s -j SNAT --to-source %s",
 			snatChain.String(),
 			rangeMapping.Protocol,
 			vmPrivateIP.String(),
 			portRange,
 			hostIP.String())
 
-		masqCmd := fmt.Sprintf("iptables -t nat -A %s -p %s -s %s -d %s --dport %s -j MASQUERADE",
+		masqCmd := fmt.Sprintf("sudo iptables -t nat -A %s -p %s -s %s -d %s --dport %s -j MASQUERADE",
 			snatChain.String(),
 			rangeMapping.Protocol,
 			vmPrivateIP.String(),
 			vmPrivateIP.String(),
 			portRange)
 
-		fwdCmd := fmt.Sprintf("iptables -t filter -A %s -p %s -d %s --dport %s -j ACCEPT",
+		fwdCmd := fmt.Sprintf("sudo iptables -t filter -A %s -p %s -d %s --dport %s -j ACCEPT",
 			fwdChain.String(),
 			rangeMapping.Protocol,
 			vmPrivateIP.String(),
@@ -316,23 +316,23 @@ func InsertChains(action ChainAction, dnatChain, snatChain, fwdChain LibvirtChai
 	chainAction := string(action)
 
 	return []string{
-		fmt.Sprintf("iptables -t nat %s OUTPUT -d %s -j %s",
+		fmt.Sprintf("sudo iptables -t nat %s OUTPUT -d %s -j %s",
 			chainAction,
 			publicIP.String(),
 			dnatChain.String()),
 
-		fmt.Sprintf("iptables -t nat %s PREROUTING -d %s -j %s",
+		fmt.Sprintf("sudo iptables -t nat %s PREROUTING -d %s -j %s",
 			chainAction,
 			publicIP.String(),
 			dnatChain.String()),
 
-		fmt.Sprintf("iptables -t nat %s POSTROUTING -s %s -d %s -j %s",
+		fmt.Sprintf("sudo iptables -t nat %s POSTROUTING -s %s -d %s -j %s",
 			chainAction,
 			privateIP.String(),
 			privateIP.String(),
 			snatChain.String()),
 
-		fmt.Sprintf("iptables -t filter %s FORWARD -d %s -j %s",
+		fmt.Sprintf("sudo iptables -t filter %s FORWARD -d %s -j %s",
 			chainAction,
 			privateIP.String(),
 			fwdChain.String()),
@@ -344,9 +344,6 @@ func StopForwarding(dnatChain, snatChain, fwdChain LibvirtChain,
 	hostIp, vmPrivateIp net.IP,
 ) []string {
 	stopCommands := []string{"\n===============================\nStop Port Forwarding Commands:\n===============================\n"}
-	// stopCommands = append(stopCommands,
-	// 	InsertChains(DELETE,
-	// 		dnatChain, snatChain, fwdChain, hostIp, vmPrivateIp)...)
 
 	return slices.Concat(
 		stopCommands,
@@ -358,12 +355,6 @@ func StopForwarding(dnatChain, snatChain, fwdChain LibvirtChain,
 			fwdChain.DeleteChain("filter"),
 		},
 	)
-
-	// return append(stopCommands,
-	// 	dnatChain.DeleteChain("nat"),
-	// 	snatChain.DeleteChain("nat"),
-	// 	fwdChain.DeleteChain("filter"),
-	// )
 }
 
 func LogHookEvent(domain, action string) (*log.Logger, error) {

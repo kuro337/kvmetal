@@ -19,6 +19,7 @@ type Distro interface {
 }
 
 type ConfigBuilder struct {
+	Component Preset
 	distro    Distro
 	deps      []constants.Dependency
 	pkgs      []constants.CloudInitPkg
@@ -38,7 +39,9 @@ Check for samples of using the ConfigBuilder
   - cli.configuration.presets.CreateKubeControlPlaneUserData
   - cli.configuration.presets.CreateHadoopUserData
 */
-func NewConfigBuilder(distro constants.Distro,
+func NewConfigBuilder(
+	component Preset,
+	distro constants.Distro,
 	deps []constants.Dependency,
 	pkgs []constants.CloudInitPkg,
 	initSvc []constants.InitSvc,
@@ -57,6 +60,7 @@ func NewConfigBuilder(distro constants.Distro,
 	}
 
 	return &ConfigBuilder{
+		Component: component,
 		distro:    osdistro,
 		deps:      deps,
 		pkgs:      pkgs,
@@ -80,7 +84,9 @@ func (c *ConfigBuilder) CreateCloudInitData() string {
 	userDataBuilder.WriteString(c.BuildPackages())
 	userDataBuilder.WriteString(c.BuildRunCmds())
 
-	return userDataBuilder.String()
+	return c.Component.Substitutions(userDataBuilder.String())
+
+	// return userDataBuilder.String()
 }
 
 func (c *ConfigBuilder) BuildInitSvc() string {

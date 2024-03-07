@@ -10,6 +10,7 @@ hostname -> kafka
 hostname -f -> kafka.kvm (fqdn set to kafka)
 
 # 1. Add this to default virnet (sudo virsh net-dumpxml default)
+
  <domain name='kvm' localOnly='yes'/>
 
 # 2. /etc/nsswitch.conf
@@ -21,9 +22,24 @@ DNS=192.168.122.1
 Domains=~kvm
 ResolveUnicastSingleLabel=yes
 
+sudo virsh net-dumpxml default
+sudo virsh net-edit default
+virsh net-destroy default
+virsh net-start default
 sudo systemctl restart libvirtd
 sudo systemctl restart NetworkManager
 sudo systemctl restart systemd-resolved
+
+```
+
+## External
+
+```bash
+# on the Host - add IP of VM
+/etc/hosts
+
+192.168.122.121 kafka.kuro.com
+
 
 ```
 

@@ -258,6 +258,10 @@ func TurnColorBold(msg, color string) string {
 	return fmt.Sprintf("%s%s%s%s%s\n", BOLD, color, msg, color, NC)
 }
 
+func TurnUnderline(msg string) string { return fmt.Sprintf("%s%s%s\n", UNDERLINE, msg, NC) }
+
+func TurnBoldColor(msg, color string) string { return fmt.Sprintf("%s%s%s%s\n", BOLD, color, msg, NC) }
+
 func TurnColor(msg, color string) string { return fmt.Sprintf("%s%s%s\n", color, msg, NC) }
 
 func TurnSand(msg string) string { return fmt.Sprintf("%s%s%s\n", SAND, msg, NC) }
