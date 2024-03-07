@@ -1,5 +1,44 @@
 package kafka
 
+const KAFKA_REQUIRED_PARAMS = `
+DOMAIN=kafkavm
+VM_PORT=9095
+HOST_PUBPORT=9094
+HOST_PUBIP=192.168.1.10
+VM_IP=192.168.122.20 # or kafka.kuro.com if we know host can resolve
+EXT_IP=192.168.1.225
+`
+
+const KAFKA_LISTENERS = `
+listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093,EXTERNAL://0.0.0.0:$VM_PORT
+advertised.listeners=PLAINTEXT://$DOMAIN.kuro.com:9092,EXTERNAL://$HOST_PUBIP:$HOST_PUBPORT
+`
+
+const KAFKA_LISTENER_SETTINGS = `
+inter.broker.listener.name=PLAINTEXT
+controller.listener.names=CONTROLLER
+listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL,EXTERNAL:PLAINTEXT
+`
+
+const KAFKA_PORTFWD = `
+go run main.go --expose-vm=$DOMAIN \
+--port=$VM_PORT \
+--hostport=$HOST_PUBPORT \
+--external-ip=$EXT_IP \
+--protocol=tcp
+`
+
+/* Created from Running /opt/kafka/bin/kafka-storage.sh random-uuid */
+const KAFKA_NODE_ID = "node.id=$ID"
+
+const KAFKA_ROLES = `
+process.roles=broker,controller
+process.roles=broker
+process.roles=controller
+# process.roles=
+# If process.roles is not set at all, it is assumed to be in ZooKeeper mode.
+`
+
 const KAFKA_ZOOKEEPER_RUNCMD = `
 
   - wget https://downloads.apache.org/kafka/3.7.0/kafka_2.13-3.7.0.tgz
@@ -31,11 +70,17 @@ const KAFKA_KRAFT_RUNCMD = `
   - sudo mkdir -p /opt/kafka/logs
   - KAFKA_CLUSTER_ID="$(/opt/kafka/bin/kafka-storage.sh random-uuid)"
   - /opt/kafka/bin/kafka-storage.sh format -t $KAFKA_CLUSTER_ID -c /opt/kafka/config/kraft/server.properties
-  #- sudo sed -i 's/#listeners=PLAINTEXT:\/\/[^,]*/listeners=PLAINTEXT:\/\/0.0.0.0:9092/' /opt/kafka/config/kraft/server.properties
-  #- sudo sed -i 's/#advertised.listeners=PLAINTEXT:\/\/your.host.name:9092/advertised.listeners=PLAINTEXT:\/\/127.0.0.1:9092/' /opt/kafka/config/kraft/server.properties
-  - sudo echo -e "listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093\n\n" >> /opt/kafka/config/kraft/server.properties
-  - sudo echo -e "advertised.listeners=PLAINTEXT://kafka:9092\n\n" >> /opt/kafka/config/kraft/server.properties
-  - sudo /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+
+  ###- sudo echo -e "listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093\n\n" >> /opt/kafka/config/kraft/server.properties
+  ###- sudo echo -e "advertised.listeners=PLAINTEXT://192.168.1.10:9092:9092\n\n" >> /opt/kafka/config/kraft/server.properties
+###- sudo echo -e "advertised.listeners=PLAINTEXT://$FQDN:9092\n\n" >> /opt/kafka/config/kraft/server.properties
+
+  #- echo "listeners=INTERNAL://0.0.0.0:9092,EXTERNAL://0.0.0.0:9093" | sudo tee -a /opt/kafka/config/kraft/server.properties
+  #- echo "advertised.listeners=INTERNAL://kafka.internal:9092,EXTERNAL://kuro.com:9093" | sudo tee -a /opt/kafka/config/kraft/server.properties
+  #- echo "listener.security.protocol.map=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT" | sudo tee -a /opt/kafka/config/kraft/server.properties
+  #- echo "inter.broker.listener.name=INTERNAL" | sudo tee -a /opt/kafka/config/kraft/server.properties
+
+  #- sudo /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
 
 final_message: "Kafka has been successfully installed and started."
 

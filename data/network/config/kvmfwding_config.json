@@ -1,4 +1,21 @@
 {
-    "configs": [],
+    "configs": [
+        {
+            "domain": "kafka",
+            "port_map": [
+                {
+                    "host_port": 9094,
+                    "vm_port": 9095,
+                    "protocol": "tcp"
+                }
+            ],
+            "port_range": null,
+            "host_ip": "192.168.1.10",
+            "private_ip": "192.168.122.20",
+            "external_ip": "192.168.1.225",
+            "interface": "virbr0",
+            "last_updated": "2024-03-07T03:37:15-05:00"
+        }
+    ],
     "last_updated": ""
 }

@@ -17,6 +17,7 @@ func CreateKubeControlPlaneUserData(username, pass, vmname, sshpub string, ciliu
 	}
 
 	config, err := configuration.NewConfigBuilder(
+		configuration.DefaultPreset{},
 		constants.Ubuntu,
 		[]constants.Dependency{
 			constants.Zsh,
@@ -42,6 +43,8 @@ func CreateKubeControlPlaneUserData(username, pass, vmname, sshpub string, ciliu
 
 func CreateKubeWorkerUserData(username, pass, vmname, sshpub string) string {
 	config, err := configuration.NewConfigBuilder(
+		configuration.DefaultPreset{},
+
 		constants.Ubuntu,
 		[]constants.Dependency{
 			constants.Zsh,

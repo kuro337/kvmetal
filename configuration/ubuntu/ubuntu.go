@@ -27,36 +27,6 @@ func (u *UbuntuConfig) GetVersion() string {
 
 func (u *UbuntuConfig) GetPackage(dep constants.CloudInitPkg) string {
 	return string(dep)
-
-	// switch dep {
-	// case constants.OpenJDK11:
-	// 	return string(constants.OpenJDK11)
-	// case constants.ZSH:
-	// 	return string(constants.ZSH)
-	// case constants.Git:
-	// 	return string(constants.Git)
-	// case constants.Curl:
-	// 	return string(constants.Curl)
-	// case constants.Containerd:
-	// 	return string(constants.Containerd)
-	// case constants.TransportHttps:
-	// 	return string(constants.TransportHttps)
-	// case constants.Kubeadm:
-	// 	return string(constants.Kubeadm)
-	// case constants.Kubectl:
-	// 	return string(constants.Kubectl)
-	// case constants.Kubelet:
-	// 	return string(constants.Kubelet)
-	// case constants.DefaultJre:
-	// 	return string(constants.DefaultJre)
-	// case constants.Tar:
-	// 	return string(constants.Tar)
-	// case constants.Wget:
-	// 	return string(constants.Wget)
-	// default:
-	// 	log.Printf("No Default Package Found")
-	// 	return ""
-	// }
 }
 
 func (u *UbuntuConfig) GetRunCmd(dep constants.Dependency) string {

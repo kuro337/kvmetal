@@ -11,7 +11,7 @@ import (
 func portMapToString(portMap []PortMapping) string {
 	var strSlice []string
 	for _, pm := range portMap {
-		strSlice = append(strSlice, fmt.Sprintf("%s %d->%d", pm.Protocol, pm.VMPort, pm.HostPort))
+		strSlice = append(strSlice, fmt.Sprintf("%s (VM->Host) %d->%d", pm.Protocol, pm.VMPort, pm.HostPort))
 	}
 	return strings.Join(strSlice, ", ")
 }

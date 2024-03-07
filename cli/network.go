@@ -17,6 +17,40 @@ type NetworkExposeConfig struct {
 	PortRange   network.PortRange
 }
 
+/*
+Quick End to End Flow:
+
+	go run main.go --expose-vm=kafka \
+	--port=9092 \
+	--hostport=8071 \
+	--external-ip=192.168.1.225 \
+	--protocol=tcp
+
+From the VM launch a nc srvr:
+
+	nc -l 9092
+
+Host <-> VM
+
+	nc test.kuro.com 9092 (write to stdin)
+
+External Device <-> Host
+
+	nc 192.168.1.10 8071
+
+!NOTE: Ensure the External Machine and Host are on the SAME NETWORK (eth,wifi,etc.)
+*/
+func PrintNetworkQuickHelp(vmName, vmIp string, vmPort, hostPort int, hostIp string) {
+	log.Printf("%s\n    %s\n    %s\n    %s\n    %s\n     Checking Fwding Rules iptables:\nsudo iptables -t nat -L -n -v | grep %d\n",
+		utils.TurnBoldColor("Port Forwarding Quick Help:", utils.COOLBLUE),
+		utils.TurnUnderline("Launch a nc server on the VM")+utils.TurnBold(fmt.Sprintf("\n    nc -l %d", vmPort)),
+		utils.TurnUnderline("Host <-> VM")+utils.TurnBold(fmt.Sprintf("\n    nc %s.kuro.com %d", vmName, vmPort)),
+		utils.TurnUnderline("External Device <-> Host")+utils.TurnBold(fmt.Sprintf("\n    nc %s %d", hostIp, hostPort)),
+		utils.TurnUnderline("Connect to the VM server from Host")+utils.TurnBold(fmt.Sprintf("\n    nc 192.168.122.x %d", vmPort)),
+		vmPort,
+	)
+}
+
 // Generates Networking Config for VM and checks for Existing one - then generates the Forwarding Rules and Writes it to the Artifact Location for the VM
 func HandleVMNetworkExposure(vmName string, vmPort, hostPort int, externalIp string, protocol string) error {
 	netConfig := ParseNetExposeFlags(vmName, vmPort, hostPort, externalIp, protocol)
@@ -107,6 +141,13 @@ func CreateAndSetNetExposeConfig(config NetworkExposeConfig) error {
 		log.Printf("Error writing config: %s", err)
 		return err
 	}
+
+	PrintNetworkQuickHelp(fwdingConfig.VMName,
+		fwdingConfig.PrivateIP.String(),
+		config.PortMapping.VMPort,
+		config.PortMapping.HostPort,
+		fwdingConfig.HostIP.String())
+
 	return nil
 
 	/*
@@ -132,3 +173,22 @@ func CreateAndSetNetExposeConfig(config NetworkExposeConfig) error {
 // optionally also accepts --portrange=8080:8088 --hostrange=8100 8108
 
 // Parse into above struct
+
+/*
+   Launch a nc server on the VM
+
+   nc -l 9092
+
+   Host <-> VM
+
+   nc test.kuro.com 9092
+
+   External Device <-> Host
+
+   nc 192.168.1.10 9092
+
+   Connect to the VM server from Host
+
+   nc 192.168.122.x 9092
+
+*/

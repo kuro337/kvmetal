@@ -11,23 +11,25 @@ sudo mv kafka /usr/local/kafka
 echo 'export PATH=/usr/local/kafka/bin:$PATH' >> ~/.zshrc
 source ~/.zshrc
 
-kafka-topics.sh
 
-kafka-topics.sh --bootstrap-server <kafka-broker-ip>:9092 --list
-
+https://forum.confluent.io/t/kafka-does-not-works-through-nat-as-expected/4351
 
 
-kafka-topics.sh --bootstrap-server kafka.kvm:9092 --list
+kafka-topics.sh --bootstrap-server kafka.kuro.com:9092 --list
 
-kafka-topics.sh --bootstrap-server 192.168.122.243:9092 --list
+kafka-topics.sh --bootstrap-server kafka.kuro.com:9092 --create --topic my_new_topic --partitions 3 --replication-factor 1
 
-kafka-topics.sh --bootstrap-server kafka:9092 --create --topic my_new_topic --partitions 3 --replication-factor 1
+echo "Hello from external client" | kafka-console-producer.sh --broker-list kafka.kuro.com:9092 --topic my_new_topic
+
+kafka-console-consumer.sh --bootstrap-server kafka.kuro.com:9092 --topic my_new_topic --from-beginning
 
 
-192.168.122.211
 
 # current
+
 # export PATH=/usr/local/kafka/bin:$PATH
 /usr/local/kafka_2.13-3.7.0/bin/kafka-topics.sh
+
+
 
 ```

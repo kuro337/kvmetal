@@ -101,8 +101,8 @@ echo -e "advertised.listeners=PLAINTEXT://kafka.kuro.com:9092\n\n" >> sample
 listeners=PLAINTEXT://:9092,CONTROLLER://:9093  # change to below
 listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093
 
-listeners=PLAINTEXT://0.0.0.0:9092
-advertised.listeners=PLAINTEXT://0.0.0.0:9092
+listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093
+advertised.listeners=PLAINTEXT://kafka.kuro.com:9092
 
 
 # Other Settings try

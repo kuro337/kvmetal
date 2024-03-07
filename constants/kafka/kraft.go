@@ -1,3 +1,77 @@
+package kafka
+
+const KAFKA_START_KRAFT = "sudo /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
+
+const KRAFT_SETTINGS_PATH = "/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
+
+/*
+Kafka 3.7.0 Kraft Config file :
+
+This file successfully exposes the Broker over a Natted Network
+
+	/opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
+*/
+const KRAFT_SETTINGS_VALID = `
+process.roles=broker,controller
+node.id=1
+controller.quorum.voters=1@localhost:9093
+
+### IMPORTANT: Host IP Port and VM IP Port must be Different
+# e.g
+# Host IP          -> 192.168.1.10
+# Host Public Port -> :9094
+# VM   IP          -> 192.168.122.20 -> kafka.kuro.com
+# VM External Port -> :9095
+
+# DOMAIN=kafkavm
+# VM_PORT=9095
+# HOST_PUBPORT=9094
+# HOST_PUBIP=192.168.1.10
+# VM_IP=192.168.122.20 # or kafka.kuro.com if we know host can resolve
+# EXT_IP=192.168.1.225
+
+# Network Expose Cmd
+# go run main.go --expose-vm=$DOMAIN \
+# --port=$VM_PORT \
+# --hostport=$HOST_PUBPORT \
+# --external-ip=$EXT_IP \
+# --protocol=tcp
+
+listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093,EXTERNAL://0.0.0.0:$VM_PORT
+advertised.listeners=PLAINTEXT://$DOMAIN.kuro.com:9092,EXTERNAL://$HOST_PUBIP:$HOST_PUBPORT
+
+listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093,EXTERNAL://0.0.0.0:9095
+advertised.listeners=PLAINTEXT://kafka.kuro.com:9092,EXTERNAL://192.168.1.10:9094
+
+inter.broker.listener.name=PLAINTEXT
+controller.listener.names=CONTROLLER
+listener.security.protocol.map=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL,EXTERNAL:PLAINTEXT
+
+
+num.network.threads=3
+num.io.threads=8
+
+socket.send.buffer.bytes=102400
+socket.receive.buffer.bytes=102400
+socket.request.max.bytes=104857600
+
+log.dirs=/tmp/kraft-combined-logs
+
+num.partitions=1
+num.recovery.threads.per.data.dir=1
+
+offsets.topic.replication.factor=1
+transaction.state.log.replication.factor=1
+transaction.state.log.min.isr=1
+
+log.retention.hours=168
+log.segment.bytes=1073741824
+log.retention.check.interval.ms=300000
+
+`
+
+/* Kafka 3.7.0 Kraft Config file : /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties */
+const KRAFT_SERVER_PROPERTIES = `
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -32,26 +106,24 @@ controller.quorum.voters=1@localhost:9093
 ############################# Socket Server Settings #############################
 
 # The address the socket server listens on.
-# Combined nodes (i.e. those with `process.roles=broker,controller`) must list the controller listener here at a minimum.
+# Combined nodes (i.e. those with 'process.roles=broker,controller') must list the controller listener here at a minimum.
 # If the broker listener is not defined, the default listener will use a host name that is equal to the value of java.net.InetAddress.getCanonicalHostName(),
 # with PLAINTEXT listener name, and port 9092.
 #   FORMAT:
 #     listeners = listener_name://host_name:port
 #   EXAMPLE:
 #     listeners = PLAINTEXT://your.host.name:9092
-# listeners=PLAINTEXT://:9092,CONTROLLER://:9093
-
-listeners=PLAINTEXT://0.0.0.0:9092,CONTROLLER://:9093
+listeners=PLAINTEXT://:9092,CONTROLLER://:9093
 
 # Name of listener used for communication between brokers.
 inter.broker.listener.name=PLAINTEXT
 
 # Listener name, hostname and port the broker will advertise to clients.
 # If not set, it uses the value for "listeners".
-advertised.listeners=PLAINTEXT://192.168.122.243:9092
+advertised.listeners=PLAINTEXT://localhost:9092
 
 # A comma-separated list of the names of the listeners used by the controller.
-# If no explicit mapping set in `listener.security.protocol.map`, default will be using PLAINTEXT protocol
+# If no explicit mapping set in 'listener.security.protocol.map', default will be using PLAINTEXT protocol
 # This is required if running in KRaft mode.
 controller.listener.names=CONTROLLER
 
@@ -132,3 +204,5 @@ log.segment.bytes=1073741824
 # The interval at which log segments are checked to see if they can be deleted according
 # to the retention policies
 log.retention.check.interval.ms=300000
+
+`

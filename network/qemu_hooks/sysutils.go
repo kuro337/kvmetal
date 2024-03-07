@@ -28,6 +28,8 @@ func ExecuteCommands(commands []string) error {
 
 // DisableBridgeFiltering Disables Bridge Filtering for Port Forwarding to Work if it is activated
 func DisableBridgeFiltering() error {
+	log.Printf("Disabling Bridge Filtering")
+
 	procFile := "/proc/sys/net/bridge/bridge-nf-call-iptables"
 	if _, err := os.Stat(procFile); err == nil {
 		// The file exists, disable bridge filtering
