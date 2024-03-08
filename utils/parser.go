@@ -112,3 +112,20 @@ func IsFileCommented(content, commentChar string, startLine, endLine int) bool {
 	totalLinesToCheck := endLine - startLine + 1
 	return commentedLines == totalLinesToCheck // Check if all lines in the range are commented or empty
 }
+
+/*
+Converts an Array of Strings into a String with Two Spaces and a - and a Space before it
+["cmd1","cmd2","cmd3"]
+  - cmd1
+  - cmd2
+  - cmd3
+*/
+func IndentArrayRunCmd(cmds []string) string {
+	var indentedCmds strings.Builder
+
+	for _, cmd := range cmds {
+		indentedCmds.WriteString(fmt.Sprintf("  - %s\n", cmd))
+	}
+
+	return indentedCmds.String()
+}

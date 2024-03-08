@@ -51,8 +51,25 @@ func PrintNetworkQuickHelp(vmName, vmIp string, vmPort, hostPort int, hostIp str
 	)
 }
 
-// Generates Networking Config for VM and checks for Existing one - then generates the Forwarding Rules and Writes it to the Artifact Location for the VM
-func HandleVMNetworkExposure(vmName string, vmPort, hostPort int, externalIp string, protocol string) error {
+/*
+Generates Networking Config for VM and checks for Existing one - then generates the Forwarding Rules and Writes it to the Artifact Location for the VM
+
+Usage:
+
+	go run main.go --expose-vm=kafka \
+
+--port=9095 \
+--hostport=9094 \
+--external-ip=192.168.1.225 \
+--protocol=tcp
+
+err := HandleVMNetworkExposure("vmname",9095,9094,"192.168.1.225","tcp")
+*/
+func HandleVMNetworkExposure(
+	vmName string,
+	vmPort, hostPort int,
+	externalIp string, protocol string,
+) error {
 	netConfig := ParseNetExposeFlags(vmName, vmPort, hostPort, externalIp, protocol)
 
 	if netConfig != nil {
