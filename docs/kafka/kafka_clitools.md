@@ -15,7 +15,7 @@ source ~/.zshrc
 https://forum.confluent.io/t/kafka-does-not-works-through-nat-as-expected/4351
 
 
-kafka-topics.sh --bootstrap-server kafka.kuro.com:9092 --list
+kafka-topics.sh --bootstrap-server kraft.kuro.com:9092 --list
 
 kafka-topics.sh --bootstrap-server kafka.kuro.com:9092 --create --topic my_new_topic --partitions 3 --replication-factor 1
 

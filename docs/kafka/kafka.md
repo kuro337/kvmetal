@@ -197,4 +197,8 @@ listeners=PLAINTEXT://node3:9092
 inter.broker.listener.name=PLAINTEXT
 
 
+sudo vi /opt/kafka/config/kraft/server.properties
+sudo cat /opt/kafka/config/kraft/server.properties
+
+sudo /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties
 ```

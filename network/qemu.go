@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"regexp"
 	"strconv"
 
@@ -175,6 +176,16 @@ func ParseIpAddrWithSubnet(output string) []IPAddressWithSubnet {
 	}
 
 	return ipAddresses
+}
+
+/* Returns the Host Machines' IP - expected to be a Public Routable IP */
+func GetHostIPFatal() string {
+	hostIP, err := GetHostIP()
+	if err != nil {
+		log.Print(utils.TurnError("Failed to get Host IP. Exiting."))
+		os.Exit(1)
+	}
+	return hostIP.IP.String()
 }
 
 // GetHostIP finds the host's primary IP address in CIDR notation and optionally prints it.

@@ -12,6 +12,8 @@ import (
 
 	"kvmgo/configuration/presets"
 	"kvmgo/constants"
+	"kvmgo/constants/kafka"
+	"kvmgo/network"
 	"kvmgo/network/qemu_hooks"
 	"kvmgo/utils"
 	"kvmgo/vm"
@@ -116,7 +118,9 @@ To get detailed info about the VM
 
 go run main.go --launch-vm=kafka --preset=kafka --mem=8192 --cpu=4
 
-go run main.go --expose-vm=kafka \
+go run main.go --launch-vm=kraft --preset=kafka-kraft --mem=8192 --cpu=4
+
+go run main.go --expose-vm=kraft \
 --port=9095 \
 --hostport=9094 \
 --external-ip=192.168.1.225 \
@@ -367,6 +371,14 @@ func CreateUserdataFromPreset(preset, launch_vm, sshpub string) string {
 		return presets.CreateKubeControlPlaneUserData("ubuntu", "password", launch_vm, sshpub, true)
 	case "kubeworker":
 		return presets.CreateKubeWorkerUserData("ubuntu", "password", sshpub, launch_vm)
+	case "kafka-kraft":
+		hostPort := 9094
+		vmPort := 9095
+		extIP := "192.168.1.225"
+		config := presets.CreateKafkaKraftCluster("ubuntu", "password", launch_vm, sshpub,
+			vmPort, network.GetHostIPFatal(), hostPort, extIP, 1, kafka.BrokerController)
+
+		return config
 	default:
 		utils.LogError("Invalid Preset Passed")
 		return ""
