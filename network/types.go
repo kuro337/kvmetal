@@ -36,8 +36,6 @@ func (ip IPAddressWithSubnet) String() string {
 // NewIPAddressWithSubnet creates a new IPAddressWithSubnet from a CIDR string.
 // / The input string can be in CIDR notation (e.g., "192.168.1.1/24") or a plain IP address (e.g., "192.168.1.1").
 func NewIPAddressWithSubnet(input string) (*IPAddressWithSubnet, error) {
-	fmt.Printf("Parsing IP from %s\n", input)
-
 	// First, try parsing as CIDR to get both IP and subnet
 	ip, ipNet, err := net.ParseCIDR(input)
 	if err == nil {

@@ -3,6 +3,7 @@ package network
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jedib0t/go-pretty/table"
 )
@@ -24,7 +25,7 @@ func CreateTableFromConfig(config ForwardingConfig) string {
 	t.SetStyle(table.StyleLight)
 
 	// Define the header for the table.
-	t.AppendHeader(table.Row{"VM Name", "Port Mapping", "Host IP", "External IP", "Interface"})
+	t.AppendHeader(table.Row{"VM Name", "Port Mapping", "Host IP", "External IP", "Interface", "Time"})
 
 	// Prepare the data for the table.
 	portMapStr := portMapToString(config.PortMap)
@@ -34,7 +35,7 @@ func CreateTableFromConfig(config ForwardingConfig) string {
 
 	// Append the configuration data as a row.
 	t.AppendRow(table.Row{
-		config.VMName, portMapStr, hostIP, externalIP, config.Interface,
+		config.VMName, portMapStr, hostIP, externalIP, config.Interface, time.Now().Format("2006-01-02 15:04"),
 	})
 
 	t.Render()

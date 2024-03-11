@@ -210,10 +210,11 @@ func (config *VMConfig) GenerateCloudInitImgFromPath() error {
 		userDataContent = config.InlineUserdata
 	} else {
 
-		log.Print("Using Default UserData")
+		log.Print("Using Default userdata with ZSH Shell. Optionally use DefaultUserdata to launch with Bash.")
 
 		userDataContent = configuration.SubstituteHostNameAndFqdnUserdataSSHPublicKey(
-			constants.DefaultUserdata,
+			//			constants.DefaultUserdata,
+			constants.DefaultUserDataShellZsh,
 			config.VMName,
 			config.sshPub)
 	}

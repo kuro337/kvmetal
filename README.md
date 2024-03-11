@@ -13,12 +13,6 @@ kvmetal --launch-vm=mymachine --mem=24576 --cpu=8
 # Launch a Kubernetes cluster with 1 Control Node and 2 Workers
 kvmetal --cluster --control=kubecontrol --workers=kubeworker1,kubeworker2
 
-# Launch a Hadoop Node with HDFS configured
-kvmetal --launch-vm=hadoop --preset=hadoop --mem=8192 --cpu=4
-
-# Launch a Spark Node with Hadoop configured
-kvmetal --launch-vm=hadoop --preset=hadoop --mem=8192 --cpu=4
-
 # Expose the VM on Port 8081 to an external IP
 kvmetal --expose-vm=hadoop --port=8081 --hostport=8003 --external-ip=192.168.1.224 --protocol=tcp
 
@@ -28,6 +22,27 @@ kvmetal --cleanup=hadoop
 # To Change the OS of the VM launch with an os-img or link to a Cloud ISO Image
 kvmetal --launch-vm=mymachine --mem=24576 --cpu=8 --os-img=ubuntu23.04
 
+```
+
+## Distributed Event Brokers
+
+```bash
+# Launch Kafka in Kraft Mode
+kvmetal --launch-vm=kafka  --preset=kafka --mem=8192 --cpu=4
+
+# Launch Redpanda
+kvmetal --launch-vm=rpanda --preset=redpanda --mem=8192 --cpu=4
+
+```
+
+## Big Data
+
+```bash
+# Launch a Hadoop Node with HDFS configured
+kvmetal --launch-vm=hadoop --preset=hadoop --mem=8192 --cpu=4
+
+# Launch a Spark Node with Hadoop configured
+kvmetal --launch-vm=spark --preset=spark --mem=8192 --cpu=4
 ```
 
 Prerequisites

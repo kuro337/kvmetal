@@ -14,9 +14,10 @@ const (
 	KAFKA_ADVERTISED_LISTENERS = "advertised.listeners=PLAINTEXT://$VM_DOMAIN_OR_IP:9092,EXTERNAL://$HOST_PUBIP:$HOST_PUBPORT"
 	KAFKA_CONTROLLER_QUORUM    = "controller.quorum.voters=1@localhost:9093"
 	KRAFT_FORMAT_CLUSTER       = "/opt/kafka/bin/kafka-storage.sh format -t %s -c /opt/kafka/config/kraft/server.properties"
-	KAFKA_KRAFT_START_CLUSTER  = "sudo /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
-	KAFKA_ZOO_START_CLUSTER    = "sudo sh -c 'nohup /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties > /opt/kafka/logs/kafka.log 2>&1 &'"
-	KAFKA_NETWORK_BUFFER       = `socket.send.buffer.bytes=%d
+
+	KAFKA_KRAFT_START_CLUSTER = "sudo /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/kraft/server.properties"
+	KAFKA_ZOO_START_CLUSTER   = "sudo sh -c 'nohup /opt/kafka/bin/kafka-server-start.sh /opt/kafka/config/server.properties > /opt/kafka/logs/kafka.log 2>&1 &'"
+	KAFKA_NETWORK_BUFFER      = `socket.send.buffer.bytes=%d
 socket.receive.buffer.bytes=%d
 socket.request.max.bytes=%d`
 

@@ -49,7 +49,6 @@ func GetVMIPAddr(vmName string) (*IPAddressWithSubnet, error) {
 	if scanner.Scan() {
 		ipAddr, err := NewIPAddressWithSubnet(strings.TrimSpace(scanner.Text()))
 
-		fmt.Printf("IP Address %s\n", ipAddr)
 		if err == nil && ipAddr != nil {
 			return ipAddr, nil
 		}
