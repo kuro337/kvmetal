@@ -164,7 +164,10 @@ func (k Kafka) GenerateKraftUserdata(domain,
 
 	runCmdReplaceIndented := DefineKafkaSettingsInRunCmd(replaceCmd)
 
-	return initCmds + "\n" + runCmdReplaceIndented + "\n" + `final_message: "Kafka has been successfully installed and started."`
+	return initCmds + "\n" +
+		runCmdReplaceIndented +
+		fmt.Sprintf("  - %s\n\n", kafka.KAFKA_KRAFT_START_CLUSTER) +
+		`final_message: "Kafka has been successfully installed and started."` + "\n"
 }
 
 func ReplaceKafkaKraftSettings(clusterSettings string) string {

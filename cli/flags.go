@@ -24,38 +24,12 @@ import (
 /*
 -- Presets
 
-#cloud-config
-
-hostname: worker
-fqdn: worker.kuro.com
-passwd: password
-lock_passwd: false
-sudo: ALL=(ALL) NOPASSWD:ALL
-package-update: true
-package_upgrade: true
-password: password
-ssh_pwauth: true
-chpasswd: { expire: False }
-
-#cloud-config
-
-hostname: control
-fqdn: control.kuro.com
-passwd: password
-lock_passwd: false
-sudo: ALL=(ALL) NOPASSWD:ALL
-package-update: true
-package_upgrade: true
-password: password
-ssh_pwauth: true
-chpasswd: { expire: False }
-
 -- Kubernetes Control Plane + Worker
 
 	go run main.go --launch-vm=control  --preset=kubecontrol --mem=4096 --cpu=2
 	go run main.go --launch-vm=worker   --preset=kubeworker  --mem=4096 --cpu=2
 
--- Full Cluster
+-- k8 Multi Node Cluster
 
 	go run main.go --cluster --control=kubecontrol --workers=kubeworker1,kubeworker2
 
@@ -63,8 +37,12 @@ chpasswd: { expire: False }
 
 	go run main.go --launch-vm=spark      --preset=spark 		  --mem=8192 --cpu=4
 	go run main.go --launch-vm=opensearch --preset=opensearch --mem=8192 --cpu=4
-	go run main.go --launch-vm=kafka      --preset=kafka      --mem=8192 --cpu=4
 	go run main.go --launch-vm=hadoop     --preset=hadoop     --mem=8192 --cpu=4
+
+-- Distributed Event Broker
+
+	go run main.go --launch-vm=kafka  --preset=kafka    --mem=8192 --cpu=4
+	go run main.go --launch-vm=rpanda --preset=redpanda --mem=8192 --cpu=4
 
 -- Expose a VM
 go run main.go --expose-vm=hadoop --port=8081 --hostport=8003 --external-ip=192.168.1.224 --protocol=tcp
@@ -81,8 +59,9 @@ go run main.go --expose-vm=kafkatest \
 --external-ip=192.168.1.225 \
 --protocol=tcp
 
--- Clean up running VMs
+-- Clean up running VMs ( -y for no confirmation )
 
+	go run main.go --cleanup=redpanda -y
 	go run main.go --cleanup=kubecontrol,kubeworker
 	go run main.go --cleanup=spark
 	go run main.go --cleanup=hadoop
@@ -96,12 +75,17 @@ go run main.go --expose-vm=kafkatest \
 	go run main.go --launch-vm=test   --mem=1024 --cpu=1
 	go run main.go --launch-vm=consul   --mem=2048 --cpu=2
 	go run main.go --launch-vm=postgres --mem=8192 --cpu=4
+	go run main.go --launch-vm=redpanda--mem=8192 --cpu=4
 
 	go run main.go --launch-vm=spark --mem=24576 --cpu=8
 
 # VM with zsh
 
 	go run main.go --launch-vm=cilium --mem=8192 --cpu=4 --userdata=data/userdata/shell/user-data.txt
+
+# Get IP Address
+
+	go run main.go --getip redpanda
 
 # launches hadoop
 
@@ -141,7 +125,7 @@ func Evaluate() {
 	case Launch:
 		launchCluster(config.Control, config.Workers)
 	case Cleanup:
-		cleanupNodes(config.Cleanup)
+		cleanupNodes(config.Cleanup, config.Confirm)
 	case Running:
 		_, _ = utils.ListVMs(2, true)
 	case New:
@@ -179,6 +163,7 @@ type Config struct {
 	UserdataFile string
 	Help         bool
 	Preset       string
+	Confirm      bool
 }
 
 func ParseFlags() (*Config, error) {
@@ -190,12 +175,14 @@ func ParseFlags() (*Config, error) {
 	preset := flag.String("preset", "", "Choose from a preconfigured Setup such as Hadoop, Spark, Kubernetes")
 	memory := flag.String("mem", "", "Specify Memory for the VM")
 	vmPort := flag.Int("port", 0, "VM port to be exposed")
-	hostPort := flag.Int("hostport", 0, "Host port to map to the VM port")
 	cluster := flag.Bool("cluster", false, "Launch a cluster with control and worker nodes")
 	cleanup := flag.String("cleanup", "", "Cleanup nodes by name, comma-separated")
 	control := flag.String("control", "", "Name of the control node")
 	workers := flag.String("workers", "", "Names of the worker nodes, comma-separated")
+	getIp := flag.String("getip", "", "Get Running VM/Domain IP Addr")
+	confirm := flag.Bool("y", false, "Confirm command to skip confirmation prompts.")
 	running := flag.Bool("running", false, "View virtual machines running")
+	hostPort := flag.Int("hostport", 0, "Host port to map to the VM port")
 	userdata := flag.String("userdata", "", "Path to the User Data Cloud init script to be used Directly")
 	protocol := flag.String("protocol", "tcp", "Protocol for the port mapping, defaults to tcp")
 	exposeVM := flag.String("expose-vm", "", "Name of the VM to expose ports for")
@@ -206,6 +193,16 @@ func ParseFlags() (*Config, error) {
 
 	flag.Parse()
 
+	if *getIp != "" {
+		vmIp, err := network.GetVMIPAddr(*getIp)
+		if err != nil {
+			log.Printf("Failed to get VM IP Address. ERROR:%s", err)
+		}
+		hostIp, _ := network.GetHostIP()
+
+		fmt.Printf(utils.TurnBoldBlueDelimited(fmt.Sprintf(" %s IP : %s | Host IP : %s", *getIp, vmIp.IP.String(), hostIp.IP.String())))
+
+	}
 	if *exposeVM != "" && *hostPort != 0 && *vmPort != 0 {
 		err := HandleVMNetworkExposure(*exposeVM, *vmPort, *hostPort, *externalIP, *protocol)
 		if err != nil {
@@ -214,7 +211,6 @@ func ParseFlags() (*Config, error) {
 	}
 
 	if *DisableBridgeFiltering {
-
 		err := qemu_hooks.DisableBridgeFiltering()
 		if err != nil {
 			log.Printf("Failed to Disable Bridge Filtering for Port Forwarding Enablement. ERROR:%s", err)
@@ -240,6 +236,7 @@ func ParseFlags() (*Config, error) {
 		Control: *control,
 		Workers: strings.Split(*workers, ","),
 		Help:    *help,
+		Confirm: *confirm,
 	}
 
 	mem, vcpu := ParseMemoryCPU(*memory, *cpu)
@@ -303,7 +300,7 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 		SetCloudInitDataInline(config.Userdata)
 }
 
-func cleanupNodes(nodes []string) {
+func cleanupNodes(nodes []string, confirm bool) {
 	vms, err := utils.ListVMs(2, false)
 	if err != nil {
 		log.Printf("Error listing VMs: %v\n", err)
@@ -328,23 +325,47 @@ func cleanupNodes(nodes []string) {
 		}
 	}
 
-	if len(foundVMNames) > 0 {
-		log.Printf("Proceed? (y/n)")
-		if askForConfirmation() {
-			for _, vmName := range foundVMNames {
-				fmt.Printf("Cleaning up node: %s\n", vmName)
-
-				err := kvm.RemoveVMCompletely(vmName)
-				if err != nil {
-					fmt.Printf("Failed to clean up VM %s: %v\n", vmName, err)
-				}
+	// Function to perform cleanup
+	performCleanup := func() {
+		for _, vmName := range foundVMNames {
+			fmt.Printf("Cleaning up node: %s\n", vmName)
+			err := kvm.RemoveVMCompletely(vmName)
+			if err != nil {
+				fmt.Printf("Failed to clean up VM %s: %v\n", vmName, err)
 			}
+		}
+	}
+
+	if len(foundVMNames) > 0 {
+		if confirm {
+			// If confirm flag is true, directly proceed with cleanup
+			performCleanup()
 		} else {
-			fmt.Println("Cleanup aborted.")
+			// Otherwise, ask for confirmation before proceeding
+			log.Printf("Proceed? (y/n)")
+			if askForConfirmation() {
+				performCleanup()
+			} else {
+				fmt.Println("Cleanup aborted.")
+			}
 		}
 	} else {
 		fmt.Println("No valid VMs were specified for cleanup.")
 	}
+
+	// log.Printf("Proceed? (y/n)")
+	// if askForConfirmation() {
+	// 	for _, vmName := range foundVMNames {
+	// 		fmt.Printf("Cleaning up node: %s\n", vmName)
+
+	// 		err := kvm.RemoveVMCompletely(vmName)
+	// 		if err != nil {
+	// 			fmt.Printf("Failed to clean up VM %s: %v\n", vmName, err)
+	// 		}
+	// 	}
+	// } else {
+	// 	fmt.Println("Cleanup aborted.")
+	// }
 }
 
 // askForConfirmation prompts the user for a yes/no answer and returns true for yes.
@@ -372,13 +393,14 @@ func CreateUserdataFromPreset(preset, launch_vm, sshpub string) string {
 	case "kubeworker":
 		return presets.CreateKubeWorkerUserData("ubuntu", "password", sshpub, launch_vm)
 	case "kafka-kraft":
-		hostPort := 9094
-		vmPort := 9095
-		extIP := "192.168.1.225"
-		config := presets.CreateKafkaKraftCluster("ubuntu", "password", launch_vm, sshpub,
-			vmPort, network.GetHostIPFatal(), hostPort, extIP, 1, kafka.BrokerController)
+		return presets.CreateKafkaKraftCluster("ubuntu", "password", launch_vm, sshpub,
+			KafkaVMPort, network.GetHostIPFatal(), KafkaHostPort, ExtIP,
+			1, kafka.BrokerController)
+	case "redpanda":
+		return presets.CreateRedpandaUserdata("ubuntu", "password", launch_vm, sshpub,
+			fmt.Sprintf("%d", RedPandaVMPort), network.GetHostIPFatal(),
+			fmt.Sprintf("%d", RedPandaHostPort), ExtIP)
 
-		return config
 	default:
 		utils.LogError("Invalid Preset Passed")
 		return ""
@@ -413,3 +435,11 @@ func ResolvePath(path, cliflag string) (string, error) {
 	}
 	return absBootScriptPath, err
 }
+
+var (
+	RedPandaHostPort = 8090
+	RedPandaVMPort   = 9095
+	KafkaHostPort    = 9094
+	KafkaVMPort      = 9095
+	ExtIP            = "192.168.1.225"
+)
