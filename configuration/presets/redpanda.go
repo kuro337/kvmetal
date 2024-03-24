@@ -119,43 +119,42 @@ redpanda:
     data_directory: /var/lib/redpanda/data
     seed_servers: []
     rpc_server:
-      address: 0.0.0.0
-      port: 33145
+        address: 0.0.0.0
+        port: 33145
     kafka_api:
-      - name: internal
-        address: 0.0.0.0
-        port: 9092
-      - name: external
-        address: 0.0.0.0
-        port: %s
+        - name: internal
+          address: 0.0.0.0
+          port: 9092
+        - name: external
+          address: 0.0.0.0
+          port: %s
     admin:
-      - address: 0.0.0.0
-        port: 9644
+        - address: 0.0.0.0
+          port: 9644
     advertised_rpc_api:
-      - address: 127.0.0.1
+        address: 127.0.0.1
         port: 33145
     advertised_kafka_api:
-      - name: internal
-        address: %s
-        port: 9092
-      - name: external
-        address: %s
-        port: %s
+        - name: internal
+          address: %s
+          port: 9092
+        - name: external
+          address: %s
+          port: %s
 rpk:
-  tune_network: true
-  tune_disk_scheduler: true
-  tune_disk_nomerges: true
-  tune_disk_write_cache: true
-  tune_disk_irq: true
-  tune_cpu: true
-  tune_aio_events: true
-  tune_clocksource: true
-  tune_swappiness: true
-  coredump_dir: /var/lib/redpanda/coredump
-  tune_ballast_file: true
+    tune_network: true
+    tune_disk_scheduler: true
+    tune_disk_nomerges: true
+    tune_disk_write_cache: true
+    tune_disk_irq: true
+    tune_cpu: true
+    tune_aio_events: true
+    tune_clocksource: true
+    tune_swappiness: true
+    coredump_dir: /var/lib/redpanda/coredump
+    tune_ballast_file: true
 
 pandaproxy: {}
-
 schema_registry: {}
 `
 

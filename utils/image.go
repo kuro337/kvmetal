@@ -22,7 +22,7 @@ func PullImage(url, dir string) error {
 	imagePath := filepath.Join(dir, imageName)
 
 	if ImageExists(imageName, dir) {
-		log.Printf("Image %s already exist", imageName)
+		log.Printf("Image %s already exists", imageName)
 		return nil
 	}
 
@@ -141,9 +141,28 @@ func CreateBaseImage(imageURL, vmName string) (string, error) {
 		return "", err
 	}
 
-	log.Printf("Successfully Generated Modified Image: %s", modifiedImageName)
+	log.Print(TurnSuccess(fmt.Sprintf("Successfully Generated Modified Image: %s", modifiedImageName)))
 
 	return modifiedImageName, nil
+}
+
+// qemu-img create -f qcow2 /var/lib/libvirt/images/myvm-openebs-disk.qcow2 50G
+// Pass the full Path of the Disk - create in data/artifacts/vmname/
+func CreateDiskQCow(diskPath string, diskSize int) error {
+	qemuCmd := fmt.Sprintf("qemu-img create -f qcow2 %s %dG", diskPath, diskSize)
+	log.Printf("Running qemu-img to create disk: %s", qemuCmd)
+
+	cmd := exec.Command("sh", "-c", qemuCmd)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("Failed to generate Disk image: %v", err)
+		log.Printf("Command output:\n%s", output)
+		return err
+	}
+
+	log.Print(TurnSuccess(fmt.Sprintf("Successfully Generated Disk: %s", diskPath)))
+
+	return nil
 }
 
 /*

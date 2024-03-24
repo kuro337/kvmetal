@@ -44,6 +44,11 @@ curl -s "http://redpanda.kuro.com:8082/topics"
 kafka-topics.sh --bootstrap-server redpanda.kuro.com:9092 --list
 kafka-topics.sh --bootstrap-server redpanda.kuro.com:9092 --create --topic my_new_topic --partitions 3 --replication-factor 1
 
+kafka-topics.sh --bootstrap-server rpanda.kuro.com:9092 --list
+kafka-topics.sh --bootstrap-server 192.168.122.52:9092 --list
+
+
+
 echo "Hello from external client" | kafka-console-producer.sh --broker-list redpanda.kuro.com:9092 --topic test
 
 # Expose
@@ -75,6 +80,7 @@ redpanda:
 
 # Check /etc/redpanda/redpanda.yaml
 sudo cat /etc/redpanda/redpanda.yaml
+sudo vi /etc/redpanda/redpanda.yaml
 
 # Start
 sudo systemctl start redpanda-tuner redpanda
@@ -138,6 +144,15 @@ rpk:
     tune_ballast_file: true
 pandaproxy: {}
 schema_registry: {}
+
+```
+
+## Validations
+
+```bash
+rpk cluster info
+sudo cat /etc/redpanda/redpanda.yaml
+
 
 ```
 

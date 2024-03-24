@@ -6,10 +6,246 @@ import (
 	"strings"
 )
 
+type Styles int
+
+const (
+	Bold Styles = 1 << iota
+	Italic
+	Dim
+	Underline
+	NoUnderline
+	Reset
+)
+
+type ANSISpecial string
+
+const (
+	TickGreen ANSISpecial = "\x1b[1m\x1b[32m✓\x1b[0m"
+	CrossRed  ANSISpecial = "\x1b[1m\x1b[31m✗\x1b[0m"
+)
+
+type Delimiter string
+
+const (
+	DelimiterEq    Delimiter = "======================================================================"
+	DelimiterEqDim           = "\033[2m======================================================================\033[0m"
+	DelimiterStar            = "**********************************************************************"
+	DelimiterDash            = "-----------------------------------------------------"
+)
+
+type Color string
+
+const (
+	BlueHC        Color = "\033[94m"
+	GreenHC             = "\033[92m"
+	PurpHC              = "\033[95m"
+	LightGrey           = "\033[37m"
+	Red                 = "\033[0;31m"
+	Green               = "\033[0;32m"
+	Blue                = "\033[0;34m"
+	Yellow              = "\033[0;33m"
+	LightYellow         = "\033[1;33m"
+	PurpleDull          = "\x1b[38;5;5m"
+	GreenDeepdark       = "\x1b[38;5;36m"
+	GreenLight          = "\x1b[38;5;49m"
+	SkyBlue             = "\x1b[38;5;45m"
+	CoolBlue            = "\x1b[38;5;44m"
+	Greenish            = "\x1b[38;5;42m"
+	PurpCool            = "\x1b[38;5;93m"
+	Indigo              = "\x1b[38;5;57m"
+	BlueDeep            = "\x1b[38;5;39m"
+	BlueHyper           = "\x1b[38;5;33m"
+	GreenWhite          = "\x1b[38;5;121m"
+	WhitePink           = "\x1b[38;5;218m"
+	Sand                = "\x1b[38;5;222m"
+	Peach               = "\x1b[38;5;230m"
+	Pinkish             = "\x1b[38;5;199m"
+	WhiteBlue           = "\x1b[38;5;117m"
+	PurpDark            = "\x1b[38;5;128m"
+	PurpShine           = "\x1b[38;5;129m"
+	PurpWhite           = "\x1b[38;5;189m"
+	GreyBlue            = "\x1b[38;5;153m"
+	GreenGrey           = "\x1b[38;5;158m"
+	LightPink           = "\x1b[38;5;219m"
+	Purple              = "\x1b[38;5;135m"
+)
+
+/*
+Create a Formatter to Format Strings
+*/
+type LogFormat struct {
+	Color      Color
+	KeyColor   Color
+	ValColor   Color
+	color      string
+	keyColor   string
+	valColor   string
+	StyleFlags Styles
+	KeyOnly    bool
+	ValueOnly  bool
+}
+
+type FormatOps interface{}
+
+// Formatter defines an interface for formatting strings.
+type Formatter interface {
+	Format(string) string
+	FormatKV(...string) string
+	Update(interface{})
+}
+
+type formatter struct {
+	config LogFormat
+}
+
+func (f *formatter) setColors() {
+	f.config.color = string(f.config.Color)
+	f.config.keyColor = string(f.config.KeyColor)
+	f.config.valColor = string(f.config.ValColor)
+}
+
+/*
+Create a Formatter to Format Strings
+
+	config := utils.LogFormat{StyleFlags: utils.Bold}
+	f := utils.NewFormatter(config)
+
+	str := f.Format("This text will be bold")
+	t.Log(str)
+
+	// Format with Bold , Italics , and Color
+	f.Update(utils.LogFormat{Color: utils.CoolBlue, StyleFlags: utils.Bold | utils.Italic})
+	boldItalicColored := f.FormatKV("Key1", "Value Only Color", "Key2", "Value Only Color")
+	t.Log(boldItalicColored)
+
+	f.Update(utils.LogFormat{StyleFlags: utils.Bold, KeyOnly: true})
+	formattedKV := f.FormatKV("Keys Bold", "Value Not Bold", "Key2 Bold", "Not Bold")
+
+	t.Log(formattedKV)
+
+	f.Update(utils.LogFormat{ValColor: utils.PurpHC, ValueOnly: true})
+	valColored := f.FormatKV("Key1", "Value Only Color", "Key2", "Value Only Color")
+	t.Log(valColored)
+*/
+func NewFormatter(config LogFormat) Formatter {
+	config.color = string(config.Color)
+	config.keyColor = string(config.KeyColor)
+	config.valColor = string(config.ValColor)
+
+	return &formatter{config: config}
+}
+
+/*
+Update with a new LogFormat Configuration
+*/
+func (f *formatter) Update(config interface{}) {
+	if cfg, ok := config.(LogFormat); ok {
+		f.config = cfg
+		f.setColors()
+	} else {
+		log.Print("UpdateConfig: provided configuration is not of type LogFormat")
+	}
+}
+
+func (opts *formatter) Format(s string) string {
+	var sb strings.Builder
+
+	// Apply color
+	if opts.config.Color != "" {
+		sb.WriteString(opts.config.color)
+	}
+
+	/* Apply Styles for Bold, Italics, Underline...*/
+	if opts.config.StyleFlags&Bold != 0 {
+		sb.WriteString(BOLD)
+	}
+	if opts.config.StyleFlags&Italic != 0 {
+		sb.WriteString(ITALIC) // Similar assumption for Italic
+	}
+	if opts.config.StyleFlags&Underline != 0 {
+		sb.WriteString(UNDERLINE) // And so on for Underline
+	}
+
+	if opts.config.Color != "" {
+		sb.WriteString(opts.config.color)
+	}
+	// Append the string
+	sb.WriteString(s)
+
+	// Reset formatting at the end
+	sb.WriteString(NC)
+
+	return sb.String()
+}
+
+func (opts *formatter) applyStyles(s string, isKey bool) string {
+	var sb strings.Builder
+
+	// Apply styles based on the context (key or value)
+	if (!opts.config.KeyOnly && !opts.config.ValueOnly) || (opts.config.KeyOnly && isKey) || (opts.config.ValueOnly && !isKey) {
+		if opts.config.StyleFlags&Bold != 0 {
+			sb.WriteString(BOLD)
+		}
+		if opts.config.StyleFlags&Italic != 0 {
+			sb.WriteString(ITALIC)
+		}
+		if opts.config.StyleFlags&Underline != 0 {
+			sb.WriteString(UNDERLINE)
+		}
+
+		// Apply color based on the context (key or value)
+		color := opts.config.color // Default color
+		if isKey && opts.config.KeyColor != "" {
+			color = opts.config.keyColor
+		} else if !isKey && opts.config.ValColor != "" {
+			color = opts.config.valColor
+		}
+
+		sb.WriteString(color)
+	}
+
+	// Append the string and reset formatting
+	sb.WriteString(s)
+	sb.WriteString(NC)
+	return sb.String()
+}
+
+/*
+formatter := utils.LogFormat{Bold: true, Color: utils.GREEN_DEEPDARK}
+
+log.Printf(formatter.FormatKV("Key1", "Value1", "Key2", "Value2"))
+*/
+func (opts *formatter) FormatKV(kvs ...string) string {
+	var sb strings.Builder
+
+	for i := 0; i < len(kvs); i += 2 {
+		key := kvs[i]
+		var val string
+		if i+1 < len(kvs) {
+			val = kvs[i+1]
+		}
+
+		formattedKey := opts.applyStyles(key, true)
+		formattedVal := opts.applyStyles(val, false)
+
+		// Append formatted key and value
+		sb.WriteString(formattedKey)
+		sb.WriteString(": ")
+		sb.WriteString(formattedVal)
+
+		if i+2 < len(kvs) { // Add newline if not the last pair
+			sb.WriteString("\n")
+		}
+	}
+
+	return sb.String()
+}
+
 const (
 	NC             = "\033[0m"
 	BOLD           = "\033[1m"
 	DIM            = "\033[2m"
+	ITALIC         = "\033[3m"
 	UNDERLINE      = "\033[4m"
 	NO_UNDERLINE   = "\033[24m"
 	BLUE_HI        = "\033[94m"
@@ -78,6 +314,7 @@ func FormatKV(opts FormatOptions, kvs ...string) string {
 			val = kvs[i+1]
 		}
 
+		// Start formatting
 		if opts.Bold {
 			sb.WriteString(BOLD)
 		}
@@ -86,22 +323,14 @@ func FormatKV(opts FormatOptions, kvs ...string) string {
 			sb.WriteString(opts.Color)
 		}
 
+		// Append key
 		sb.WriteString(key)
-		if opts.Color != "" || opts.Bold {
-			sb.WriteString(NC)
-		}
-
 		sb.WriteString(": ")
 
-		if opts.Bold {
-			sb.WriteString(BOLD)
-		}
-
-		if opts.Color != "" {
-			sb.WriteString(opts.Color)
-		}
-
+		// Append value (keep applying color and bold)
 		sb.WriteString(val)
+
+		// Reset formatting at the end of each key-value pair
 		sb.WriteString(NC)
 
 		if i+2 < len(kvs) { // Add newline if not the last pair
@@ -200,12 +429,22 @@ func StructureResultWithHeadingAndColoredMsg(msg, color, content string) string 
 	return fmt.Sprintf("%s%s%s%s\n%s\n%s\n%s\n", BOLD, color, msg, NC, DOTTED, content, DOTTED)
 }
 
+/*
+Make the Second Part of a String Colored and Bold
+
+	log.Print(utils.TurnValBoldColor("Preset: ", preset, utils.PURP_HI))
+	// Preset: redpanda
+*/
+func TurnValBoldColor(key, val, color string) string {
+	return fmt.Sprintf("%s%s%s%s%s", key, BOLD, color, val, NC)
+}
+
 func TurnError(msg string) string {
 	return fmt.Sprintf("%s%s%s", RED, msg, NC)
 }
 
 func TurnSuccess(msg string) string {
-	return fmt.Sprintf("%s%s%s", GREEN, msg, NC)
+	return fmt.Sprintf("%s%s%s", GREEN_HI, msg, NC)
 }
 
 func TurnWarning(msg string) string {
@@ -221,10 +460,6 @@ func TurnKeyColor(key, val, color string) string {
 }
 
 func TurnValColor(key, val, color string) string {
-	return fmt.Sprintf("%s%s%s%s%s", key, BOLD, color, val, NC)
-}
-
-func TurnValBoldColor(key, val, color string) string {
 	return fmt.Sprintf("%s%s%s%s%s", key, BOLD, color, val, NC)
 }
 
@@ -285,7 +520,7 @@ func DisableInfo() {
 		fmt.Println(coloredStyledMsg)
 	}
 */
-func LogFormat(msg string, styles ...string) string {
+func FormatLog(msg string, styles ...string) string {
 	startFormat := ""
 	for _, style := range styles {
 		startFormat += style

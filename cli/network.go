@@ -1,10 +1,14 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
+	"sync"
+	"time"
 
+	"kvmgo/lib"
 	"kvmgo/network"
 	"kvmgo/network/qemu_hooks"
 	"kvmgo/utils"
@@ -182,6 +186,92 @@ func CreateAndSetNetExposeConfig(config NetworkExposeConfig) error {
 			return err
 		}
 	*/
+}
+
+func CreateUpdateForwarding(
+	domain string,
+	vmPort, hostPort int,
+	fwdingConfig network.ForwardingConfig,
+) error {
+	artifactPath, err := utils.CreateAbsPathFromRoot("data/artifacts/" + domain + "/networking/iptables_expose")
+	if err != nil {
+		log.Printf("Failed to Create Abs Artifact Path ERROR:%s", err)
+		return err
+	}
+
+	table := network.CreateTableFromConfig(fwdingConfig)
+	fmt.Println(table)
+
+	exposeCommands := qemu_hooks.HandleForwardingEvent(qemu_hooks.Reconnect, &fwdingConfig)
+
+	err = utils.WriteArraytoFile(
+		append([]string{table}, exposeCommands...),
+		artifactPath)
+	if err != nil {
+		log.Printf("Failed to Write Generated Expose Commands to Artifact Path. ERROR:%s", err)
+		return err
+	}
+
+	if err := qemu_hooks.UpdateConfig(fwdingConfig); err != nil {
+		log.Printf("Error writing config: %s", err)
+		return err
+	}
+
+	PrintNetworkQuickHelp(fwdingConfig.VMName,
+		fwdingConfig.PrivateIP.String(),
+		vmPort,
+		hostPort,
+		fwdingConfig.HostIP.String())
+
+	return nil
+}
+
+func WaitForVMThenGenerateFwdingConfig(
+	ctx context.Context,
+	wg *sync.WaitGroup,
+	domain string,
+	vmPort, hostPort int,
+	externalIp string,
+	protocol string,
+) error {
+	defer wg.Done()
+
+	log.Printf("Sleeping for 5 seconds before attempting to get IP")
+	time.Sleep(5 * time.Second)
+
+	log.Printf("Trying to obtain Domain IP")
+	ip, err := lib.GetIPLibvirtRetry(domain)
+	if err != nil {
+		log.Printf("Could not get IP for Domain using Retries. ERROR:%s %s", err, ip)
+		return err
+	}
+	log.Printf("IP Successfully Obtained : %s", ip)
+
+	extIp := net.ParseIP(externalIp)
+	domainIp := net.ParseIP(ip)
+	hostIP, err := network.GetHostIP()
+	if err != nil {
+		log.Print(utils.TurnError("Failed to get Host IP"))
+	}
+
+	portMapping := network.PortMapping{
+		Protocol: network.NetProtocol(protocol),
+		HostPort: int(hostPort),
+		VMPort:   int(vmPort),
+	}
+
+	fwdConfig := network.CreatePortForwardingConfig(domain, "virbr0",
+		domainIp, hostIP.IP, extIp, []network.PortMapping{portMapping}, nil)
+
+	err = CreateUpdateForwarding(domain, vmPort, hostPort, fwdConfig)
+	if err != nil {
+		log.Printf("Failed to Create and Update Forwarding Config. ERROR:%s", err)
+		return err
+	}
+
+	log.Printf("Successsfully Generated Forwarding Config")
+
+	return nil
 }
 
 // go run main.go --expose-vm=hadoop --port=8080 --hostport=8000 --external-ip=192.168.1.225

@@ -1,4 +1,21 @@
 {
-    "configs": [],
+    "configs": [
+        {
+            "domain": "kraft",
+            "port_map": [
+                {
+                    "host_port": 9094,
+                    "vm_port": 9095,
+                    "protocol": "tcp"
+                }
+            ],
+            "port_range": null,
+            "host_ip": "192.168.1.10",
+            "private_ip": "192.168.122.113",
+            "external_ip": "192.168.1.225",
+            "interface": "virbr0",
+            "last_updated": "2024-03-18T17:24:44-04:00"
+        }
+    ],
     "last_updated": ""
 }
