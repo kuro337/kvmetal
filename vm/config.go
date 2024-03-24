@@ -15,6 +15,7 @@ import (
 	"kvmgo/configuration"
 	"kvmgo/constants"
 	"kvmgo/network"
+	"kvmgo/types"
 	"kvmgo/utils"
 )
 
@@ -36,16 +37,48 @@ type VMConfig struct {
 	disks          []DiskConfig
 	sshPub         string
 	ArtifactPath   string
-	createDirsInit bool
+
+	ArtifactsPathFP types.FilePath
+	ImagesPathFP    types.FilePath
+	DisksPathFP     types.FilePath
+	createDirsInit  bool
 }
 
 // qemu-img create -f qcow2 /var/lib/libvirt/images/myvm-openebs-disk.qcow2 50G
 type DiskConfig struct {
-	DiskName          string
-	PathLocal         string
-	Size              int
-	Persistent        bool
-	generatedDiskPath string
+	DiskName   string // uses for
+	Size       int
+	Persistent bool
+	DiskPathFP types.FilePath
+}
+
+/* Methods to use FilePath type */
+func NewDiskConfig(diskPath string, size int) (*DiskConfig, error) {
+	fullPath, err := types.NewPath(diskPath, false)
+	if err != nil {
+		log.Printf("Failed to Create Qualified Abs Path from Base Path %s ERROR:%s", diskPath, err)
+	}
+	diskConf := DiskConfig{
+		Size:       size,
+		DiskPathFP: *fullPath,
+	}
+	return &diskConf, nil
+}
+
+/* Methods to use FilePath type */
+func (config *VMConfig) SetArtifactPath(filePath types.FilePath) *VMConfig {
+	config.ArtifactsPathFP = filePath
+	return config
+}
+
+func (config *VMConfig) SetImagePath(filePath types.FilePath) *VMConfig {
+	config.ImagesPathFP = filePath
+	return config
+}
+
+func (config *VMConfig) SetDisksPath(filePath types.FilePath) *VMConfig {
+	config.DisksPathFP = filePath
+	return config
 }
 
 func (d DiskConfig) QcowName() string {
@@ -59,6 +92,21 @@ func (config *VMConfig) GetDiskPaths() []string {
 		diskPaths = append(diskPaths, filepath.Join(config.DisksPath(), disk.QcowName()))
 	}
 	return diskPaths
+}
+
+// Create the Disk Paths for VM's Disk Images
+func (config *VMConfig) GetDiskPathsFP() ([]types.FPath, error) {
+	var diskPaths []types.FPath
+	for _, disk := range config.disks {
+		fp, err := types.NewPath(filepath.Join(config.DisksPath(), disk.QcowName()), false)
+		if err != nil {
+			log.Printf("Failed to Create Abs Path for VM Secondary Disks. ERROR:%s", err)
+			return nil, err
+		}
+		diskPaths = append(diskPaths, fp)
+	}
+
+	return diskPaths, nil
 }
 
 func (config *VMConfig) DisksPath() string {
@@ -194,6 +242,9 @@ func (config *VMConfig) DefaultUserData() *VMConfig {
 }
 
 func (s *VMConfig) PullImage() {
+	log.Print(utils.TurnSuccess(fmt.Sprintf("Old s.ImagesDir:%s | New ImgsDir %s",
+		s.ImagesDir, s.ImagesPathFP.Get())))
+
 	err := utils.PullImage(s.ImageURL, s.ImagesDir)
 	if err != nil {
 		slog.Error("Failed HTTP GET", "error", err)
@@ -408,6 +459,9 @@ func (s *VMConfig) CreateBaseImage() error {
 	// 	_ = s.navigateToDirWithISOImages()
 	_ = s.navigateToAbsPath(s.ImagesDir)
 
+	log.Print(utils.TurnSuccess(fmt.Sprintf("CREATBASEIMAGE() Old s.ImagesDir:%s | New ImgsDir %s",
+		s.ImagesDir, s.ImagesPathFP.Get())))
+
 	modifiedImageOutputPath, err := utils.CreateBaseImage(s.ImageURL, s.VMName)
 	if err != nil {
 		log.Printf("Failed to create base image ERROR:%s", err)
@@ -424,6 +478,7 @@ func (s *VMConfig) CreateBaseImage() error {
 
 // Navigates to Dir for VM and creates the base image using qemu-img create -b
 func (s *VMConfig) CreateDisks() error {
+	// uses artifacts dir and hcoded + "disks"
 	utils.CreateDirIfNotExist(s.DisksPath())
 
 	log.Print("Creating VM Disks")
@@ -433,7 +488,11 @@ func (s *VMConfig) CreateDisks() error {
 	}
 
 	for _, disk := range s.disks {
-		if err := utils.CreateDiskQCow(disk.QcowName(), disk.Size); err != nil {
+		diskPathQemu, err := disk.DiskPathFP.Relative()
+		if err != nil {
+			log.Fatalf("Failed to Get Relative Disk Path for QEMU Create. ERROR:%s", err)
+		}
+		if err := utils.CreateDiskQCow(diskPathQemu, disk.Size); err != nil {
 			log.Printf(utils.TurnError(fmt.Sprintf("Failed to Create Disk for VM. ERROR:%s,", err)))
 			return err
 		}
@@ -553,9 +612,22 @@ func (s *VMConfig) CreateVM() error {
 	}
 
 	// Dynamically add disks to the command
-	for _, diskPath := range s.GetDiskPaths() {
-		cmdArgs = append(cmdArgs, "--disk", "path="+diskPath+",device=disk")
+
+	// Using FilePath type to get the Relative Command Path
+	for _, diskPath := range s.disks {
+		relativePath, err := diskPath.DiskPathFP.Relative()
+		if err != nil {
+			log.Fatalf("ERROR:%s", err)
+		}
+		log.Printf(utils.TurnBoldBlueDelimited(relativePath))
+
+		cmdArgs = append(cmdArgs, "--disk", "path="+relativePath+",device=disk")
+
 	}
+
+	// for _, diskPath := range s.GetDiskPaths() {
+	// 	cmdArgs = append(cmdArgs, "--disk", "path="+diskPath+",device=disk")
+	// }
 
 	log.Printf("%sCreating Virtual Machine%s %s%s%s%s:\nvirt-install %s\n", utils.BOLD, utils.NC, utils.BOLD, utils.COOLBLUE, s.VMName, utils.NC, strings.Join(cmdArgs, " "))
 

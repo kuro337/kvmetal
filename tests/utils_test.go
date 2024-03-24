@@ -12,7 +12,7 @@ import (
 func TestFileInterface(t *testing.T) {
 	// Setup: create a new file and directory
 	basePath := "exampleDir"
-	fPath, err := types.NewPath(basePath)
+	fPath, err := types.NewPath(basePath, false)
 	if err != nil {
 		t.Errorf("Failed to Resolve New Path to Abs ERROR:%s", err)
 	}
@@ -30,7 +30,7 @@ func TestFileInterface(t *testing.T) {
 		}
 	}
 
-	filePath, err := types.NewPath(filepath.Join(absPath.Get(), "newFile.txt"))
+	filePath, err := types.NewPath(filepath.Join(absPath.Get(), "newFile.txt"), false)
 	if err != nil {
 		t.Errorf("Failed to Resolve Path ERROR:%s", err)
 	}

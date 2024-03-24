@@ -17,6 +17,7 @@ import (
 	"kvmgo/constants/kafka"
 	"kvmgo/network"
 	"kvmgo/network/qemu_hooks"
+	"kvmgo/types"
 	"kvmgo/utils"
 	"kvmgo/vm"
 
@@ -296,6 +297,19 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 		utils.LogWarning("Both User Data and --preset cannot be used. --preset overrides.")
 	}
 
+	imgsPath, err := types.NewPath("data/images", false)
+	if err != nil {
+		log.Printf("Failed to Generate Images types.FilePath - ERROR:%s", err)
+	}
+
+	artifactsBasePath := fmt.Sprintf("data/artifacts/%s", config.Name)
+
+	artifactsPath, err := types.NewPath(artifactsBasePath, false)
+	if err != nil {
+		log.Printf("Failed to Generate Artifacts types.FilePath - ERROR:%s", err)
+	}
+
+	log.Printf("Images Path : %s , Artifacts Path : %s", imgsPath.Get(), artifactsPath.Get())
 	imagesDirPath, err := utils.CreateAbsPathFromRoot("data/images")
 	if err != nil {
 		log.Printf("Failed to Generate Data Images Path - ERROR:%s", err)
@@ -315,16 +329,24 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 		SetCores(config.CPU).
 		SetMemory(config.Memory).
 		SetPubkey(constants.SshPub).
-		SetCloudInitDataInline(config.Userdata)
+		SetCloudInitDataInline(config.Userdata).
+		SetArtifactPath(*artifactsPath).
+		SetImagePath(*imgsPath)
 
 	log.Printf("Preset is %s", config.Preset)
 
 	if isk8(config.Preset) {
 		// Simply adds the DiskConfig to the Config Struct with name kubecontrol-openebs (we create full name from it)
-		vmConfig.AddDisk(vm.DiskConfig{
-			DiskName: fmt.Sprintf("%s-openebs-disk", config.Name),
-			Size:     10,
-		})
+		openEbsDisk, err := vm.NewDiskConfig(
+
+			fmt.Sprintf("%s/%s-openebs-disk.qcow2", artifactsBasePath, config.Name),
+			10,
+		)
+		if err != nil {
+			log.Fatalf(utils.TurnError(err.Error()))
+		}
+
+		vmConfig.AddDisk(*openEbsDisk)
 	}
 
 	return vmConfig
