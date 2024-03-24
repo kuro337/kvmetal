@@ -5,6 +5,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 type FPath interface {
@@ -15,6 +16,7 @@ type FPath interface {
 	Abs() string
 	Base() string
 	ToBase() (FPath, error)
+	Relative() (string, error)
 	ToAbs() (FPath, error)
 	Navigate() error
 	Valid() bool
@@ -32,19 +34,22 @@ type FilePath struct {
 }
 
 // NewPath creates a new FilePath instance, resolving the path to an absolute path.
-func NewPath(path string) (*FilePath, error) {
-	var absPath string
-	var err error
-
-	if filepath.IsAbs(path) {
-		absPath = path
-	} else {
-		absPath, err = filepath.Abs(path)
-		if err != nil {
-			return nil, fmt.Errorf("Failed to resolve absolute path for %s: %v", path, err)
-		}
+// By default it will automatically try to convert the Path Passed to an Absolute Path.
+// By passing lazy as true -> we can defer the Path and cwd Creation to a later point.
+// Use Relative() to get transform the Stored Absolute Path to a Relative Path from where fn is called
+func NewPath(path string, lazy bool) (*FilePath, error) {
+	if lazy {
+		return &FilePath{basePath: path}, nil
 	}
+	if filepath.IsAbs(path) {
+		return &FilePath{absPath: path}, nil
+	}
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		log.Printf("\nNOTE: Pass lazy=true if the Path is meant to be Resolved at a Later Point.")
+		return nil, fmt.Errorf("Failed to Resolve Current Passed Path to Absolute Path. ERROR:%s", err)
 
+	}
 	return &FilePath{absPath: absPath}, nil
 }
 
@@ -54,16 +59,36 @@ func (f FilePath) New(path string) FPath {
 	return &FilePath{basePath: path}
 }
 
-// Resolves and sets the Abs Path - in case it is required later.
-func (f *FilePath) Resolve() (FPath, error) {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return f, fmt.Errorf("Failed to get current working directory: %v", err)
+// New method creates a new FilePath instance with the provided path.
+// The path is treated as an absolute path.
+func (f *FilePath) PrintPaths() {
+	if f.cwd == "" || f.absPath == "" {
+		_, _ = f.Resolve()
 	}
 
-	f.cwd = cwd
+	log.Printf("Abs  Path: %s", f.absPath)
+	log.Printf("Base Path: %s", f.basePath)
+	log.Printf("cwd      : %s", f.cwd)
+}
 
-	return f, nil
+// Resolves and sets the Abs Path - in case it is required later.
+func (f *FilePath) Resolve() (FPath, error) {
+	var errstr strings.Builder
+	if f.cwd == "" {
+		cwd, err := os.Getwd()
+		if err != nil {
+			errstr.WriteString(fmt.Sprintf("cwd Failed: %s ", err.Error()))
+		}
+		f.cwd = cwd
+	}
+
+	if f.absPath == "" {
+		if _, err := f.ToAbs(); err != nil {
+			errstr.WriteString(fmt.Sprintf("ToAbs failed: %s ", err.Error()))
+		}
+	}
+
+	return f, fmt.Errorf(errstr.String())
 }
 
 // FromBase sets the base path and returns the FilePath instance.
@@ -106,8 +131,28 @@ func (f *FilePath) ToBase() (FPath, error) {
 	return f, nil
 }
 
+// If the Abs Path is set - returns the Path Relative to current wd. If Abs Path is not set - returns ""
+// "" is treated as an Invalid Path by os Functions
+func (f *FilePath) Relative() (string, error) {
+	if f.absPath == "" {
+		log.Printf("Absolute Path must be set to call Relative - as a Base Path can be unreliably resolved.")
+		log.Printf("Consider calling Resolve() to map the current Base Path to an Absolute Path or using ToAbs() before using Relative.")
+		return "", fmt.Errorf("Absolute Path must be set to call Relative - as a Base Path can be unreliably resolved.")
+	}
+	base, err := basePathfromAbs(f.absPath)
+	if err != nil {
+		return "", err
+	}
+	f.basePath = base
+	return base, nil
+}
+
 // ToAbs converts a base path to an absolute path.
 func (f *FilePath) ToAbs() (FPath, error) {
+	if f.absPath != "" {
+		log.Printf("File Path was already absolute")
+		return f, nil
+	}
 	abs, err := createAbsPathFromRoot(f.basePath)
 	if err != nil {
 		return nil, err
@@ -158,6 +203,8 @@ func (f *FilePath) DeleteFile() error {
 		log.Printf("Cannot delete a directory using DeleteFile: %s", f.Get())
 		return fmt.Errorf("target is a directory, not a file: %s", f.Get())
 	}
+	//	return fmt.Errorf("Planned Deletion File was : %s", f.Get())
+
 	return os.Remove(f.Get())
 }
 
@@ -174,7 +221,9 @@ func (f *FilePath) DeleteDir() error {
 		log.Printf("Cannot delete a file using DeleteDir: %s", f.Get())
 		return fmt.Errorf("target is not a directory: %s", f.Get())
 	}
-	return os.RemoveAll(f.Get())
+
+	return fmt.Errorf("Planned Deletion Dir was : %s", f.Get())
+	// return os.RemoveAll(f.Get())
 }
 
 func (f *FilePath) Navigate() error {

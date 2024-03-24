@@ -21,8 +21,29 @@ lsblk
   - vda   (Virtual Disk A)
   - vda14 (metadata disk)
   - vda15 (/boot/efi boot info)
+  - vdc 10G (our persistent disk)
+
 
 mount | grep /dev/sdb # List Mounted Filesystems
+
+# Disk should be mounted at Boot
+# Create Partition
+sudo fdisk /dev/vdc
+# Create Filesystem
+sudo mkfs.ext4 /dev/vdc1
+# Create Mount
+sudo mkdir /mnt/newdisk
+# Mount FS
+sudo mount /dev/vdc1 /mnt/newdisk
+
+# Make Mount Auto Mounted on Boot
+# Look for /dev/vdc1 , note the UUID
+sudo blkid
+# Add the UUID to /etc/fstab
+UUID=<your-uuid> /mnt/newdisk ext4 defaults 0 2
+
+
+
 ```
 
 `kubectl get storageclass`
@@ -41,6 +62,8 @@ https://github.com/openebs/lvm-localpv
 helm install openebs openebs/openebs --namespace openebs --create-namespace \
 --set legacy.enabled=false \
 --set lvm-localpv.enabled=true
+
+  rg --column --line-number --no-heading --color=always --smart-case "$@" | fzf --ansi --multi --reverse --bind "ctrl-j:down,ctrl-k:up,ctrl-d:page-down,ctrl-u:page-up"
 
 # Uninstall
 helm uninstall openebs -n openebs
