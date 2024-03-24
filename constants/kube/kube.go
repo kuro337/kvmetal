@@ -66,9 +66,14 @@ const KUBE_WORKER_UBUNTU_RUNCMD = `
     echo "net.ipv4.ip_forward                 = 1" >> /etc/sysctl.d/k8s.conf
     echo "net.bridge.bridge-nf-call-ip6tables = 1" >> /etc/sysctl.d/k8s.conf
     sysctl --system
+
   # Add Kubernetes Repo
-  - curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes.gpg
-  - echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
+  - apt-get install -y apt-transport-https ca-certificates curl gpg
+  - mkdir -p /etc/apt/keyrings/ && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  - echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+
+  # - curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /etc/apt/trusted.gpg.d/kubernetes.gpg
+  # - echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
   # Update & Install Kubernetes Components
   - apt-get update
   - apt-get install -y kubelet kubeadm kubectl
@@ -101,12 +106,19 @@ const KUBE_CONTROL_CILIUM_UBUNTU_RUNCMD = `
   - sysctl --system
 
   # Add Kubernetes Repo
-  - curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/kubernetes-archive-keyring.gpg
-  - echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
+  - apt-get install -y apt-transport-https ca-certificates curl gpg
+  - mkdir -p /etc/apt/keyrings/ && curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  - echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' | tee /etc/apt/sources.list.d/kubernetes.list
+
+  # - curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | gpg --dearmor -o /usr/share/keyrings/kubernetes-archive-keyring.gpg
+  # - echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list
+
+  
 
   # Install Kubernetes Components
   - apt-get update && apt-get install -y kubelet kubeadm kubectl
-  # - apt-mark hold kubelet kubeadm kubectl
+  - apt-mark hold kubelet kubeadm kubectl
+  - systemctl enable --now kubelet
 
   # Initialize Kubernetes (For Cilium we need to skip kube-proxy)
   - kubeadm init --skip-phases=addon/kube-proxy | tee /home/ubuntu/kubeadm-init.log
@@ -117,9 +129,6 @@ const KUBE_CONTROL_CILIUM_UBUNTU_RUNCMD = `
   - cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
   - chown $(id -u ubuntu):$(id -g ubuntu) /home/ubuntu/.kube/config
   - export KUBECONFIG=/home/ubuntu/.kube/config
-
-
-
 
   # Install Helm
   - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash

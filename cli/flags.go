@@ -2,6 +2,7 @@ package cli
 
 import (
 	"bufio"
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -9,6 +10,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 
 	"kvmgo/configuration/presets"
 	"kvmgo/constants"
@@ -97,8 +99,12 @@ To get detailed info about the VM
 
 	virsh dominfo spark
 
+# RPANDA
 
-	KAFKA
+go run main.go --launch-vm=rpanda --preset=redpanda --mem=8192 --cpu=4
+go run main.go --expose-vm=rpanda --port=9095 --hostport=8090 --external-ip=192.168.1.225 --protocol=tcp
+
+# KAFKA
 
 go run main.go --launch-vm=kafka --preset=kafka --mem=8192 --cpu=4
 
@@ -110,8 +116,8 @@ go run main.go --expose-vm=kraft \
 --external-ip=192.168.1.225 \
 --protocol=tcp
 */
-func Evaluate() {
-	config, err := ParseFlags()
+func Evaluate(ctx context.Context, wg *sync.WaitGroup) {
+	config, err := ParseFlags(ctx, wg)
 	if err != nil {
 		log.Print("Parsing Failed - Exiting")
 		os.Exit(1)
@@ -166,7 +172,7 @@ type Config struct {
 	Confirm      bool
 }
 
-func ParseFlags() (*Config, error) {
+func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 	var action Action
 
 	vm := flag.String("vm", "", "Virtual Machine (Domain Name)")
@@ -199,10 +205,9 @@ func ParseFlags() (*Config, error) {
 			log.Printf("Failed to get VM IP Address. ERROR:%s", err)
 		}
 		hostIp, _ := network.GetHostIP()
-
 		fmt.Printf(utils.TurnBoldBlueDelimited(fmt.Sprintf(" %s IP : %s | Host IP : %s", *getIp, vmIp.IP.String(), hostIp.IP.String())))
-
 	}
+
 	if *exposeVM != "" && *hostPort != 0 && *vmPort != 0 {
 		err := HandleVMNetworkExposure(*exposeVM, *vmPort, *hostPort, *externalIP, *protocol)
 		if err != nil {
@@ -237,6 +242,7 @@ func ParseFlags() (*Config, error) {
 		Workers: strings.Split(*workers, ","),
 		Help:    *help,
 		Confirm: *confirm,
+		Preset:  *preset,
 	}
 
 	mem, vcpu := ParseMemoryCPU(*memory, *cpu)
@@ -245,7 +251,7 @@ func ParseFlags() (*Config, error) {
 	config.SSH = utils.ReadFileFatal(constants.SshPub)
 
 	if *preset != "" {
-		config.Userdata = CreateUserdataFromPreset(*preset, config.Name, config.SSH)
+		config.Userdata = CreateUserdataFromPreset(ctx, wg, *preset, config.Name, config.SSH)
 	}
 
 	if *userdata != "" {
@@ -290,14 +296,38 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 		utils.LogWarning("Both User Data and --preset cannot be used. --preset overrides.")
 	}
 
-	return vm.NewVMConfig(config.Name).
+	imagesDirPath, err := utils.CreateAbsPathFromRoot("data/images")
+	if err != nil {
+		log.Printf("Failed to Generate Data Images Path - ERROR:%s", err)
+	}
+
+	artifactsDir, err := utils.CreateAbsPathFromRoot(fmt.Sprintf("data/artifacts/%s", config.Name))
+	if err != nil {
+		log.Fatalf("Artifact Path could not be resolved. ERROR:%s", err)
+	}
+
+	vmConfig := vm.NewVMConfig(config.Name).
 		SetImageURL("https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img").
-		SetImagesDir("data/images").
+		// SetImagesDir("data/images").
+		SetImagesDir(imagesDirPath).
+		SetArtifactsDir(artifactsDir).
 		SetUserData(config.UserdataFile).
 		SetCores(config.CPU).
 		SetMemory(config.Memory).
 		SetPubkey(constants.SshPub).
 		SetCloudInitDataInline(config.Userdata)
+
+	log.Printf("Preset is %s", config.Preset)
+
+	if isk8(config.Preset) {
+		// Simply adds the DiskConfig to the Config Struct with name kubecontrol-openebs (we create full name from it)
+		vmConfig.AddDisk(vm.DiskConfig{
+			DiskName: fmt.Sprintf("%s-openebs-disk", config.Name),
+			Size:     10,
+		})
+	}
+
+	return vmConfig
 }
 
 func cleanupNodes(nodes []string, confirm bool) {
@@ -381,8 +411,8 @@ func askForConfirmation() bool {
 }
 
 // Generates the VM according to Presets such as Kubernetes, Spark, Hadoop, and more
-func CreateUserdataFromPreset(preset, launch_vm, sshpub string) string {
-	log.Print(utils.TurnRichLightPurple(fmt.Sprintf("Preset: %s", preset)))
+func CreateUserdataFromPreset(ctx context.Context, wg *sync.WaitGroup, preset, launch_vm, sshpub string) string {
+	log.Print(utils.TurnValBoldColor("Preset: ", preset, utils.PURP_HI))
 	switch preset {
 	case "kafka":
 		return presets.CreateKafkaUserData("ubuntu", "password", launch_vm, sshpub)
@@ -391,15 +421,19 @@ func CreateUserdataFromPreset(preset, launch_vm, sshpub string) string {
 	case "kubecontrol":
 		return presets.CreateKubeControlPlaneUserData("ubuntu", "password", launch_vm, sshpub, true)
 	case "kubeworker":
-		return presets.CreateKubeWorkerUserData("ubuntu", "password", sshpub, launch_vm)
+		return presets.CreateKubeWorkerUserData("ubuntu", "password", launch_vm, sshpub)
 	case "kafka-kraft":
+		wg.Add(1)
+		go WaitForVMThenGenerateFwdingConfig(ctx, wg, launch_vm, KafkaVMPort, KafkaHostPort, ExtIP, "tcp")
+
 		return presets.CreateKafkaKraftCluster("ubuntu", "password", launch_vm, sshpub,
 			KafkaVMPort, network.GetHostIPFatal(), KafkaHostPort, ExtIP,
 			1, kafka.BrokerController)
+
 	case "redpanda":
 		return presets.CreateRedpandaUserdata("ubuntu", "password", launch_vm, sshpub,
-			fmt.Sprintf("%d", RedPandaVMPort), network.GetHostIPFatal(),
-			fmt.Sprintf("%d", RedPandaHostPort), ExtIP)
+			fmt.Sprintf("%s.kuro.com", launch_vm), fmt.Sprintf("%d", RedPandaVMPort),
+			network.GetHostIPFatal(), fmt.Sprintf("%d", RedPandaHostPort))
 
 	default:
 		utils.LogError("Invalid Preset Passed")
@@ -434,6 +468,10 @@ func ResolvePath(path, cliflag string) (string, error) {
 		return "", err
 	}
 	return absBootScriptPath, err
+}
+
+func isk8(preset string) bool {
+	return preset == "kubecontrol" || preset == "kubeworker"
 }
 
 var (

@@ -33,18 +33,49 @@ type VMConfig struct {
 	Memory         int
 	EnableServices []string
 	Artifacts      []string
+	disks          []DiskConfig
+	sshPub         string
+	ArtifactPath   string
+	createDirsInit bool
+}
 
-	sshPub       string
-	artifactPath string
+// qemu-img create -f qcow2 /var/lib/libvirt/images/myvm-openebs-disk.qcow2 50G
+type DiskConfig struct {
+	DiskName          string
+	PathLocal         string
+	Size              int
+	Persistent        bool
+	generatedDiskPath string
+}
+
+func (d DiskConfig) QcowName() string {
+	return d.DiskName + ".qcow2"
+}
+
+// Call to get Paths of qcow Disks - at data/artifacts/vmname/disks/diskn.qcow etc.
+func (config *VMConfig) GetDiskPaths() []string {
+	var diskPaths []string
+	for _, disk := range config.disks {
+		diskPaths = append(diskPaths, filepath.Join(config.DisksPath(), disk.QcowName()))
+	}
+	return diskPaths
+}
+
+func (config *VMConfig) DisksPath() string {
+	return filepath.Join(config.ArtifactPath, "disks")
+}
+
+func (config *VMConfig) UserdataPath() string {
+	return filepath.Join(config.ArtifactPath, "userdata")
 }
 
 func NewVMConfig(vmName string) *VMConfig {
 	pwd, _ := os.Getwd()
 
 	return &VMConfig{
-		VMName:       vmName,
-		RootDir:      pwd,
-		artifactPath: "data/artifacts",
+		VMName:  vmName,
+		RootDir: pwd,
+		//	artifactPath: "data/artifacts",
 	}
 }
 
@@ -52,12 +83,41 @@ func NewKVM(vmName string) *VMConfig {
 	config := &VMConfig{
 		VMName: vmName,
 	}
-	config.artifactPath = "data/artifacts"
+	// config.artifactPath = "data/artifacts"
 	return config
 }
 
 func (config *VMConfig) SetImageURL(url string) *VMConfig {
 	config.ImageURL = url
+	return config
+}
+
+func (config *VMConfig) SetArtifactsDir(vmArtifactsPath string) *VMConfig {
+	config.ArtifactPath = vmArtifactsPath
+	return config
+}
+
+// Initializes and Validates the Dirs upon Creation of the Config
+func (config *VMConfig) InitDirs(diskConfig DiskConfig) *VMConfig {
+	// Userdata Dir
+	// Disks Dir data/artifacts/vmname/disks
+
+	userdataDirPath := filepath.Join(config.ArtifactPath, "userdata")
+	if err := os.MkdirAll(userdataDirPath, 0o755); err != nil {
+		log.Fatalf("failed to create userdata directory: %v", err)
+	}
+
+	disksDirPath := filepath.Join(config.ArtifactPath, "disks")
+	if err := os.MkdirAll(disksDirPath, 0o755); err != nil {
+		log.Fatalf("failed to create VM Disks directory: %v", err)
+	}
+
+	return config
+}
+
+// Add another Disk for the VM - such as a Persistent vdb disk for OpenEBS
+func (config *VMConfig) AddDisk(diskConfig DiskConfig) *VMConfig {
+	config.disks = append(config.disks, diskConfig)
 	return config
 }
 
@@ -109,7 +169,7 @@ func (config *VMConfig) SetArtifacts(artifacts []string) *VMConfig {
 func (config *VMConfig) SetUserData(userData string) *VMConfig {
 	config.UserData = userData
 	if userData == "" {
-		log.Print("No User Data Passed - Setting Default CloudInit UserData")
+		// log.Print("No User Data Passed - Setting Default CloudInit UserData")
 		config.DefaultUserData()
 	}
 	return config
@@ -154,7 +214,9 @@ To view Logs for CloudInit user data if boot script was set check
 */
 func (config *VMConfig) GenerateCustomUserDataImg(bootScriptPath string) error {
 	// Create the directory for userdata if it doesn't exist
-	userdataDirPath := filepath.Join(config.artifactPath, config.VMName, "userdata")
+	// userdataDirPath := filepath.Join(config.artifactPath, config.VMName, "userdata")
+	userdataDirPath := filepath.Join(config.ArtifactPath, "userdata")
+
 	if err := os.MkdirAll(userdataDirPath, 0o755); err != nil {
 		return fmt.Errorf("failed to create userdata directory: %v", err)
 	}
@@ -199,7 +261,8 @@ func (config *VMConfig) GenerateCloudInitImgFromPath() error {
 	// Create the directory for userdata if it doesn't exist fpr VM
 	// data/artifacts/<vmname>/userdata
 
-	userdataDirPath := filepath.Join(config.artifactPath, config.VMName, "userdata")
+	// userdataDirPath := filepath.Join(config.artifactPath, config.VMName, "userdata")
+	userdataDirPath := filepath.Join(config.ArtifactPath, "userdata")
 	if err := os.MkdirAll(userdataDirPath, 0o755); err != nil {
 		return fmt.Errorf("failed to create userdata directory: %v", err)
 	}
@@ -253,17 +316,6 @@ func (config *VMConfig) GenerateCloudInitImgFromPath() error {
 	}
 
 	log.Printf("Successfully created cloud-init disk with user-data and meta-data: %s", outputImgPath)
-
-	// Path for the output user-data.img
-	//	outputImgPath := filepath.Join(userdataDirPath, "user-data.img")
-
-	// Generate the user-data.img
-	//	cmd := exec.Command("cloud-localds", outputImgPath, userDataFilePath)
-	// if err := cmd.Run(); err != nil {
-	// 	return fmt.Errorf("failed to run cloud-localds: %v", err)
-	// }
-
-	// log.Printf("Successfully Created Cloud-Init user-data .img file: %s", userDataPathAbs)
 
 	return nil
 }
@@ -353,7 +405,8 @@ func (config *VMConfig) GenerateUserDataImgDefault() error {
 func (s *VMConfig) CreateBaseImage() error {
 	log.Print("Creating Base Image")
 
-	_ = s.navigateToDirWithISOImages()
+	// 	_ = s.navigateToDirWithISOImages()
+	_ = s.navigateToAbsPath(s.ImagesDir)
 
 	modifiedImageOutputPath, err := utils.CreateBaseImage(s.ImageURL, s.VMName)
 	if err != nil {
@@ -361,8 +414,30 @@ func (s *VMConfig) CreateBaseImage() error {
 		return err
 	}
 
-	log.Printf("Successfully Created new Base Image at %s/%s",
-		s.ImagesDir, modifiedImageOutputPath)
+	utils.TurnSuccess(fmt.Sprintf("Successfully Created new Base Image at %s/%s",
+		s.ImagesDir, modifiedImageOutputPath))
+
+	_ = s.navigateToRoot()
+
+	return nil
+}
+
+// Navigates to Dir for VM and creates the base image using qemu-img create -b
+func (s *VMConfig) CreateDisks() error {
+	utils.CreateDirIfNotExist(s.DisksPath())
+
+	log.Print("Creating VM Disks")
+	err := s.navigateToAbsPath(s.DisksPath())
+	if err != nil {
+		log.Fatalf("FAILURE Generating Secondary Disks : %s", err)
+	}
+
+	for _, disk := range s.disks {
+		if err := utils.CreateDiskQCow(disk.QcowName(), disk.Size); err != nil {
+			log.Printf(utils.TurnError(fmt.Sprintf("Failed to Create Disk for VM. ERROR:%s,", err)))
+			return err
+		}
+	}
 
 	_ = s.navigateToRoot()
 
@@ -436,7 +511,7 @@ func (s *VMConfig) SetupVM() error {
 		log.Printf("Systemd services on Image enabled successfully")
 	}
 
-	log.Printf("Unmounting Image and Clearing Temp Mount Path")
+	log.Printf("Unmounting Image and Clearing Temp Mount Path %s", mountPath)
 
 	if err := utils.UnmountImage(mountPath); err != nil {
 		slog.Error("Failed Unmounting Image", "error", err)
@@ -463,20 +538,43 @@ func (s *VMConfig) CreateVM() error {
 	modifiedImagePath := filepath.Join(s.ImagesDir, s.VMName+"-vm-disk.qcow2")
 	vm_userdata_img := filepath.Join("data", "artifacts", s.VMName, "userdata", "user-data.img")
 
-	cmd := exec.Command("virt-install", "--name", s.VMName,
+	cmdArgs := []string{
+		"--name", s.VMName,
 		"--virt-type", "kvm",
 		"--memory", fmt.Sprint(s.Memory),
 		"--vcpus", fmt.Sprint(s.CPUCores),
-		"--disk", "path="+modifiedImagePath+",device=disk",
-		"--disk", "path="+vm_userdata_img+",format=raw",
+		"--disk", "path=" + modifiedImagePath + ",device=disk",
+		"--disk", "path=" + vm_userdata_img + ",format=raw",
 		"--graphics", "none",
 		"--boot", "hd,menu=on",
 		"--network", "network=default",
-		"--os-variant", "ubuntu18.04", "--noautoconsole",
-		// "--print-xml", // to test the XML structure
-	)
+		"--os-variant", "ubuntu18.04",
+		"--noautoconsole",
+	}
 
-	log.Printf("%sCreating Virtual Machine%s %s%s%s%s: %s\n", utils.BOLD, utils.NC, utils.BOLD, utils.COOLBLUE, s.VMName, utils.NC, cmd.String())
+	// Dynamically add disks to the command
+	for _, diskPath := range s.GetDiskPaths() {
+		cmdArgs = append(cmdArgs, "--disk", "path="+diskPath+",device=disk")
+	}
+
+	log.Printf("%sCreating Virtual Machine%s %s%s%s%s:\nvirt-install %s\n", utils.BOLD, utils.NC, utils.BOLD, utils.COOLBLUE, s.VMName, utils.NC, strings.Join(cmdArgs, " "))
+
+	/*
+		cmd := exec.Command("virt-install", "--name", s.VMName,
+			"--virt-type", "kvm",
+			"--memory", fmt.Sprint(s.Memory),
+			"--vcpus", fmt.Sprint(s.CPUCores),
+			"--disk", "path="+modifiedImagePath+",device=disk",
+			"--disk", "path="+vm_userdata_img+",format=raw",
+			"--graphics", "none",
+			"--boot", "hd,menu=on",
+			"--network", "network=default",
+			"--os-variant", "ubuntu18.04", "--noautoconsole",
+			// "--print-xml", // to test the XML structure
+		)
+	*/
+
+	cmd := exec.Command("virt-install", cmdArgs...)
 
 	var stderr bytes.Buffer // Capture stderr
 	cmd.Stderr = &stderr
@@ -708,18 +806,17 @@ func (s *VMConfig) CopyVMSetupFiles() error {
 }
 
 func (s *VMConfig) PullFromVM(path string) error {
-	local := filepath.Join(s.artifactPath, s.VMName)
+	// local := filepath.Join(s.artifactPath, s.VMName)
 
-	if err := utils.CreateDirIfNotExist(local); err != nil {
+	// if err := utils.CreateDirIfNotExist(local); err != nil {
+	if err := utils.CreateDirIfNotExist(s.ArtifactPath); err != nil {
 		log.Printf("Failed 	utils.CreateDirIfNotExist(local) ERROR:%s,", err)
 		return err
 	}
 
-	log.Printf("artifact path:%s VMName:%s local:%s", s.artifactPath, s.VMName, local)
+	cmd := exec.Command("sudo", "virt-copy-out", "-d", s.VMName, path, s.ArtifactPath)
 
-	cmd := exec.Command("sudo", "virt-copy-out", "-d", s.VMName, path, local)
-
-	log.Printf("Running sudo virt-copy-out -d %s %s %s", s.VMName, path, local)
+	log.Printf("Running sudo virt-copy-out -d %s %s %s", s.VMName, path, s.ArtifactPath)
 
 	log.Printf("Running command: %s\n", cmd.String())
 
@@ -806,12 +903,17 @@ func (s *VMConfig) navigateToBootupDir() error {
 // Navigates to the Path where we cache all the Base OS Images - so we can extend it to create an Image for the VM (data/images)
 func (s *VMConfig) navigateToDirWithISOImages() error {
 	if err := os.Chdir(s.ImagesDir); err != nil {
-
-		log.Printf("Failed to change directory: %v", err)
-
+		log.Printf(utils.TurnError(fmt.Sprintf("Failed to change directory: %v", err)))
 		return err
 	}
+	return nil
+}
 
+/* Naviagate to a Path */
+func (s *VMConfig) navigateToAbsPath(absPath string) error {
+	if err := os.Chdir(absPath); err != nil {
+		return fmt.Errorf("Failed to Navigate to %s. ERROR:%s", absPath, err.Error())
+	}
 	return nil
 }
 
@@ -827,12 +929,13 @@ func (s *VMConfig) navigateToRoot() error {
 	return nil
 }
 
-func (s *VMConfig) SetArtifactDir(path string) {
-	s.artifactPath = path
-}
+// func (s *VMConfig) SetArtifactDir(path string) {
+// 	s.artifactPath = path
+// }
 
 func (config *VMConfig) GetImageUserDataPath() (string, error) {
-	outputImgPath := filepath.Join(config.artifactPath, config.VMName, "userdata", "user-data.img")
+	// outputImgPath := filepath.Join(config.artifactPath, config.VMName, "userdata", "user-data.img")
+	outputImgPath := filepath.Join(config.ArtifactPath, "userdata", "user-data.img")
 	absoluteOutputImgPath, err := filepath.Abs(outputImgPath)
 	if err != nil {
 		log.Printf("Error getting absolute path: %v", err)
@@ -842,7 +945,8 @@ func (config *VMConfig) GetImageUserDataPath() (string, error) {
 }
 
 func (config *VMConfig) CreateUserDataDir() error {
-	userDataDir := filepath.Join(config.artifactPath, config.VMName, "userdata")
+	// userDataDir := filepath.Join(config.artifactPath, config.VMName, "userdata")
+	userDataDir := filepath.Join(config.ArtifactPath, "userdata")
 
 	if err := utils.CreateDirIfNotExist(userDataDir); err != nil {
 		log.Printf("Error creating user data directory: %v", err)

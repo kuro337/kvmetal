@@ -8,20 +8,6 @@ import (
 	"path/filepath"
 )
 
-/*
-Creates an Absolute Path - based on Path provided during Execution Relative to currdir
-
-	relativePath := "data/images"
-	absPath, err := CreateAbsPathFromRoot(relativePath)
-*/
-func CreateAbsPathFromRoot(path string) (string, error) {
-	absPath, err := filepath.Abs(path)
-	if err != nil {
-		return "", err
-	}
-	return absPath, nil
-}
-
 func CreateDirIfNotExist(path string) error {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		log.Printf("Dir %s did not exist - creating.", path)

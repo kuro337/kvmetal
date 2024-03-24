@@ -16,7 +16,12 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 
 	if err := vmConfig.CreateBaseImage(); err != nil {
 		log.Print(utils.TurnError(fmt.Sprintf("Failed to Setup VM ERROR:%s", err)))
+		_ = Cleanup(vmConfig.VMName)
+		return nil, err
+	}
 
+	if err := vmConfig.CreateDisks(); err != nil {
+		log.Print(utils.TurnError(fmt.Sprintf("Failed to Create Disks. ERROR:%s", err)))
 		_ = Cleanup(vmConfig.VMName)
 		return nil, err
 	}
@@ -34,7 +39,6 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 		utils.LogError(fmt.Sprintf("Failed to Setup VM ERROR:%s", err))
 		_ = Cleanup(vmConfig.VMName)
 		return nil, err
-
 	}
 
 	fmt.Print(utils.LogSection("GENERATING CLOUDINIT USERDATA"))

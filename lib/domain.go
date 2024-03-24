@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"kvmgo/utils"
@@ -16,6 +17,36 @@ type Domain struct {
 	domain      *libvirt.Domain
 	ip          net.IP
 	ipRetrieved time.Time
+}
+
+// GetIPLibvirtRetry attempts to retry GetIPLibvirt with specified retry logic
+func GetIPLibvirtRetry(domain string) (string, error) {
+	retryFunc := func() (string, error) {
+		return GetIPLibvirt(domain) // Your function that gets the IP
+	}
+
+	condition := func(err error) bool {
+		return err != nil && (strings.Contains(err.Error(), "Domain not found:") || strings.Contains(err.Error(), "no IPv4 address found for domain"))
+	}
+
+	// Attempt to retry up to 5 times with a 2-second fixed delay between retries
+	return utils.RetryUntilString(retryFunc, condition, 5, 5*time.Second)
+}
+
+func GetIPLibvirt(domain string) (string, error) {
+	conn, _ := ConnectLibvirt()
+
+	dom, err := conn.GetDomain(domain)
+	if err != nil {
+		return "", err
+	}
+
+	ip, err := dom.GetIP()
+	if err != nil {
+		return "", err
+	}
+
+	return ip, nil
 }
 
 // Gets the IP or Pulls it using Libvirt if it is unknown

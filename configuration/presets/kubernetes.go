@@ -9,6 +9,7 @@ import (
 
 func CreateKubeControlPlaneUserData(username, pass, vmname, sshpub string, cilium bool) string {
 	var clusterNetworking constants.Dependency
+	log.Printf("Kubeadm Reference https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/")
 
 	if cilium {
 		clusterNetworking = constants.KubernetesControlCilium
@@ -42,6 +43,8 @@ func CreateKubeControlPlaneUserData(username, pass, vmname, sshpub string, ciliu
 }
 
 func CreateKubeWorkerUserData(username, pass, vmname, sshpub string) string {
+	log.Printf("Kubeadm Reference https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/")
+
 	config, err := configuration.NewConfigBuilder(
 		configuration.DefaultPreset{},
 

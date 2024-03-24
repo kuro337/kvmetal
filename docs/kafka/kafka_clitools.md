@@ -15,6 +15,11 @@ source ~/.zshrc
 https://forum.confluent.io/t/kafka-does-not-works-through-nat-as-expected/4351
 
 
+# Host to VM is still on Port 9092
+
+kafka-topics.sh --bootstrap-server 192.168.122.113:9092 --list
+
+
 kafka-topics.sh --bootstrap-server kraft.kuro.com:9092 --list
 
 kafka-topics.sh --bootstrap-server kraft.kuro.com:9092 --list
