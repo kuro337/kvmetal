@@ -61,7 +61,7 @@ func EstablishSsh(domain string) (*ssh.Session, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Failed to dial: %v", err)
 	}
-	defer conn.Close()
+	// defer conn.Close()
 
 	// Start a session
 	session, err := conn.NewSession()
