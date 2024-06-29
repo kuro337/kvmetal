@@ -11,7 +11,7 @@ func TestKubeInit(t *testing.T) {
 
 	control := "control"
 
-	wclient, err := kssh.EstablishSsh(control)
+	wclient, err := kssh.EstablishSsh(worker)
 	if err != nil {
 		t.Errorf("Failed to conn worker Error:%s", err)
 	}
@@ -25,14 +25,14 @@ func TestKubeInit(t *testing.T) {
 	}
 	t.Log(out)
 
-	mclient, err := kssh.EstablishSsh(worker)
+	mclient, err := kssh.EstablishSsh(control)
 	if err != nil {
 		t.Errorf("Failed to conn control Error:%s", err)
 	}
 	defer mclient.Close()
 
 	// kubectl get nodes
-	out, err = kssh.RunCmd(mclient, "/usr/local/bin/kubectl get nodes")
+	out, err = kssh.RunCmd(mclient, "kubectl get nodes")
 	//	out, err = kssh.RunCmd(mclient, "ls")
 	if err != nil {
 		t.Errorf("failed cmd Error:%s", err)
