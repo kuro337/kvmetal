@@ -11,21 +11,30 @@ func TestKubeInit(t *testing.T) {
 
 	control := "control"
 
-	wconn, err := kssh.EstablishSsh(control)
+	wclient, wsess, err := kssh.EstablishSsh(control)
 	if err != nil {
 		t.Errorf("Failed to conn worker Error:%s", err)
 	}
 
-	mconn, err := kssh.EstablishSsh(worker)
+	defer wclient.Close()
+	defer wsess.Close()
+
+	// Run commands on the worker
+	out, err := kssh.RunCmd(wsess, "ls")
+	if err != nil {
+		t.Errorf("failed cmd Error:%s", err)
+	}
+	t.Log(out)
+
+	mclient, msess, err := kssh.EstablishSsh(worker)
 	if err != nil {
 		t.Errorf("Failed to conn control Error:%s", err)
 	}
+	defer mclient.Close()
 
-	defer wconn.Close()
+	defer msess.Close()
 
-	defer mconn.Close()
-
-	out, err := kssh.RunCmd(mconn, "ls")
+	out, err = kssh.RunCmd(msess, "ls")
 	if err != nil {
 		t.Errorf("failed cmd Error:%s", err)
 	}
