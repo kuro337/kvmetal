@@ -7,11 +7,11 @@ import (
 )
 
 func TestKubeInit(t *testing.T) {
-	//	worker := "worker"
+	worker := "worker"
 
 	control := "control"
 
-	wclient, _, err := kssh.EstablishSsh(control)
+	wclient, err := kssh.EstablishSsh(control)
 	if err != nil {
 		t.Errorf("Failed to conn worker Error:%s", err)
 	}
@@ -26,22 +26,18 @@ func TestKubeInit(t *testing.T) {
 	}
 	t.Log(out)
 
-	/*
-		mclient, msess, err := kssh.EstablishSsh(worker)
-		if err != nil {
-			t.Errorf("Failed to conn control Error:%s", err)
-		}
-		defer mclient.Close()
+	mclient, err := kssh.EstablishSsh(worker)
+	if err != nil {
+		t.Errorf("Failed to conn control Error:%s", err)
+	}
+	defer mclient.Close()
 
-		defer msess.Close()
+	out, err = kssh.RunCmd(mclient, "kubectl get nodes")
+	if err != nil {
+		t.Errorf("failed cmd Error:%s", err)
+	}
 
-		out, err = kssh.RunCmd(msess, "ls")
-		if err != nil {
-			t.Errorf("failed cmd Error:%s", err)
-		}
+	t.Log(out)
 
-		t.Log(out)
-
-		t.Log("successfully connected to Kube Nodes")
-	*/
+	t.Log("successfully connected to Kube Nodes")
 }

@@ -30,7 +30,7 @@ func RunCmd(client *ssh.Client, cmd string) (string, error) {
 	return b.String(), nil
 }
 
-func EstablishSsh(domain string) (*ssh.Client, *ssh.Session, error) {
+func EstablishSsh(domain string) (*ssh.Client, error) {
 	privateKeyPath := constants.SshPriv
 	qconn, _ := lib.ConnectLibvirt()
 	dom, _ := qconn.GetDomain(domain)
@@ -38,12 +38,12 @@ func EstablishSsh(domain string) (*ssh.Client, *ssh.Session, error) {
 	// Read the private key file
 	key, err := os.ReadFile(privateKeyPath)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Unable to read private key: %v", err)
+		return nil, fmt.Errorf("Unable to read private key: %v", err)
 	}
 	// Parse the private key file
 	signer, err := ssh.ParsePrivateKey(key)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Unable to parse private key: %v", err)
+		return nil, fmt.Errorf("Unable to parse private key: %v", err)
 	}
 	// Configure the SSH client
 	config := &ssh.ClientConfig{
@@ -57,17 +57,17 @@ func EstablishSsh(domain string) (*ssh.Client, *ssh.Session, error) {
 	// Connect to the SSH server
 	conn, err := ssh.Dial("tcp", net.JoinHostPort(vmIP, "22"), config)
 	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to dial: %v", err)
+		return nil, fmt.Errorf("Failed to dial: %v", err)
 	}
 	// Start a session
 
 	cmd := "echo 'SSH connection successful'"
 	if _, err := RunCmd(conn, cmd); err != nil {
 		conn.Close()
-		return nil, nil, fmt.Errorf("Failed to run command: %v", err)
+		return nil, fmt.Errorf("Failed to run command: %v", err)
 	}
 	log.Println("SSH connection successful")
-	return conn, nil, nil
+	return conn, nil
 }
 
 func EstablishSshOld(domain string) (*ssh.Session, error) {
