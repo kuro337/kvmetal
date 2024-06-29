@@ -17,7 +17,7 @@ import (
 	"kvmgo/constants/kafka"
 	"kvmgo/network"
 	"kvmgo/network/qemu_hooks"
-	"kvmgo/types"
+	"kvmgo/types/fpath"
 	"kvmgo/utils"
 	"kvmgo/vm"
 
@@ -29,8 +29,9 @@ import (
 
 -- Kubernetes Control Plane + Worker
 
-	go run main.go --launch-vm=control  --preset=kubecontrol --mem=4096 --cpu=2
-	go run main.go --launch-vm=worker   --preset=kubeworker  --mem=4096 --cpu=2
+  - Run zsh & kubeadm join on worker once setup done
+    go run main.go --launch-vm=control  --preset=kubecontrol --mem=4096 --cpu=2
+    go run main.go --launch-vm=worker   --preset=kubeworker  --mem=4096 --cpu=2
 
 -- k8 Multi Node Cluster
 
@@ -47,10 +48,14 @@ import (
 	go run main.go --launch-vm=kafka  --preset=kafka    --mem=8192 --cpu=4
 	go run main.go --launch-vm=rpanda --preset=redpanda --mem=8192 --cpu=4
 
+-- Clickhouse
+
+	go run main.go --launch-vm=clickhouse --preset=clickhouse --mem=8192 --cpu=4
+
 -- Expose a VM
 go run main.go --expose-vm=hadoop --port=8081 --hostport=8003 --external-ip=192.168.1.224 --protocol=tcp
 
-go run main.go --expose-vm=worker \
+go run main.go --ii aexpose-vm=worker \
 --port=8088 \
 --hostport=9000 \
 --external-ip=192.168.1.225 \
@@ -75,12 +80,12 @@ go run main.go --expose-vm=kafkatest \
 
 -- Launch a new VM
 
-	go run main.go --launch-vm=test   --mem=1024 --cpu=1
-	go run main.go --launch-vm=consul   --mem=2048 --cpu=2
-	go run main.go --launch-vm=postgres --mem=8192 --cpu=4
-	go run main.go --launch-vm=redpanda--mem=8192 --cpu=4
-
-	go run main.go --launch-vm=spark --mem=24576 --cpu=8
+		go run main.go --launch-vm=test   --mem=1024 --cpu=1
+		go run main.go --launch-vm=consul   --mem=2048 --cpu=2
+		go run main.go --launch-vm=postgres --mem=8192 --cpu=4
+		go run main.go --launch-vm=redpanda--mem=8192 --cpu=4
+	  go run main.go --launch-vm=ch 			--mem=8192 --cpu=4
+		go run main.go --launch-vm=spark --mem=24576 --cpu=8
 
 # VM with zsh
 
@@ -297,14 +302,14 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 		utils.LogWarning("Both User Data and --preset cannot be used. --preset overrides.")
 	}
 
-	imgsPath, err := types.NewPath("data/images", false)
+	imgsPath, err := fpath.NewPath("data/images", false)
 	if err != nil {
 		log.Printf("Failed to Generate Images types.FilePath - ERROR:%s", err)
 	}
 
 	artifactsBasePath := fmt.Sprintf("data/artifacts/%s", config.Name)
 
-	artifactsPath, err := types.NewPath(artifactsBasePath, false)
+	artifactsPath, err := fpath.NewPath(artifactsBasePath, false)
 	if err != nil {
 		log.Printf("Failed to Generate Artifacts types.FilePath - ERROR:%s", err)
 	}
@@ -404,20 +409,6 @@ func cleanupNodes(nodes []string, confirm bool) {
 	} else {
 		fmt.Println("No valid VMs were specified for cleanup.")
 	}
-
-	// log.Printf("Proceed? (y/n)")
-	// if askForConfirmation() {
-	// 	for _, vmName := range foundVMNames {
-	// 		fmt.Printf("Cleaning up node: %s\n", vmName)
-
-	// 		err := kvm.RemoveVMCompletely(vmName)
-	// 		if err != nil {
-	// 			fmt.Printf("Failed to clean up VM %s: %v\n", vmName, err)
-	// 		}
-	// 	}
-	// } else {
-	// 	fmt.Println("Cleanup aborted.")
-	// }
 }
 
 // askForConfirmation prompts the user for a yes/no answer and returns true for yes.
@@ -438,6 +429,8 @@ func CreateUserdataFromPreset(ctx context.Context, wg *sync.WaitGroup, preset, l
 	switch preset {
 	case "kafka":
 		return presets.CreateKafkaUserData("ubuntu", "password", launch_vm, sshpub)
+	case "clickhouse":
+		return presets.CreateClickhouseUserData("ubuntu", "password", launch_vm, sshpub)
 	case "hadoop":
 		return presets.CreateHadoopUserData("ubuntu", "password", launch_vm, sshpub)
 	case "kubecontrol":

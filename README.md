@@ -52,3 +52,9 @@ sudo apt install -y qemu qemu-kvm libvirt-daemon libvirt-clients bridge-utils vi
 
 
 ```
+
+/home/kuro/.vscode-server/cli/servers/Stable-863d2581ecda6849923a2118d93a088b0745d9d6/server/node packages.md
+
+/home/kuro/.vscode-server/cli/servers/Stable-863d2581ecda6849923a2118d93a088b0745d9d6/server/bin/code packages.md
+
+$ /home/<user>/.vscode-server/bin/054a9295330880ed74ceaedda236253b4f39a335/bin/code myfile.txt

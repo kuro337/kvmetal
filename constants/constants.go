@@ -24,4 +24,5 @@ const (
 	Sbt                     Dependency = "Sbt"
 	Helm                    Dependency = "Helm"
 	JDK_SCALA               Dependency = "Jdk_Scala"
+	Clickhouse              Dependency = "Clickhouse"
 )

@@ -5,6 +5,7 @@ import (
 
 	"kvmgo/constants"
 	"kvmgo/constants/bigdata"
+	"kvmgo/constants/db"
 	"kvmgo/constants/jvm"
 	"kvmgo/constants/kafka"
 	"kvmgo/constants/kube"
@@ -51,6 +52,8 @@ func (u *UbuntuConfig) GetRunCmd(dep constants.Dependency) string {
 		return kube.CALICO_LINUX_RUNCMD
 	case constants.Cilium:
 		return kube.CILIUM_LINUX_RUNCMD
+	case constants.Clickhouse:
+		return db.CLICKHOUSE_RUNCMD
 	default:
 		log.Printf("No Run Command found for Dependency")
 		return ""

@@ -5,14 +5,14 @@ import (
 	"path/filepath"
 	"testing"
 
-	"kvmgo/types"
+	"kvmgo/types/fpath"
 	"kvmgo/utils"
 )
 
 func TestFileInterface(t *testing.T) {
 	// Setup: create a new file and directory
 	basePath := "exampleDir"
-	fPath, err := types.NewPath(basePath, false)
+	fPath, err := fpath.NewPath(basePath, false)
 	if err != nil {
 		t.Errorf("Failed to Resolve New Path to Abs ERROR:%s", err)
 	}
@@ -30,7 +30,7 @@ func TestFileInterface(t *testing.T) {
 		}
 	}
 
-	filePath, err := types.NewPath(filepath.Join(absPath.Get(), "newFile.txt"), false)
+	filePath, err := fpath.NewPath(filepath.Join(absPath.Get(), "newFile.txt"), false)
 	if err != nil {
 		t.Errorf("Failed to Resolve Path ERROR:%s", err)
 	}
