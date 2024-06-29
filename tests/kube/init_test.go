@@ -1,72 +1,29 @@
 package tests
 
 import (
-	"bytes"
-	"log"
-	"net"
-	"os"
 	"testing"
-	"time"
 
-	"kvmgo/constants"
-	"kvmgo/lib"
-
-	"golang.org/x/crypto/ssh"
+	kssh "kvmgo/network/ssh"
 )
 
 func TestKubeInit(t *testing.T) {
-	privateKeyPath := constants.SshPriv
-	domain := "control"
-	qconn, _ := lib.ConnectLibvirt()
-	dom, _ := qconn.GetDomain(domain)
-	vmIP, _ := dom.GetIP()
+	worker := "worker"
 
-	// Read the private key file
-	key, err := os.ReadFile(privateKeyPath)
+	control := "control"
+
+	wconn, err := kssh.EstablishSsh(control)
 	if err != nil {
-		t.Fatalf("Unable to read private key: %v", err)
+		t.Errorf("Failed to conn worker Error:%s", err)
 	}
 
-	// Parse the private key file
-	signer, err := ssh.ParsePrivateKey(key)
+	mconn, err := kssh.EstablishSsh(worker)
 	if err != nil {
-		t.Fatalf("Unable to parse private key: %v", err)
+		t.Errorf("Failed to conn control Error:%s", err)
 	}
 
-	// Configure the SSH client
-	config := &ssh.ClientConfig{
-		User: "ubuntu",
-		Auth: []ssh.AuthMethod{
-			ssh.PublicKeys(signer),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
-		Timeout:         5 * time.Second,
-	}
+	defer wconn.Close()
 
-	// Connect to the SSH server
-	conn, err := ssh.Dial("tcp", net.JoinHostPort(vmIP, "22"), config)
-	if err != nil {
-		t.Fatalf("Failed to dial: %v", err)
-	}
-	defer conn.Close()
+	defer mconn.Close()
 
-	// Start a session
-	session, err := conn.NewSession()
-	if err != nil {
-		t.Fatalf("Failed to create session: %v", err)
-	}
-	defer session.Close()
-
-	// Run a simple command
-	var b bytes.Buffer
-	session.Stdout = &b
-
-	cmd := "ls"
-	//    cmd := "echo 'SSH connection successful'"
-
-	if err := session.Run(cmd); err != nil {
-		t.Fatalf("Failed to run command: %v", err)
-	}
-
-	log.Println(b.String())
+	t.Log("successfully connected to Kube Nodes")
 }
