@@ -17,7 +17,6 @@ func TestKubeInit(t *testing.T) {
 	}
 
 	defer wclient.Close()
-	// defer wsess.Close()
 
 	// Run commands on the worker
 	out, err := kssh.RunCmd(wclient, "ls")
@@ -32,7 +31,7 @@ func TestKubeInit(t *testing.T) {
 	}
 	defer mclient.Close()
 
-	out, err = kssh.RunCmd(mclient, "kubectl get nodes")
+	out, err = kssh.RunCmd(mclient, "ls")
 	if err != nil {
 		t.Errorf("failed cmd Error:%s", err)
 	}
