@@ -15,7 +15,7 @@ import (
 	"kvmgo/configuration"
 	"kvmgo/constants"
 	"kvmgo/network"
-	"kvmgo/types"
+	"kvmgo/types/fpath"
 	"kvmgo/utils"
 )
 
@@ -38,9 +38,9 @@ type VMConfig struct {
 	sshPub         string
 	ArtifactPath   string
 
-	ArtifactsPathFP types.FilePath
-	ImagesPathFP    types.FilePath
-	DisksPathFP     types.FilePath
+	ArtifactsPathFP fpath.FilePath
+	ImagesPathFP    fpath.FilePath
+	DisksPathFP     fpath.FilePath
 	createDirsInit  bool
 }
 
@@ -49,12 +49,12 @@ type DiskConfig struct {
 	DiskName   string // uses for
 	Size       int
 	Persistent bool
-	DiskPathFP types.FilePath
+	DiskPathFP fpath.FilePath
 }
 
 /* Methods to use FilePath type */
 func NewDiskConfig(diskPath string, size int) (*DiskConfig, error) {
-	fullPath, err := types.NewPath(diskPath, false)
+	fullPath, err := fpath.NewPath(diskPath, false)
 	if err != nil {
 		log.Printf("Failed to Create Qualified Abs Path from Base Path %s ERROR:%s", diskPath, err)
 	}
@@ -66,17 +66,17 @@ func NewDiskConfig(diskPath string, size int) (*DiskConfig, error) {
 }
 
 /* Methods to use FilePath type */
-func (config *VMConfig) SetArtifactPath(filePath types.FilePath) *VMConfig {
+func (config *VMConfig) SetArtifactPath(filePath fpath.FilePath) *VMConfig {
 	config.ArtifactsPathFP = filePath
 	return config
 }
 
-func (config *VMConfig) SetImagePath(filePath types.FilePath) *VMConfig {
+func (config *VMConfig) SetImagePath(filePath fpath.FilePath) *VMConfig {
 	config.ImagesPathFP = filePath
 	return config
 }
 
-func (config *VMConfig) SetDisksPath(filePath types.FilePath) *VMConfig {
+func (config *VMConfig) SetDisksPath(filePath fpath.FilePath) *VMConfig {
 	config.DisksPathFP = filePath
 	return config
 }
@@ -95,10 +95,10 @@ func (config *VMConfig) GetDiskPaths() []string {
 }
 
 // Create the Disk Paths for VM's Disk Images
-func (config *VMConfig) GetDiskPathsFP() ([]types.FPath, error) {
-	var diskPaths []types.FPath
+func (config *VMConfig) GetDiskPathsFP() ([]fpath.FPath, error) {
+	var diskPaths []fpath.FPath
 	for _, disk := range config.disks {
-		fp, err := types.NewPath(filepath.Join(config.DisksPath(), disk.QcowName()), false)
+		fp, err := fpath.NewPath(filepath.Join(config.DisksPath(), disk.QcowName()), false)
 		if err != nil {
 			log.Printf("Failed to Create Abs Path for VM Secondary Disks. ERROR:%s", err)
 			return nil, err

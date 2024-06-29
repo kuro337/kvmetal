@@ -14,7 +14,7 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
-func TestSSHConnection(t *testing.T) {
+func TestKubeInit(t *testing.T) {
 	privateKeyPath := constants.SshPriv
 	domain := "control"
 	qconn, _ := lib.ConnectLibvirt()
