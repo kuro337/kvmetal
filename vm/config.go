@@ -44,6 +44,7 @@ type VMConfig struct {
 	createDirsInit  bool
 }
 
+// DiskConfig used to manage disks for a VM - methods to add and backup Disks.
 // qemu-img create -f qcow2 /var/lib/libvirt/images/myvm-openebs-disk.qcow2 50G
 type DiskConfig struct {
 	DiskName   string // uses for

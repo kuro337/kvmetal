@@ -15,9 +15,9 @@ import (
 	"kvmgo/configuration/presets"
 	"kvmgo/constants"
 	"kvmgo/constants/kafka"
+	"kvmgo/kube/join"
 	"kvmgo/network"
 	"kvmgo/network/qemu_hooks"
-	"kvmgo/types/fpath"
 	"kvmgo/utils"
 	"kvmgo/vm"
 
@@ -123,6 +123,7 @@ go run main.go --expose-vm=kraft \
 --protocol=tcp
 */
 func Evaluate(ctx context.Context, wg *sync.WaitGroup) {
+	// 1. Parse Flags and take appropriate action
 	config, err := ParseFlags(ctx, wg)
 	if err != nil {
 		log.Print("Parsing Failed - Exiting")
@@ -134,13 +135,13 @@ func Evaluate(ctx context.Context, wg *sync.WaitGroup) {
 	}
 
 	switch config.Action {
-	case Launch:
+	case Launch: // k8 cluster
 		launchCluster(config.Control, config.Workers)
 	case Cleanup:
 		cleanupNodes(config.Cleanup, config.Confirm)
 	case Running:
 		_, _ = utils.ListVMs(2, true)
-	case New:
+	case New: // new from Presets
 		launchVM(*config)
 	default:
 		log.Println("No action specified or recognized.")
@@ -157,6 +158,7 @@ const (
 	Configure
 	New
 	Running
+	Join
 )
 
 type Config struct {
@@ -184,6 +186,7 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 	vm := flag.String("vm", "", "Virtual Machine (Domain Name)")
 	cpu := flag.String("cpu", "", "Specify Cores for the VM")
 	help := flag.Bool("help", false, "View Help for kVM application")
+	join := flag.String("join", "", "Join Kubernetes Nodes")
 	preset := flag.String("preset", "", "Choose from a preconfigured Setup such as Hadoop, Spark, Kubernetes")
 	memory := flag.String("mem", "", "Specify Memory for the VM")
 	vmPort := flag.Int("port", 0, "VM port to be exposed")
@@ -237,6 +240,8 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 		action = Running
 	} else if *launch_vm != "" {
 		action = New
+	} else if *join != "" {
+		action = Join // join workers with control k8
 	}
 
 	config := &Config{
@@ -277,6 +282,16 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 	return config, nil
 }
 
+// joinKubernetes performs the joining of the Nodes
+func joinKubeNodes(joinStr string) error {
+	nodes, err := SplitKubeJoinNodes(joinStr)
+	if err != nil {
+		return fmt.Errorf("Failed Joining:%s", err)
+	}
+	return join.JoinNodes(nodes)
+}
+
+// launchVM launches a VM from a Preset Config
 func launchVM(launchConfig Config) {
 	vmConfig := CreateVMConfig(launchConfig)
 	if _, err := vm.LaunchNewVM(vmConfig); err != nil {
@@ -284,6 +299,7 @@ func launchVM(launchConfig Config) {
 	}
 }
 
+// launchCluster launches a kube predefined cluster with passed specs
 func launchCluster(controlNode string, workerNodes []string) {
 	fmt.Printf("Launching control node: %s\n", controlNode)
 	for _, worker := range workerNodes {
@@ -297,39 +313,24 @@ func launchCluster(controlNode string, workerNodes []string) {
 	}
 }
 
+// CreateVMConfig initializes the Configuration according to the Preset
 func CreateVMConfig(config Config) *vm.VMConfig {
 	if config.UserdataFile != "" && config.Userdata != "" {
 		utils.LogWarning("Both User Data and --preset cannot be used. --preset overrides.")
 	}
 
-	imgsPath, err := fpath.NewPath("data/images", false)
+	imgsPath, artifactsPath, err := ResolveArtifactsPath(config.Name)
 	if err != nil {
-		log.Printf("Failed to Generate Images types.FilePath - ERROR:%s", err)
+		log.Fatalf("Failure Resolving Paths:%s", err)
 	}
 
-	artifactsBasePath := fmt.Sprintf("data/artifacts/%s", config.Name)
-
-	artifactsPath, err := fpath.NewPath(artifactsBasePath, false)
-	if err != nil {
-		log.Printf("Failed to Generate Artifacts types.FilePath - ERROR:%s", err)
-	}
-
+	// Get Artifacts Path for VM - i.e Resolve data/images and append VM name
 	log.Printf("Images Path : %s , Artifacts Path : %s", imgsPath.Get(), artifactsPath.Get())
-	imagesDirPath, err := utils.CreateAbsPathFromRoot("data/images")
-	if err != nil {
-		log.Printf("Failed to Generate Data Images Path - ERROR:%s", err)
-	}
-
-	artifactsDir, err := utils.CreateAbsPathFromRoot(fmt.Sprintf("data/artifacts/%s", config.Name))
-	if err != nil {
-		log.Fatalf("Artifact Path could not be resolved. ERROR:%s", err)
-	}
 
 	vmConfig := vm.NewVMConfig(config.Name).
 		SetImageURL("https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img").
-		// SetImagesDir("data/images").
-		SetImagesDir(imagesDirPath).
-		SetArtifactsDir(artifactsDir).
+		SetImagesDir(imgsPath.Abs()).
+		SetArtifactsDir(artifactsPath.Abs()).
 		SetUserData(config.UserdataFile).
 		SetCores(config.CPU).
 		SetMemory(config.Memory).
@@ -340,11 +341,11 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 
 	log.Printf("Preset is %s", config.Preset)
 
-	if isk8(config.Preset) {
-		// Simply adds the DiskConfig to the Config Struct with name kubecontrol-openebs (we create full name from it)
+	if isk8(config.Preset) { // for OpenEBS disk management
+		// Path created as data/artifacts/vm1/vm1-openebs-disk.qcow2
 		openEbsDisk, err := vm.NewDiskConfig(
-
-			fmt.Sprintf("%s/%s-openebs-disk.qcow2", artifactsBasePath, config.Name),
+			fmt.Sprintf("data/artifacts/%s/%s-openebs-disk.qcow2", config.Name, config.Name),
+			// fmt.Sprintf("%s/%s-openebs-disk.qcow2", artifactsBasePath, config.Name),
 			10,
 		)
 		if err != nil {

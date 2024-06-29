@@ -36,7 +36,10 @@ type FilePath struct {
 // NewPath creates a new FilePath instance, resolving the path to an absolute path.
 // By default it will automatically try to convert the Path Passed to an Absolute Path.
 // By passing lazy as true -> we can defer the Path and cwd Creation to a later point.
-// Use Relative() to get transform the Stored Absolute Path to a Relative Path from where fn is called
+// Use Relative() to get transform the Stored Absolute Path to a Relative Path from where fn is called.
+//
+// Note: if the File Path cannot be converted to an Absolute Path (i.e the given path cannot be resolved
+// from cwd, an error will be returned.
 func NewPath(path string, lazy bool) (*FilePath, error) {
 	if lazy {
 		return &FilePath{basePath: path}, nil
