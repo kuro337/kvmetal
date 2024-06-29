@@ -45,6 +45,7 @@ func TestKubeInit(t *testing.T) {
 
 	var join strings.Builder
 
+	join.WriteString("sudo ")
 	f := false
 	for _, line := range lines {
 
