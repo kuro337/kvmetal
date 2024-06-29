@@ -25,5 +25,12 @@ func TestKubeInit(t *testing.T) {
 
 	defer mconn.Close()
 
+	out, err := kssh.RunCmd(mconn, "kubectl get nodes")
+	if err != nil {
+		t.Errorf("failed cmd Error:%s", err)
+	}
+
+	t.Log(out)
+
 	t.Log("successfully connected to Kube Nodes")
 }
