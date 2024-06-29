@@ -15,16 +15,18 @@ import (
 )
 
 // RunCmd runs a command and returns stdout
-func RunCmd(session *ssh.Session, cmd string) (string, error) {
+func RunCmd(client *ssh.Client, cmd string) (string, error) {
+	session, err := client.NewSession()
+	if err != nil {
+		return "", fmt.Errorf("Failed to create session: %v", err)
+	}
+	defer session.Close()
+
 	var b bytes.Buffer
 	session.Stdout = &b
-
-	//	cmd := "ls"
-
 	if err := session.Run(cmd); err != nil {
 		return "", fmt.Errorf("Failed to run command: %v", err)
 	}
-
 	return b.String(), nil
 }
 
@@ -58,18 +60,14 @@ func EstablishSsh(domain string) (*ssh.Client, *ssh.Session, error) {
 		return nil, nil, fmt.Errorf("Failed to dial: %v", err)
 	}
 	// Start a session
-	session, err := conn.NewSession()
-	if err != nil {
-		return nil, nil, fmt.Errorf("Failed to create session: %v", err)
-	}
+
 	cmd := "echo 'SSH connection successful'"
-	if _, err := RunCmd(session, cmd); err != nil {
-		session.Close()
+	if _, err := RunCmd(conn, cmd); err != nil {
 		conn.Close()
 		return nil, nil, fmt.Errorf("Failed to run command: %v", err)
 	}
 	log.Println("SSH connection successful")
-	return conn, session, nil
+	return conn, nil, nil
 }
 
 func EstablishSshOld(domain string) (*ssh.Session, error) {
