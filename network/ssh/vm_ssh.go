@@ -14,6 +14,20 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// RunCmd runs a command and returns stdout
+func RunCmd(session *ssh.Session, cmd string) (string, error) {
+	var b bytes.Buffer
+	session.Stdout = &b
+
+	//	cmd := "ls"
+
+	if err := session.Run(cmd); err != nil {
+		return "", fmt.Errorf("Failed to run command: %v", err)
+	}
+
+	return b.String(), nil
+}
+
 func EstablishSsh(domain string) (*ssh.Session, error) {
 	privateKeyPath := constants.SshPriv
 	qconn, _ := lib.ConnectLibvirt()
