@@ -32,6 +32,8 @@ func TestKubeInit(t *testing.T) {
 	}
 	defer mclient.Close()
 
+	t.Log("successfully connected to Kube Nodes")
+
 	// kubectl get nodes
 	out, err = kssh.RunCmd(mclient, "tail -10 kubeadm-init.log")
 	//	out, err = kssh.RunCmd(mclient, "ls")
@@ -52,7 +54,6 @@ func TestKubeInit(t *testing.T) {
 			t.Log("breaking")
 			break
 		}
-
 		if strings.Contains(l, "kubeadm") {
 			f = true
 			join.WriteString(strings.TrimSuffix(l, "\\"))
@@ -64,7 +65,14 @@ func TestKubeInit(t *testing.T) {
 
 	t.Log(out)
 
-	t.Logf("Join Command: %s\n", join.String())
+	joinCmd := join.String()
+	t.Logf("Join Command: %s\n", joinCmd)
 
-	t.Log("successfully connected to Kube Nodes")
+	out, err = kssh.RunCmd(wclient, joinCmd)
+	//	out, err = kssh.RunCmd(mclient, "ls")
+	if err != nil {
+		t.Errorf("failed joining Error:%s", err)
+	}
+
+	t.Logf("Worker join output:\n%s\n", out)
 }
