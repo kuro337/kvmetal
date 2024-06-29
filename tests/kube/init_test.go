@@ -31,7 +31,9 @@ func TestKubeInit(t *testing.T) {
 	}
 	defer mclient.Close()
 
-	out, err = kssh.RunCmd(mclient, "ls")
+	// kubectl get nodes
+	out, err = kssh.RunCmd(mclient, "/usr/local/bin/kubectl get nodes")
+	//	out, err = kssh.RunCmd(mclient, "ls")
 	if err != nil {
 		t.Errorf("failed cmd Error:%s", err)
 	}
