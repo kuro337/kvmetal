@@ -302,7 +302,8 @@ func joinKubeNodes(joinStr string) error {
 	if err != nil {
 		return fmt.Errorf("Failed Joining:%s", err)
 	}
-	return join.JoinNodes(nodes)
+	_, err = join.JoinNodes(nodes)
+	return err
 }
 
 // launchVM launches a VM from a Preset Config

@@ -33,7 +33,7 @@ func ExposeVM(vmname, vmPort, hostPort string) {
 
 	// step 2. Get Host IP
 	hostIP, _ := GetHostIP()
-	log.Printf("Host IP:%s", hostIP.String())
+	log.Printf("Host IP:%s", hostIP.StringWithSubnet())
 
 	// AFTER READING write both to data/network/qemuhooks/ and data/network/ufw/
 
@@ -55,7 +55,7 @@ func ExposeVM(vmname, vmPort, hostPort string) {
 	currentUfwRules, _ := GetCurrentUfwRules()
 	utils.LogDottedLineDelimitedText(currentUfwRules)
 
-	ufwBeforeRule := CreateUfwBeforeRule(vmIP.String(), vmPort, hostPort, "Rule to expose Yarn UI")
+	ufwBeforeRule := CreateUfwBeforeRule(vmIP.StringWithSubnet(), vmPort, hostPort, "Rule to expose Yarn UI")
 
 	/* UFW: We want to add the Rule here - for each new VM - and delete it once we're done /etc/ufw/before.rules */
 	// If we have no more Active VM's : we will delete the Rule and also Comment out Qemu Hooks
@@ -64,7 +64,7 @@ func ExposeVM(vmname, vmPort, hostPort string) {
 
 	// check if the VM is already exposed
 
-	running := isVMExposed(currentUfwRules, "", vmIP.String())
+	running := isVMExposed(currentUfwRules, "", vmIP.StringWithSubnet())
 
 	if running {
 		log.Printf("VM is already Exposed")
@@ -87,7 +87,7 @@ func isVMExposed(ufwFileContent, vmName, ip string) bool {
 			return false
 		}
 		ip, _ := GetVMIPAddr(vmName)
-		vmIP = ip.String()
+		vmIP = ip.StringWithSubnet()
 	}
 
 	content, active, _ := CheckUfwBeforeHooksActive(ufwFileContent)

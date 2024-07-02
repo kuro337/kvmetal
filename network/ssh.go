@@ -24,14 +24,14 @@ type VMClient struct {
 }
 
 func GetSSHClient(domain string) (*VMClient, error) {
-	ip, err := GetVMIPAddr("kubecontrol")
+	ip, err := GetVMIPAddr(domain)
 	if err != nil {
 		return nil, fmt.Errorf("Failed Getting SSH Client. Error:%s", err)
 	}
 
-	log.Printf("IP of Control Node is %s", ip)
+	log.Printf("IP of Control Node is %s", ip.String())
 
-	client, err := NewInsecureSSHClientVM("kubecontrol", ip.String(), "ubuntu", "password")
+	client, err := NewInsecureSSHClientVM(domain, ip.String(), "ubuntu", "password")
 	if err != nil {
 		return nil, fmt.Errorf("         Error:%s", err)
 	}
