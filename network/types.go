@@ -29,8 +29,12 @@ type IPAddressWithSubnet struct {
 	Subnet int
 }
 
-func (ip IPAddressWithSubnet) String() string {
+func (ip IPAddressWithSubnet) StringWithSubnet() string {
 	return fmt.Sprintf("%s/%d", ip.IP.String(), ip.Subnet)
+}
+
+func (ip IPAddressWithSubnet) String() string {
+	return ip.IP.String()
 }
 
 // NewIPAddressWithSubnet creates a new IPAddressWithSubnet from a CIDR string.

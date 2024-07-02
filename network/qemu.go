@@ -60,7 +60,7 @@ func CreateQemuHooksFile() string {
 
 	log.Printf("Libvirt IP Subnet %s", libvirtIpSubnet)
 
-	qemuHooksFile := ConstructQemuHooksFile(hostIP.String(), libvirtIpSubnet)
+	qemuHooksFile := ConstructQemuHooksFile(hostIP.StringWithSubnet(), libvirtIpSubnet)
 
 	utils.LogDottedLineDelimitedText(qemuHooksFile)
 

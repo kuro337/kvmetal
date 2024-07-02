@@ -2,6 +2,9 @@ package kube
 
 import (
 	"fmt"
+	"log"
+	"regexp"
+	"slices"
 	"strings"
 
 	"kvmgo/network"
@@ -19,7 +22,10 @@ type KubeClient struct {
 	ip     string
 	client *network.VMClient
 
-	role KubeNode
+	Nodes        map[string]KubectlNodeResp
+	RunningNodes []KubectlNodeResp
+	Children     []string
+	role         KubeNode
 }
 
 func NewControl(domain string) (*KubeClient, error) {
@@ -28,7 +34,11 @@ func NewControl(domain string) (*KubeClient, error) {
 		return nil, fmt.Errorf("Failed to conn control Error:%s", err)
 	}
 
-	return &KubeClient{domain: domain, client: client, ip: client.IP, role: Control}, nil
+	return &KubeClient{
+		domain: domain, client: client, ip: client.IP, role: Control,
+		Children: []string{},
+		Nodes:    map[string]KubectlNodeResp{},
+	}, nil
 }
 
 func NewWorker(domain string) (*KubeClient, error) {
@@ -92,4 +102,88 @@ func (c *KubeClient) RunJoinCmd(joinCmd string) (string, error) {
 	}
 
 	return out, nil
+}
+
+type KubectlNodeResp struct {
+	Name    string
+	Status  string
+	Roles   string
+	Age     string
+	Version string
+}
+
+func (c *KubeClient) CheckNodesN() ([]KubectlNodeResp, error) {
+	ctlnodes, serr, err := c.CheckNodes()
+	if err != nil {
+		return nil, fmt.Errorf("Error:%s", err)
+	}
+
+	var kgn []KubectlNodeResp
+
+	// Name Status Roles Age Version
+	log.Printf("kubectl resp: %s , serr: %s\n", ctlnodes, serr)
+
+	re := regexp.MustCompile(`\s+`)
+
+	lines := strings.Split(ctlnodes, "\n")
+
+	for _, line := range lines[1:] {
+
+		if line == "" {
+			continue
+		}
+
+		result := re.ReplaceAllString(line, " ")
+
+		cols := strings.Split(result, " ")
+
+		if len(cols) == 0 {
+			continue
+		}
+
+		if len(cols) >= 1 {
+			if _, ok := c.Nodes[cols[0]]; ok {
+				continue
+			}
+		}
+
+		resp := KubectlNodeResp{}
+
+		for i, col := range cols {
+			switch i {
+			case 0:
+				if col != c.domain {
+					c.Children = append(c.Children, col)
+				}
+				resp.Name = col
+			case 1:
+				resp.Status = col
+			case 2:
+				resp.Roles = col
+			case 3:
+				resp.Age = col
+			case 4:
+				resp.Version = col
+			}
+		}
+
+		if len(cols) >= 2 && cols[0] != c.domain {
+			log.Printf("Node:%s,Status:%s\n", cols[0], cols[1])
+			c.RunningNodes = append(c.RunningNodes, resp)
+			c.Nodes[resp.Name] = resp
+		}
+
+		kgn = append(kgn, resp)
+	}
+
+	slices.SortStableFunc(kgn, func(a KubectlNodeResp, b KubectlNodeResp) int {
+		if a.Name == b.Name {
+			return 0
+		} else if a.Name > b.Name {
+			return 1
+		}
+		return -1
+	})
+
+	return kgn, nil
 }

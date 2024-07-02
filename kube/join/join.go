@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strings"
 	"time"
 
@@ -12,24 +13,26 @@ import (
 )
 
 // JoinNodes joins the worker nodes with the Control Node for kubernetes
-func JoinNodesNew(nodes []string) error {
+func JoinNodes(nodes []string) ([]string, error) {
+	slices.Sort(nodes)
+
 	controlDomain := nodes[0]
 	n := len(nodes)
 
 	if n < 2 {
-		return errors.New("Not enough nodes to form a cluster")
+		return nil, errors.New("Not enough nodes to form a cluster")
 	}
 
 	fmt.Println(controlDomain)
 
 	control, err := kube.NewControl(controlDomain)
 	if err != nil {
-		return fmt.Errorf("Error:%s", err)
+		return nil, fmt.Errorf("Error:%s", err)
 	}
 
 	joinCmd, serr, err := control.GetJoinCmd()
 	if err != nil {
-		return fmt.Errorf("Error:%s %s", serr, err)
+		return nil, fmt.Errorf("Error:%s %s", serr, err)
 	}
 
 	log.Println(joinCmd)
@@ -56,66 +59,29 @@ func JoinNodesNew(nodes []string) error {
 
 	str := errs.String()
 	if str != "" {
-		return fmt.Errorf("All workers were not joined successfully. %s", str)
+		return nil, fmt.Errorf("All workers were not joined successfully. %s", str)
 	}
 
 	log.Println("Pausing 5 Seconds before checking kubectl get nodes")
-	time.Sleep(5 * time.Second)
 
-	ctlnodes, serr, err := control.CheckNodes()
+	var joinedNodes []string
 
-	log.Printf("kubectl resp: %s , serr: %s\n", ctlnodes, serr)
+	backoffs := 3
 
-	return nil
-}
-
-// JoinNodes joins the worker nodes with the Control Node for kubernetes
-func JoinNodes(nodes []string) error {
-	control := nodes[0]
-	n := len(nodes)
-
-	if n < 2 {
-		return errors.New("Not enough nodes to form a cluster")
-	}
-
-	// mclient, err := network.GetSSHClient(control)
-
-	joinCmd, err := GetJoinCmd(control)
-	if err != nil {
-		return err
-	}
-
-	ch := make(chan error, n-1)
-
-	for i := 1; i < n; i++ {
-		go func(node string) {
-			_, err := RunJoinCmd(node, joinCmd)
-			ch <- err
-		}(nodes[i])
-	}
-
-	var errs strings.Builder
-
-	for i := 1; i < n; i++ {
-		err := <-ch
+	for i := 0; i < backoffs; i++ {
+		secs := 5 * (i + 1)
+		time.Sleep(time.Duration(secs) * time.Second)
+		joined, err := VerifyNodes(control, nodes)
+		joinedNodes = joined
 		if err != nil {
-			errs.WriteString(fmt.Sprintf("Failed to join: %s. ", err))
+			log.Printf("error from verify nodes: %s\n", err)
+		}
+		if len(joined) >= n {
+			return joined, nil
 		}
 	}
 
-	close(ch)
-
-	str := errs.String()
-	if str != "" {
-		return fmt.Errorf("All workers were not joined successfully. %s", str)
-	}
-
-	log.Println("Pausing 5 Seconds before checking kubectl get nodes")
-	time.Sleep(5 * time.Second)
-
-	// nodes , err := CheckNodes()
-
-	return nil
+	return joinedNodes, fmt.Errorf("Not able to confirm all nodes are Actively running")
 }
 
 // CheckNodes returns the current nodes active on the Cluster
@@ -197,4 +163,28 @@ func RunJoinCmd(worker, joinCmd string) (string, error) {
 	}
 
 	return out, nil
+}
+
+func VerifyNodes(control *kube.KubeClient, nodes []string) ([]string, error) {
+	_, err := control.CheckNodesN()
+	if err != nil {
+		return nil, err
+	}
+
+	var joinedNodes []string
+	for _, node := range nodes {
+		if jn, ok := control.Nodes[node]; ok {
+			log.Printf("Node joined cluster: %s, Status: %s\n", node, jn.Status)
+			joinedNodes = append(joinedNodes, node)
+		}
+	}
+
+	x, y := len(joinedNodes), len(nodes)
+	if x < y {
+		log.Printf("Joined nodes: %d vs. expected %d - backoff and retry again\n", x, y)
+
+		return joinedNodes, fmt.Errorf("Joined nodes: %d vs. expected %d - backoff and retry again\n", x, y)
+	}
+
+	return joinedNodes, nil
 }
