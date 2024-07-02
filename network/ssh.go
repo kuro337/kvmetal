@@ -23,17 +23,30 @@ type VMClient struct {
 	printFlag      bool
 }
 
+func GetSSHClient(domain string) (*VMClient, error) {
+	ip, err := GetVMIPAddr("kubecontrol")
+	if err != nil {
+		return nil, fmt.Errorf("Failed Getting SSH Client. Error:%s", err)
+	}
+
+	log.Printf("IP of Control Node is %s", ip)
+
+	client, err := NewInsecureSSHClientVM("kubecontrol", ip.String(), "ubuntu", "password")
+	if err != nil {
+		return nil, fmt.Errorf("         Error:%s", err)
+	}
+
+	return client, nil
+}
+
 /*
 NewInsecureSSHClient creates an SSH client for a VM using password authentication.
-
-Usage:
+@Usage
 
 	ip , err := GetVMIPAddr("kubecontrol")
 	log.Printf("IP of Control Node is %s",ip)
-
 	client , _ := NewInsecureSSHClientVM("kubecontrol",ip,"ubuntu","password")
-
-	// use GetVMIPAddr to get the IP of a running node
+	use GetVMIPAddr to get the IP of a running node
 */
 func NewInsecureSSHClientVM(vmName, ip, username, password string) (*VMClient, error) {
 	client := &VMClient{
@@ -61,7 +74,7 @@ func NewInsecureSSHClientVM(vmName, ip, username, password string) (*VMClient, e
 }
 
 // RunCommand executes a command on the VM and returns its output.
-func (vm *VMClient) RunCommand(command string) (string, string, error) {
+func (vm *VMClient) RunCmd(command string) (string, string, error) {
 	session, err := vm.SSHClient.NewSession()
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create session: %v", err)
@@ -87,7 +100,7 @@ func (vm *VMClient) RunCommand(command string) (string, string, error) {
 }
 
 func (vm *VMClient) Uptime(print bool) (string, error) {
-	output, _, err := vm.RunCommand("uptime")
+	output, _, err := vm.RunCmd("uptime")
 	if err != nil {
 		log.Printf("Error running command:%s", err)
 		return "", err
@@ -109,7 +122,7 @@ func (vm *VMClient) CheckConnection() bool {
 }
 
 func (vm *VMClient) CheckNodeReadiness(vmName string) (bool, error) {
-	output, _, err := vm.RunCommand(fmt.Sprintf("kubectl get nodes %s -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'", vmName))
+	output, _, err := vm.RunCmd(fmt.Sprintf("kubectl get nodes %s -o jsonpath='{.status.conditions[?(@.type==\"Ready\")].status}'", vmName))
 	if vm.printFlag {
 		log.Printf("kubectl get nodes output: %s", output)
 	}
@@ -158,7 +171,7 @@ var retryIntervals = []int{5, 10, 15, 25, 30, 20, 20, 20, 45}
 
 func WaitForPodReadiness(client *VMClient, podName string) error {
 	for i, interval := range retryIntervals {
-		output, _, err := client.RunCommand("kubectl get pod " + podName + " -o jsonpath='{.status.phase}'")
+		output, _, err := client.RunCmd("kubectl get pod " + podName + " -o jsonpath='{.status.phase}'")
 
 		// Log the error but don't return immediately. Continue retrying.
 		if err != nil {
