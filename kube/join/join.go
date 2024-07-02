@@ -3,7 +3,6 @@ package join
 import (
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	kssh "kvmgo/network/ssh"
@@ -105,66 +104,4 @@ func RunJoinCmd(worker, joinCmd string) (string, error) {
 	}
 
 	return out, nil
-}
-
-func JoinNode(control, worker string) error {
-	wclient, err := kssh.EstablishSsh(worker)
-	if err != nil {
-		return fmt.Errorf("Failed to conn worker Error:%s", err)
-	}
-
-	defer wclient.Close()
-
-	// Run commands on the worker
-	out, err := kssh.RunCmd(wclient, "ls")
-	if err != nil {
-		return fmt.Errorf("failed cmd Error:%s", err)
-	}
-
-	mclient, err := kssh.EstablishSsh(control)
-	if err != nil {
-		return fmt.Errorf("Failed to conn control Error:%s", err)
-	}
-	defer mclient.Close()
-
-	// kubectl get nodes
-	out, err = kssh.RunCmd(mclient, "tail -10 kubeadm-init.log")
-	//	out, err = kssh.RunCmd(mclient, "ls")
-	if err != nil {
-		return fmt.Errorf("failed cmd Error:%s", err)
-	}
-
-	lines := strings.Split(out, "\n")
-
-	var join strings.Builder
-
-	join.WriteString("sudo ")
-	f := false
-	for _, line := range lines {
-
-		l := strings.TrimSpace(line)
-		if f == true {
-			join.WriteString(l)
-			break
-		}
-		if strings.Contains(l, "kubeadm") {
-			f = true
-			join.WriteString(strings.TrimSuffix(l, "\\"))
-			join.WriteRune(' ')
-		}
-
-	}
-
-	joinCmd := join.String()
-	log.Printf("Join Command: %s\n", joinCmd)
-
-	out, err = kssh.RunCmd(wclient, joinCmd)
-	//	out, err = kssh.RunCmd(mclient, "ls")
-	if err != nil {
-		return fmt.Errorf("failed joining Error:%s", err)
-	}
-
-	log.Printf("Worker join output:\n%s\n", out)
-
-	return nil
 }

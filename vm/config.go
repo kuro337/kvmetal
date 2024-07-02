@@ -620,7 +620,7 @@ func (s *VMConfig) CreateVM() error {
 		if err != nil {
 			log.Fatalf("ERROR:%s", err)
 		}
-		log.Printf(utils.TurnBoldBlueDelimited(relativePath))
+		log.Println(utils.TurnBoldBlueDelimited(relativePath))
 
 		cmdArgs = append(cmdArgs, "--disk", "path="+relativePath+",device=disk")
 
