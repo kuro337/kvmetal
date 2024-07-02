@@ -32,6 +32,7 @@ import (
   - Run zsh & kubeadm join on worker once setup done
     go run main.go --launch-vm=control  --preset=kubecontrol --mem=4096 --cpu=2
     go run main.go --launch-vm=worker   --preset=kubeworker  --mem=4096 --cpu=2
+    go run main.go --join=control,worker
 
 -- k8 Multi Node Cluster
 
@@ -137,6 +138,9 @@ func Evaluate(ctx context.Context, wg *sync.WaitGroup) {
 	switch config.Action {
 	case Launch: // k8 cluster
 		launchCluster(config.Control, config.Workers)
+	case Join:
+		// log.Println("Join Nodes: ", config.KubeJoin)
+		join.JoinNodes(config.KubeJoin)
 	case Cleanup:
 		cleanupNodes(config.Cleanup, config.Confirm)
 	case Running:
@@ -178,6 +182,8 @@ type Config struct {
 	Help         bool
 	Preset       string
 	Confirm      bool
+
+	KubeJoin []string
 }
 
 func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
@@ -263,6 +269,14 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 
 	if *preset != "" {
 		config.Userdata = CreateUserdataFromPreset(ctx, wg, *preset, config.Name, config.SSH)
+	}
+
+	if *join != "" {
+		kubeJoins, err := SplitKubeJoinNodes(*join)
+		if err != nil {
+			return config, err
+		}
+		config.KubeJoin = kubeJoins
 	}
 
 	if *userdata != "" {
