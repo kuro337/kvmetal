@@ -110,6 +110,8 @@ func (config *VMConfig) GetDiskPathsFP() ([]fpath.FPath, error) {
 	return diskPaths, nil
 }
 
+// DisksPath() returns the path where the VM Specific Disk should be created as an artifact
+// data/artifacts/vm/disks/ (currently created at d/a/vm/ ) 1 level higher
 func (config *VMConfig) DisksPath() string {
 	return filepath.Join(config.ArtifactPath, "disks")
 }
@@ -302,13 +304,15 @@ func (config *VMConfig) GenerateCustomUserDataImg(bootScriptPath string) error {
 	return nil
 }
 
-/*
-Create Image from UserData for VM
-
-  - userdata.img , user-data.txt, meta-data
-
-    data/artifacts/<vmname>/userdata
-*/
+// Create Image (user-data.img) from UserData for VM
+//
+//  1. Creates user-data & metedata temp files
+//  2. Runs cloud-localds user-data.img user-data meta-data to create the UserData Disk
+//  3. This is the persistent Disk required to access the VM
+//
+// Artifacts :  user-data.txt, meta-data ,  userdata.img
+//
+// Dest : data/artifacts/<vmname>/userdata/
 func (config *VMConfig) GenerateCloudInitImgFromPath() error {
 	// Create the directory for userdata if it doesn't exist fpr VM
 	// data/artifacts/<vmname>/userdata
@@ -478,6 +482,7 @@ func (s *VMConfig) CreateBaseImage() error {
 }
 
 // Navigates to Dir for VM and creates the base image using qemu-img create -b
+// Disk created in data/artifacts/vm/
 func (s *VMConfig) CreateDisks() error {
 	// uses artifacts dir and hcoded + "disks"
 	utils.CreateDirIfNotExist(s.DisksPath())
@@ -490,6 +495,7 @@ func (s *VMConfig) CreateDisks() error {
 
 	for _, disk := range s.disks {
 		diskPathQemu, err := disk.DiskPathFP.Relative()
+		log.Printf("Relative Path returned for disk creation:%s", diskPathQemu)
 		if err != nil {
 			log.Fatalf("Failed to Get Relative Disk Path for QEMU Create. ERROR:%s", err)
 		}
@@ -532,7 +538,10 @@ func (s *VMConfig) ResolveFQDNBootBehaviorImg() error {
 	return nil
 }
 
-// SetupVM() creates a Mount Path to Copy Boot scripts into the VM, Copies Dynamic Data into the VM, and then clears the Mount Data.
+// SetupVM() creates a Mount Path to Copy Boot scripts into the VM,
+// Curr main logic - uses primary disk and mounts at /mnt/vmname
+// Copies Dynamic Data into the VM, and then clears the Mount Data.
+// Uses the generated base image in data/images/control-vm-disk.qcow2
 func (s *VMConfig) SetupVM() error {
 	utils.LogStep("MOUNTING IMAGE")
 
@@ -544,6 +553,12 @@ func (s *VMConfig) SetupVM() error {
 
 	log.Printf("Mount Path Setup VM %s", mountPath)
 
+	// exit early - in case no files defined to copy into the Disk
+	if s.BootFilesDir == "" && s.SystemdScript == "" {
+		log.Println("No files required to copy into primary VM image, proceeding with user-data.img creation followed by virt-install.")
+		return nil
+	}
+	// Mount vm image
 	if err := utils.MountImage(modifiedImagePath, mountPath); err != nil {
 		slog.Error("Failed Mounting Image", "error", err)
 		return err
@@ -588,7 +603,10 @@ func (s *VMConfig) SetupVM() error {
 	return nil
 }
 
-// CreateVM() uses libvirtd to create the VM and boot it. The state will change to Running and the boot scripts will run followed by systemd services
+// CreateVM() uses libvirtd to create the VM and boot it.
+// The state will change to Running and the boot scripts will run followed by systemd services
+// Uses the image from data/images/control-vm-disk.qcow2
+// Adds any extra disks defined on the Struct
 func (s *VMConfig) CreateVM() error {
 	err := s.navigateToRoot()
 	if err != nil {
@@ -614,6 +632,7 @@ func (s *VMConfig) CreateVM() error {
 
 	// Dynamically add disks to the command
 
+	// Add Disks to the VM
 	// Using FilePath type to get the Relative Command Path
 	for _, diskPath := range s.disks {
 		relativePath, err := diskPath.DiskPathFP.Relative()

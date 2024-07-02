@@ -14,12 +14,14 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 
 	vmConfig.PullImage()
 
+	// Creates base image with OS defined in data/images/control-vm-disk.qcow2
 	if err := vmConfig.CreateBaseImage(); err != nil {
 		log.Print(utils.TurnError(fmt.Sprintf("Failed to Setup VM ERROR:%s", err)))
 		_ = Cleanup(vmConfig.VMName)
 		return nil, err
 	}
 
+	// Create additional disks required by the VM (data/artifacts/vm/<disk>.qcow2
 	if err := vmConfig.CreateDisks(); err != nil {
 		log.Print(utils.TurnError(fmt.Sprintf("Failed to Create Disks. ERROR:%s", err)))
 		_ = Cleanup(vmConfig.VMName)
@@ -35,6 +37,9 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 
 	fmt.Print(utils.LogSection("SETTING UP VM"))
 
+	// Mounts the generated primary disk at /mnt/vmname and if present
+	// copies systemd scripts into it
+	// If no boot scripts or systemd services defined - this does nothing
 	if err := vmConfig.SetupVM(); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Setup VM ERROR:%s", err))
 		_ = Cleanup(vmConfig.VMName)
@@ -43,6 +48,9 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 
 	fmt.Print(utils.LogSection("GENERATING CLOUDINIT USERDATA"))
 
+	// Produces user-data.txt, meta-data, and user-data.img
+	// Uses dynamic logic for user-data.txt to setup boot logic
+	// user-data.txt and meta-data used to generate user-data.img
 	if err := vmConfig.GenerateCloudInitImgFromPath(); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Generate Cloud-Init Disk ERROR:%s", err))
 		_ = Cleanup(vmConfig.VMName)
@@ -51,6 +59,10 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 
 	fmt.Print(utils.LogSection("LAUNCHING VM"))
 
+	// Runs libvirt command - requires
+	// 1. Primary disk from data/images/control-vm-disk.qcow2
+	// 2. user-data.img from above step
+	// 3. Optional - attaches additional disks defined
 	if err := vmConfig.CreateVM(); err != nil {
 		utils.LogError(fmt.Sprintf("Failed to Create VM ERROR:%s", err))
 		log.Printf("Check sudo cat /var/log/libvirt/qemu/%s.log for verbose failure logs", vmConfig.VMName)
