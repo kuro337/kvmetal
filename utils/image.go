@@ -42,6 +42,8 @@ func PullImage(url, dir string) error {
 	return err
 }
 
+// MountImage mounts the generated image at data/images/control-vm-disk.qcow2
+// sudo guestmount -a d/i/vm.qcow2 -i --rw /mnt/control
 func MountImage(imagePath, mountPath string) error {
 	log.Printf("imagePath:%s     mountPath:%s\n", imagePath, mountPath)
 
@@ -120,8 +122,9 @@ func ModifiedImageName(vmName string) string {
 
 /*
 CreateBaseImage creates an Image from the base Image for the VM
+This has the OS in data/images/control-vm-disk.qcow2
 
-	// qemu-img create -b <base_img>_cloudimg-amd64.img -F qcow2 -f qcow2 <new_vm>-vm-disk.qcow2 20G
+	qemu-img create -b <base_img>_cloudimg-amd64.img -F qcow2 -f qcow2 <new_vm>-vm-disk.qcow2 20G
 */
 func CreateBaseImage(imageURL, vmName string) (string, error) {
 	baseImageName := filepath.Base(imageURL)
@@ -132,7 +135,8 @@ func CreateBaseImage(imageURL, vmName string) (string, error) {
 		baseImageName, modifiedImageName)
 
 	log.Printf("Running qemu-img: %s", qemuCmd)
-
+	// investigate why it's not created in data/artifacts/vm/disks/
+	// instead created in data/artifacts/vm/
 	cmd := exec.Command("sh", "-c", qemuCmd)
 	output, err := cmd.CombinedOutput()
 	if err != nil {

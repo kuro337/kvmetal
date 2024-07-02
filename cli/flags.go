@@ -338,6 +338,40 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 		log.Fatalf("Failure Resolving Paths:%s", err)
 	}
 
+	/*
+				1. Uses base ubuntu image to generate a VM specific img
+				This servers as the primary image - in data/images/control-vm-disk.qcow2
+
+				2. Create additional Disks if they are present
+
+				3. Mount the Disks for the VM on system to copy systemd and boot files
+				sudo guestmount -a d/i/vm.qcow2 -i --rw /mnt/control
+				Then delete the /mnt/<vm>
+
+				4. Generate user-data.txt + meta-data , then use that to generate user-data.img
+
+				5. Create the VM using virt-install.
+				- Primary Image and user-data.img are mandatory required here
+				    i. Primary image from data/images/control-vm-disk.qcow2
+				    2. user-data.img
+				    3. Optionally - attach any additional disks defined for the VM
+
+
+
+		               data/images    : Images -> Images are stored here (data/images)
+
+					   Base Image with Ubuntu is in data/images/control-vm-disk.qcow2
+					   The img is stored in data/images/control-vm-disk.qcow2
+
+		               data/artifacts :  Artifacts are stored here ->
+					   1. user-data.txt -> startup script
+					   2. meta-data     -> instance-id and hostname for discovery, etc.
+					   3. user-data.img -> Uses user-data.txt for init - ran during boot.
+
+				       View attached Disks : virsh dumpxml control
+
+	*/
+
 	// Get Artifacts Path for VM - i.e Resolve data/images and append VM name
 	log.Printf("Images Path : %s , Artifacts Path : %s", imgsPath.Get(), artifactsPath.Get())
 
@@ -370,6 +404,45 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 	}
 
 	return vmConfig
+}
+
+// GetDomainConfig prints the expected artifacts for a Domain
+func GetDomainConfig(domain string) {
+	//	1. Uses base ubuntu image to generate a VM specific img
+	//  vmConfig.PullImage()
+	// vmConfig.CreateBaseImage()
+	//	This servers as the primary image - in data/images/control-vm-disk.qcow2
+	baseImgPath := "data/images/" + domain + "-vm-disk.qcow2"
+
+	// 2. Create additional Disks if they are present
+	// vmConfig.CreateDisks()
+	// for each vmConfig.disks - a Disk is created specified by the path on
+	// data/artifacts/vm/disks/
+	additionalDisks := "data/artifacts/" + domain + "/<disks>"
+
+	// 3. Mount the Disks for the VM on system to copy systemd and boot files
+	// sudo guestmount -a d/i/vm.qcow2 -i --rw /mnt/control
+	// Then delete the /mnt/<vm>
+	// Note: if no bootfiles or systemd required - does nothing
+	// vmC.SetupVM()
+
+	tempMntPath := "/mnt/" + domain
+	log.Println(baseImgPath, additionalDisks, tempMntPath)
+
+	// 4. Generate user-data.txt + meta-data , then use that to generate user-data.img
+	// vmConfig.GenerateCloudInitImgFromPath
+	userdata := "data/artifacts/" + domain + "/userdata/"
+
+	userData, metadata := userdata+"user-data.txt", userdata+"meta-data"
+	userDataImg := userdata + "user-data.img"
+
+	log.Printf("Creating %s with init config , %s with Metadata for Discovery - and using both to generate user data img at %s", userData, metadata, userDataImg)
+
+	// 5. Create the VM using virt-install.
+	// no artifacts produced for this
+	// currently disks generated in data/artifacts/vm/
+
+	log.Println("View attached disks: virsh dumpxml control")
 }
 
 func cleanupNodes(nodes []string, confirm bool) {
