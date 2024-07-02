@@ -2,6 +2,7 @@ package vm
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"log"
@@ -17,9 +18,11 @@ import (
 	"kvmgo/network"
 	"kvmgo/types/fpath"
 	"kvmgo/utils"
+
+	"gopkg.in/yaml.v2"
 )
 
-type VMConfig struct {
+type VMConfigY struct {
 	VMName         string
 	InlineUserdata string
 	ImageURL       string
@@ -42,6 +45,51 @@ type VMConfig struct {
 	ImagesPathFP    fpath.FilePath
 	DisksPathFP     fpath.FilePath
 	createDirsInit  bool
+}
+
+func (vm *VMConfig) YAML() (string, error) { // Convert to YAML
+	yamlData, err := yaml.Marshal(&vm)
+	if err != nil {
+		return "", err
+	}
+
+	return string(yamlData), nil
+}
+
+type VMConfig struct {
+	VMName          string       `json:"vm_name" yaml:"vm_name"`
+	InlineUserdata  string       `json:"inline_userdata" yaml:"inline_userdata"`
+	ImageURL        string       `json:"image_url" yaml:"image_url"`
+	ImagesDir       string       `json:"images_dir" yaml:"images_dir"`
+	BootFilesDir    string       `json:"boot_files_dir" yaml:"boot_files_dir"`
+	ScriptsDir      string       `json:"scripts_dir" yaml:"scripts_dir"`
+	BootScript      string       `json:"boot_script" yaml:"boot_script"`
+	SystemdScript   string       `json:"systemd_script" yaml:"systemd_script"`
+	UserData        string       `json:"user_data" yaml:"user_data"`
+	RootDir         string       `json:"root_dir" yaml:"root_dir"`
+	CPUCores        int          `json:"cpu_cores" yaml:"cpu_cores"`
+	Memory          int          `json:"memory" yaml:"memory"`
+	EnableServices  []string     `json:"enable_services" yaml:"enable_services"`
+	Artifacts       []string     `json:"artifacts" yaml:"artifacts"`
+	Disks           []DiskConfig `json:"disks" yaml:"disks"`
+	sshPub          string
+	ArtifactPath    string         `json:"artifact_path" yaml:"artifact_path"`
+	ArtifactsPathFP fpath.FilePath `json:"artifacts_path_fp" yaml:"artifacts_path_fp"`
+	ImagesPathFP    fpath.FilePath `json:"images_path_fp" yaml:"images_path_fp"`
+	DisksPathFP     fpath.FilePath `json:"disks_path_fp" yaml:"disks_path_fp"`
+	CreateDirsInit  bool           `json:"create_dirs_init" yaml:"create_dirs_init"`
+}
+
+func (fp FilePathWrapper) MarshalYAML() (interface{}, error) {
+	return fp.Get(), nil
+}
+
+func (fp FilePathWrapper) MarshalJSON() ([]byte, error) {
+	return json.Marshal(fp.Get())
+}
+
+type FilePathWrapper struct {
+	fpath.FilePath
 }
 
 // DiskConfig used to manage disks for a VM - methods to add and backup Disks.
@@ -89,7 +137,7 @@ func (d DiskConfig) QcowName() string {
 // Call to get Paths of qcow Disks - at data/artifacts/vmname/disks/diskn.qcow etc.
 func (config *VMConfig) GetDiskPaths() []string {
 	var diskPaths []string
-	for _, disk := range config.disks {
+	for _, disk := range config.Disks {
 		diskPaths = append(diskPaths, filepath.Join(config.DisksPath(), disk.QcowName()))
 	}
 	return diskPaths
@@ -98,7 +146,7 @@ func (config *VMConfig) GetDiskPaths() []string {
 // Create the Disk Paths for VM's Disk Images
 func (config *VMConfig) GetDiskPathsFP() ([]fpath.FPath, error) {
 	var diskPaths []fpath.FPath
-	for _, disk := range config.disks {
+	for _, disk := range config.Disks {
 		fp, err := fpath.NewPath(filepath.Join(config.DisksPath(), disk.QcowName()), false)
 		if err != nil {
 			log.Printf("Failed to Create Abs Path for VM Secondary Disks. ERROR:%s", err)
@@ -168,7 +216,7 @@ func (config *VMConfig) InitDirs(diskConfig DiskConfig) *VMConfig {
 
 // Add another Disk for the VM - such as a Persistent vdb disk for OpenEBS
 func (config *VMConfig) AddDisk(diskConfig DiskConfig) *VMConfig {
-	config.disks = append(config.disks, diskConfig)
+	config.Disks = append(config.Disks, diskConfig)
 	return config
 }
 
@@ -180,6 +228,10 @@ func (config *VMConfig) SetPubkey(sshpubpath string) *VMConfig {
 
 func (config *VMConfig) SetCores(vcpus int) *VMConfig {
 	config.CPUCores = vcpus
+	if vcpus == 0 {
+		config.CPUCores = 1
+	}
+
 	return config
 }
 
@@ -193,6 +245,9 @@ func (config *VMConfig) SetCloudInitDataInline(cloudInitUserData string) *VMConf
 
 func (config *VMConfig) SetMemory(memory_mb int) *VMConfig {
 	config.Memory = memory_mb
+	if memory_mb == 0 {
+		config.Memory = 2048
+	}
 	return config
 }
 
@@ -245,10 +300,11 @@ func (config *VMConfig) DefaultUserData() *VMConfig {
 }
 
 func (s *VMConfig) PullImage() {
-	log.Print(utils.TurnSuccess(fmt.Sprintf("Old s.ImagesDir:%s | New ImgsDir %s",
-		s.ImagesDir, s.ImagesPathFP.Get())))
+	log.Print(utils.TurnSuccess(fmt.Sprintf("Old s.ImagesDir:%s | New ImgsDir %s | Images URL: %s",
+		s.ImagesDir, s.ImagesPathFP.Get(), s.ImageURL)))
 
-	err := utils.PullImage(s.ImageURL, s.ImagesDir)
+	// err := utils.PullImage(s.ImageURL, s.ImagesDir)
+	err := utils.PullImage(s.ImageURL, s.ImagesPathFP.Get())
 	if err != nil {
 		slog.Error("Failed HTTP GET", "error", err)
 		os.Exit(1)
@@ -493,7 +549,7 @@ func (s *VMConfig) CreateDisks() error {
 		log.Fatalf("FAILURE Generating Secondary Disks : %s", err)
 	}
 
-	for _, disk := range s.disks {
+	for _, disk := range s.Disks {
 		diskPathQemu, err := disk.DiskPathFP.Relative()
 		log.Printf("Relative Path returned for disk creation:%s", diskPathQemu)
 		if err != nil {
@@ -634,7 +690,7 @@ func (s *VMConfig) CreateVM() error {
 
 	// Add Disks to the VM
 	// Using FilePath type to get the Relative Command Path
-	for _, diskPath := range s.disks {
+	for _, diskPath := range s.Disks {
 		relativePath, err := diskPath.DiskPathFP.Relative()
 		if err != nil {
 			log.Fatalf("ERROR:%s", err)

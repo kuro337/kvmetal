@@ -46,7 +46,7 @@ func (d *Domain) GetAllIPs() (*DomainIPs, error) {
 		results = append(results, IPResult{Source: src.Name, IPs: ips})
 	}
 
-	domainIPs := &DomainIPs{DomainName: d.name, Results: results}
+	domainIPs := &DomainIPs{DomainName: d.Name, Results: results}
 
 	return domainIPs, nil
 }

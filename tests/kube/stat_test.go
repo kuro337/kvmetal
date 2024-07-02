@@ -52,12 +52,4 @@ func TestNodesCtrl(t *testing.T) {
 	if _, err := join.VerifyNodes(control, workers); err != nil {
 		t.Logf("error from verify nodes: %s\n", err)
 	}
-
-	/*
-		resp, _ := control.CheckNodesN()
-
-		for _, res := range resp {
-			t.Logf("%+v\n", res)
-		}
-	*/
 }

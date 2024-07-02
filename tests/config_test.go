@@ -10,10 +10,17 @@ import (
 	"strings"
 	"testing"
 
+	"kvmgo/cli"
 	"kvmgo/configuration/presets"
 	"kvmgo/constants"
 	"kvmgo/utils"
 )
+
+func TestMinimal(t *testing.T) {
+	if err := cli.TestLaunchConf("control"); err != nil {
+		t.Logf("ERROR :%s\n", err)
+	}
+}
 
 func TestCloudInitValidSchema(t *testing.T) {
 	hadoop_userdata := presets.CreateKafkaUserData("ubuntu",

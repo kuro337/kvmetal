@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"kvmgo/configuration/presets"
 	"kvmgo/constants"
@@ -137,10 +138,11 @@ func Evaluate(ctx context.Context, wg *sync.WaitGroup) {
 
 	switch config.Action {
 	case Launch: // k8 cluster
-		launchCluster(config.Control, config.Workers)
+		launchClusterNew("control", []string{"worker"})
+		// launchCluster(config.Control, config.Workers)
 	case Join:
-		// log.Println("Join Nodes: ", config.KubeJoin)
-		join.JoinNodes(config.KubeJoin)
+		// join.JoinNodes(config.KubeJoin)
+		join.JoinNodesCluster(config.KubeJoin)
 	case Cleanup:
 		cleanupNodes(config.Cleanup, config.Confirm)
 	case Running:
@@ -166,7 +168,7 @@ const (
 )
 
 type Config struct {
-	VM           string
+	// VM           string
 	Action       Action
 	Cluster      bool
 	Cleanup      []string
@@ -177,8 +179,8 @@ type Config struct {
 	CPU          int
 	SSH          string
 	BootScript   string
-	Userdata     string
-	UserdataFile string
+	Userdata     string // Inline Userdata from presets
+	UserdataFile string // Optional file on disk with userdata
 	Help         bool
 	Preset       string
 	Confirm      bool
@@ -189,7 +191,7 @@ type Config struct {
 func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 	var action Action
 
-	vm := flag.String("vm", "", "Virtual Machine (Domain Name)")
+	// vm := flag.String("vm", "", "Virtual Machine (Domain Name)")
 	cpu := flag.String("cpu", "", "Specify Cores for the VM")
 	help := flag.Bool("help", false, "View Help for kVM application")
 	join := flag.String("join", "", "Join Kubernetes Nodes")
@@ -239,7 +241,7 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 	}
 
 	if *cluster {
-		action = Launch
+		action = Launch // Launch Kube control + workers
 	} else if *cleanup != "" {
 		action = Cleanup
 	} else if *running {
@@ -251,7 +253,7 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 	}
 
 	config := &Config{
-		VM:      *vm,
+		//	VM:      *vm,
 		Name:    *launch_vm,
 		Action:  action,
 		Cluster: *cluster,
@@ -306,7 +308,7 @@ func joinKubeNodes(joinStr string) error {
 	return err
 }
 
-// launchVM launches a VM from a Preset Config
+// launchVM launches a VM from a Preset Config using the config
 func launchVM(launchConfig Config) {
 	vmConfig := CreateVMConfig(launchConfig)
 	if _, err := vm.LaunchNewVM(vmConfig); err != nil {
@@ -314,9 +316,102 @@ func launchVM(launchConfig Config) {
 	}
 }
 
+func TestLaunchConf(controlNode string) error {
+	fmt.Printf("Launching control node: %s\n", controlNode)
+
+	controlConf := GetKubeLaunchConfig(controlNode, true)
+	_, err := vm.LaunchNewVM(controlConf)
+	if err != nil {
+		log.Printf("Error launching test new VM: %s\n", err)
+		return err
+	}
+
+	yaml, err := controlConf.YAML()
+	if err != nil {
+		log.Printf("Error Marshalling: %s\n", err)
+	}
+
+	log.Printf("YAML:\n%s\n", yaml)
+
+	return nil
+}
+
+// launchCluster launches a kube predefined cluster with passed specs
+func launchClusterNew(controlNode string, workerNodes []string) error {
+	timeout := time.After(5 * time.Minute)
+
+	n := len(workerNodes) + 1
+	errc := make(chan error)
+
+	fmt.Printf("Launching control node: %s\n", controlNode)
+
+	for _, worker := range workerNodes {
+		go func(w string) {
+			// log.Println("Waiting for 5s before launching workers")
+			// time.Sleep(5 * time.Second)
+
+			workerConf := GetKubeLaunchConfig(w, false)
+			_, err := vm.LaunchNewVM(workerConf)
+			errc <- err
+		}(worker)
+	}
+
+	go func() {
+		controlConf := GetKubeLaunchConfig(controlNode, true)
+		_, err := vm.LaunchNewVM(controlConf)
+		errc <- err
+
+		yaml, err := controlConf.YAML()
+		if err != nil {
+			log.Printf("Error Marshalling: %s\n", err)
+		}
+
+		log.Printf("YAML:\n%s\n", yaml)
+	}()
+
+	for i := 0; i < n; i++ {
+		select {
+		case <-timeout:
+			log.Printf("Timed out - returning")
+			close(errc)
+			return fmt.Errorf("Timed Out")
+		case err := <-errc:
+			if err != nil {
+				return fmt.Errorf("Failed vm.LaunchNewVM(vmConfig) go_err ERROR:%s,", err)
+			}
+		}
+	}
+	close(errc)
+
+	log.Printf(utils.TurnSuccess("Successfully Launched Cluster"))
+
+	// await domains using lvirt
+	//_, err := lib.AwaitDomains(append(workerNodes, controlNode))
+	//if err != nil {
+	//	return err
+	//}
+
+	log.Printf(utils.TurnSuccess("Cluster Nodes are initalized"))
+	// return nil
+
+	nodes := append([]string{controlNode}, workerNodes...)
+
+	log.Printf("Node Concatted: %+v\n", nodes)
+
+	// waits for kubeadm init and for runcmd to work
+	if _, err := join.JoinNodesCluster(nodes); err != nil {
+		return err
+	}
+
+	log.Printf(utils.TurnSuccess("Successfully Joined the Cluster - functional and ready for deployments."))
+
+	return nil
+}
+
 // launchCluster launches a kube predefined cluster with passed specs
 func launchCluster(controlNode string, workerNodes []string) {
 	fmt.Printf("Launching control node: %s\n", controlNode)
+
 	for _, worker := range workerNodes {
 		if worker != "" {
 			log.Printf("NOTE:PLACEHOLDER. Actually Launches 1 Control + 1 Worker.Launching worker node: %s with control node: %s\n", worker, controlNode)
@@ -329,6 +424,11 @@ func launchCluster(controlNode string, workerNodes []string) {
 }
 
 // CreateVMConfig initializes the Configuration according to the Preset
+// Required:
+//   - config.Name required
+//   - config.Userdata for cloud-init
+//   - config.SshPub
+//   - config.Preset
 func CreateVMConfig(config Config) *vm.VMConfig {
 	if config.UserdataFile != "" && config.Userdata != "" {
 		utils.LogWarning("Both User Data and --preset cannot be used. --preset overrides.")
@@ -381,8 +481,8 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 		SetImagesDir(imgsPath.Abs()).
 		SetArtifactsDir(artifactsPath.Abs()).
 		SetUserData(config.UserdataFile).
-		SetCores(config.CPU).
-		SetMemory(config.Memory).
+		SetCores(config.CPU).     // defaults to 1
+		SetMemory(config.Memory). // defaults to 2048
 		SetPubkey(constants.SshPub).
 		SetCloudInitDataInline(config.Userdata).
 		SetArtifactPath(*artifactsPath).
@@ -393,7 +493,11 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 	if isk8(config.Preset) { // for OpenEBS disk management
 		// Path created as data/artifacts/vm1/vm1-openebs-disk.qcow2
 		openEbsDisk, err := vm.NewDiskConfig(
+			// Defines path for extra disks - data/artifacts/<vm>/disk/...
+
+			// fix this - shud be %s/disk/%s
 			fmt.Sprintf("data/artifacts/%s/%s-openebs-disk.qcow2", config.Name, config.Name),
+
 			// fmt.Sprintf("%s/%s-openebs-disk.qcow2", artifactsBasePath, config.Name),
 			10,
 		)
@@ -510,6 +614,31 @@ func askForConfirmation() bool {
 	}
 	response = strings.TrimSpace(response)
 	return response == "y" || response == "Y"
+}
+
+// GetKubeLaunchConfig will launch a Worker/Control - only domain name required
+func GetKubeLaunchConfig(domain string, control bool) *kvm.VMConfig {
+	config := &Config{
+		Name:   domain,
+		Action: Launch,
+	}
+	config.SSH = utils.ReadFileFatal(constants.SshPub)
+
+	if control {
+		config.Preset = GetKubePreset(true, domain, config.SSH)
+	} else {
+		config.Preset = GetKubePreset(false, domain, config.SSH)
+	}
+
+	return CreateVMConfig(*config)
+}
+
+// GetKubePreset for launching nodes
+func GetKubePreset(control bool, domain, sshpub string) string {
+	if control {
+		return presets.CreateKubeControlPlaneUserData("ubuntu", "password", domain, sshpub, true)
+	}
+	return presets.CreateKubeWorkerUserData("ubuntu", "password", domain, sshpub)
 }
 
 // Generates the VM according to Presets such as Kubernetes, Spark, Hadoop, and more

@@ -6,7 +6,9 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
+	"kvmgo/lib"
 	"kvmgo/network"
 )
 
@@ -26,6 +28,27 @@ type KubeClient struct {
 	RunningNodes []KubectlNodeResp
 	Children     []string
 	role         KubeNode
+
+	dom *lib.Domain
+}
+
+func NewKubeNodeFromDomain(domain *lib.Domain, control bool) (*KubeClient, error) {
+	sshClient, err := domain.NewSSHClient()
+	if err != nil {
+		return nil, err
+	}
+
+	role := Control
+
+	if !control {
+		role = Worker
+	}
+
+	return &KubeClient{
+		domain: domain.Name, client: sshClient, ip: sshClient.IP, role: role,
+		Children: []string{},
+		Nodes:    map[string]KubectlNodeResp{},
+	}, nil
 }
 
 func NewControl(domain string) (*KubeClient, error) {
@@ -50,7 +73,13 @@ func NewWorker(domain string) (*KubeClient, error) {
 	return &KubeClient{domain: domain, client: client, ip: client.IP, role: Worker}, nil
 }
 
+func (c *KubeClient) IP() (string, error) {
+	log.Printf("IP of CLient: %s\n", c.ip)
+	return c.ip, nil
+}
+
 // CheckNodes returns the current nodes active on the Cluster
+
 func (c *KubeClient) CheckNodes() (string, string, error) {
 	// kubectl get nodes
 	out, serr, err := c.client.RunCmd("kubectl get nodes")
@@ -60,6 +89,39 @@ func (c *KubeClient) CheckNodes() (string, string, error) {
 	}
 
 	return out, serr, nil
+}
+
+// CheckNodes returns the current nodes active on the Cluster
+func (c *KubeClient) KubeInitalized() (bool, string, string, error) {
+	// 2 4 8 16 32 64 128 256 512
+
+	retries := 8
+	delay := 5
+	i := 0
+
+	var ferr error
+	errc := ""
+	find := "kubeadm-init.log"
+
+	for i < retries {
+
+		out, serr, err := c.client.RunCmd("ls")
+
+		if err == nil && strings.Contains(out, find) {
+			return true, out, serr, nil
+		}
+
+		wait := delay + (1 << i)
+
+		log.Printf("Failed seeking file attempt #%d , waiting %d seconds. %s", i, wait, err)
+
+		time.Sleep(time.Duration(wait) * time.Second)
+		i++
+		ferr = err
+		errc = serr
+	}
+
+	return false, "", errc, ferr
 }
 
 // GetJoinCmd gets the kubeadm Cluster join command for workers

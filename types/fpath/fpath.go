@@ -1,6 +1,7 @@
 package fpath
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -231,6 +232,14 @@ func (f *FilePath) DeleteDir() error {
 
 func (f *FilePath) Navigate() error {
 	return navigateToPath(f.Get())
+}
+
+func (fp FilePath) MarshalYAML() (interface{}, error) {
+	return fp.Get(), nil
+}
+
+func (fp FilePath) MarshalJSON() ([]byte, error) {
+	return json.Marshal(fp.Get())
 }
 
 func createAbsPathFromRoot(path string) (string, error) {
