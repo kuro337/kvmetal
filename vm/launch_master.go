@@ -142,14 +142,14 @@ func TestNginxDeployment(client *network.VMClient, worker_name string) (bool, er
 	}
 
 	// Expose Nginx
-	if _, _, err := client.RunCommand("kubectl expose deployment nginx --port=80 --type=NodePort"); err != nil {
+	if _, _, err := client.RunCmd("kubectl expose deployment nginx --port=80 --type=NodePort"); err != nil {
 		return false, fmt.Errorf("failed to expose nginx deployment: %v", err)
 	}
 
 	log.Printf("Nginx deployed and exposed")
 
 	// Get the Pod name
-	podName, _, err := client.RunCommand("kubectl get pods -o custom-columns=\":metadata.name\" --no-headers=true")
+	podName, _, err := client.RunCmd("kubectl get pods -o custom-columns=\":metadata.name\" --no-headers=true")
 	if err != nil {
 		return false, fmt.Errorf("failed to get pod name: %v", err)
 	}
@@ -158,7 +158,7 @@ func TestNginxDeployment(client *network.VMClient, worker_name string) (bool, er
 	// Forward Port - run in a goroutine as this is a blocking call
 	var portForwardPID int
 	go func() {
-		output, _, err := client.RunCommand("echo $$; exec kubectl port-forward pod/" + podName + " 8080:80")
+		output, _, err := client.RunCmd("echo $$; exec kubectl port-forward pod/" + podName + " 8080:80")
 		if err != nil {
 			log.Printf("Port forwarding failed: %v", err)
 			return
@@ -174,25 +174,25 @@ func TestNginxDeployment(client *network.VMClient, worker_name string) (bool, er
 	// Small pause to ensure port forwarding set up
 	time.Sleep(2 * time.Second)
 
-	curlOutput, _, err := client.RunCommand("curl http://localhost:8080")
+	curlOutput, _, err := client.RunCmd("curl http://localhost:8080")
 	if err != nil {
 		return false, fmt.Errorf("failed to perform curl request: %v", err)
 	}
 
 	// Terminate port-forwarding once done
 	if portForwardPID != 0 {
-		_, _, err = client.RunCommand(fmt.Sprintf("kill %d", portForwardPID))
+		_, _, err = client.RunCmd(fmt.Sprintf("kill %d", portForwardPID))
 		if err != nil {
 			log.Printf("Failed to kill port-forward process: %v", err)
 		}
 	}
 
-	_, _, err = client.RunCommand("kubectl delete deployment nginx")
+	_, _, err = client.RunCmd("kubectl delete deployment nginx")
 	if err != nil {
 		return false, fmt.Errorf("failed to delete deployment: %v", err)
 	}
 
-	_, _, err = client.RunCommand("kubectl delete svc nginx")
+	_, _, err = client.RunCmd("kubectl delete svc nginx")
 	if err != nil {
 		return false, fmt.Errorf("failed to delete deployment: %v", err)
 	}

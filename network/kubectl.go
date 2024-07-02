@@ -26,7 +26,7 @@ Usage:
 func (vm *VMClient) ManageDeployment(deploymentName, imageName string) (string, error) {
 	// First, check if the deployment already exists
 	checkCmd := fmt.Sprintf("kubectl get deployment %s", deploymentName)
-	output, _, err := vm.RunCommand(checkCmd)
+	output, _, err := vm.RunCmd(checkCmd)
 	if err == nil && strings.Contains(output, deploymentName) {
 		// Deployment already exists
 		return "Deployment already exists", nil
@@ -37,7 +37,7 @@ func (vm *VMClient) ManageDeployment(deploymentName, imageName string) (string, 
 
 	log.Printf("Kicking off Deployment: %s", createCmd)
 
-	_, stderr, err := vm.RunCommand(createCmd)
+	_, stderr, err := vm.RunCmd(createCmd)
 	if err != nil {
 		if strings.Contains(stderr, "already exists") {
 			// If the error is because the deployment already exists, it's not an actual error
@@ -77,7 +77,7 @@ func (vm *VMClient) WaitForDeploymentReadiness(deploymentName string) (bool, err
 	deploymentRetryIntervals := []int{10, 15, 25, 30, 45} // Retry intervals in seconds
 
 	for i, interval := range deploymentRetryIntervals {
-		podNames, _, err := vm.RunCommand(fmt.Sprintf("kubectl get pods -l app=%s -o jsonpath='{.items[*].metadata.name}'", deploymentName))
+		podNames, _, err := vm.RunCmd(fmt.Sprintf("kubectl get pods -l app=%s -o jsonpath='{.items[*].metadata.name}'", deploymentName))
 		if err != nil {
 			// Log error but don't return immediately. Continue retrying.
 			utils.LogError(fmt.Sprintf("Error listing pods for deployment %s in retry %d: %v", deploymentName, i, err))
