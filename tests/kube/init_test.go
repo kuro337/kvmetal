@@ -4,8 +4,29 @@ import (
 	"strings"
 	"testing"
 
+	"kvmgo/kube"
 	kssh "kvmgo/network/ssh"
 )
+
+func TestKubeadmInit(t *testing.T) {
+	controlDomain := "control"
+
+	control, err := kube.NewControl(controlDomain)
+	if err != nil {
+		t.Errorf("Error:%s", err)
+	}
+
+	f, out, serr, err := control.KubeInitalized()
+	if err != nil {
+		t.Errorf("Error:%s %s", serr, err)
+	}
+
+	if f {
+		t.Log("init file found, kubeadm initalized")
+	}
+
+	t.Logf("Output: %s , serr: %s\n", out, serr)
+}
 
 func TestKubeInit(t *testing.T) {
 	worker := "worker"

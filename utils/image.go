@@ -21,6 +21,7 @@ func PullImage(url, dir string) error {
 	imageName := filepath.Base(url)
 	imagePath := filepath.Join(dir, imageName)
 
+	log.Printf("URL:%s, Dir:%s, ImgPath: %s\n", url, dir, imagePath)
 	if ImageExists(imageName, dir) {
 		log.Printf("Image %s already exists", imageName)
 		return nil

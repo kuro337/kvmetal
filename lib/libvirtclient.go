@@ -3,13 +3,135 @@ package lib
 import (
 	"fmt"
 	"log"
+	"slices"
+	"time"
 
 	"libvirt.org/go/libvirt"
 	libvirtxml "libvirt.org/libvirt-go-xml"
 )
 
 type VirtClient struct {
-	conn libvirt.Connect
+	conn    *libvirt.Connect
+	domains map[string]*Domain
+}
+
+/* Connect to Libvirt and Return the Client */
+func ConnectLibvirt() (*VirtClient, error) {
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		log.Printf("Error Connecting %s", err)
+		return nil, err
+	}
+
+	return &VirtClient{conn: conn, domains: make(map[string]*Domain)}, nil
+}
+
+func (v *VirtClient) Close() {
+	v.Close()
+}
+
+func (v *VirtClient) GetDomSlice() []*Domain {
+	var doms []*Domain
+
+	for _, d := range v.domains {
+		doms = append(doms, d)
+	}
+
+	return doms
+}
+
+// AwaitDomains will wait until Domains are Ready and if they do not become Ready, returns an Error
+func AwaitDomains(domains []string) (*VirtClient, map[string]*Domain, error) {
+	l, err := ConnectLibvirt()
+	if err != nil {
+		return nil, nil, fmt.Errorf("Error Connecting %s", err)
+	}
+
+	// defer l.conn.Close()
+
+	for _, d := range domains {
+		if err := l.AddDomain(d); err != nil {
+			return nil, nil, err
+		}
+	}
+
+	log.Printf("Domains Added: %d\n", len(l.domains))
+
+	if err := l.Running(); err != nil {
+		return nil, nil, err
+	}
+
+	return l, l.domains, nil
+}
+
+// Checks if all the Domains are running
+func (v *VirtClient) Running() error {
+	retries := 3
+	doms := v.GetDomSlice()
+
+	delay := 5
+
+	i := 0
+
+	for i < retries {
+
+		for j := 0; j < len(doms); {
+			r, err := doms[j].IsRunning()
+			if err != nil {
+				return fmt.Errorf("Error: %s", err)
+			}
+
+			if r {
+				doms = slices.Delete(doms, j, j+1)
+			} else {
+				j++
+			}
+		}
+
+		if len(doms) == 0 {
+			break
+		}
+
+		// 3 , 2 , 1
+
+		time.Sleep(time.Duration(delay * (i + 1)))
+
+		i++
+	}
+
+	if i == retries && len(doms) > 0 {
+		return fmt.Errorf("Not all domains are stopped after retries")
+	}
+
+	return nil
+}
+
+func (v *VirtClient) AddDomain(domain string) error {
+	retries := 8
+	delay := 5
+	i := 0
+
+	var ferr error
+
+	for i < retries {
+
+		dom, err := NewDomain(v.conn, domain)
+
+		if err == nil {
+			v.domains[domain] = dom
+			ip, _ := dom.IP()
+			log.Println("DOM IP: " + ip)
+			return nil
+		}
+
+		wait := delay + (1 << i)
+		log.Printf("Failed getting domain attempt %d - sleeping %d seconds. Error:%s", i, wait, err)
+
+		time.Sleep(time.Duration(wait) * time.Second)
+		i++
+		ferr = err
+	}
+	return fmt.Errorf("Failed getting domain attempt %d Error:%s", i, ferr)
 }
 
 // ListInterfaces() lists all Active Network Interfaces
@@ -66,7 +188,7 @@ func (v *VirtClient) GetDomain(domain string) (*Domain, error) {
 		log.Printf("Failed Lookup Domain %s", domain)
 		return nil, err
 	}
-	return &Domain{name: domain, domain: dom}, nil
+	return &Domain{Name: domain, domain: dom}, nil
 }
 
 // Parses the XML for a Domain and Prints it
@@ -95,15 +217,4 @@ func (v *VirtClient) ParseXML(domain string) (*libvirtxml.Domain, error) {
 	fmt.Printf("Virt type %s\n", domcfg.Type)
 
 	return domcfg, nil
-}
-
-/* Connect to Libvirt and Return the Client */
-func ConnectLibvirt() (*VirtClient, error) {
-	conn, err := libvirt.NewConnect("qemu:///system")
-	if err != nil {
-		log.Printf("Error Connecting %s", err)
-		return nil, err
-	}
-
-	return &VirtClient{conn: *conn}, nil
 }

@@ -10,7 +10,105 @@ import (
 
 	"kvmgo/kube"
 	"kvmgo/network"
+	"kvmgo/utils"
 )
+
+func JoinNodesCluster(nodes []string) ([]string, error) {
+	log.Printf(utils.TurnSuccess("Starting Join Nodes Cluster"))
+	controlDomain := nodes[0]
+
+	n := len(nodes)
+
+	if n < 2 {
+		return nil, errors.New("Not enough nodes to form a cluster")
+	}
+
+	cluster, err := kube.NewCluster(controlDomain, nodes)
+	if err != nil {
+		return nil, err
+	}
+
+	slices.Sort(nodes)
+
+	log.Println(controlDomain)
+
+	// here THe ip is not ready even tho lvirt domain is ready
+	control := cluster.ControlNode()
+
+	// wait for kubeadm-init.log to be available
+	// this could be the longesT wait
+	if _, _, _, err := control.KubeInitalized(); err != nil {
+		return nil, err
+	}
+
+	log.Printf(utils.TurnSuccess("Successfully Initalized kubeadm"))
+
+	joinCmd, serr, err := control.GetJoinCmd()
+	if err != nil {
+		return nil, fmt.Errorf("Error:%s %s", serr, err)
+	}
+
+	log.Println(joinCmd)
+
+	ch := make(chan error, n-1)
+
+	wnodes := cluster.Workers()
+
+	//    }
+
+	//    for _, node := range wnodes {
+	for i := 1; i < n; i++ {
+		go func(node string) {
+			wn, ok := wnodes[node]
+			if !ok {
+				ch <- fmt.Errorf("Domain was not found in cluster")
+			}
+
+			_, err := wn.RunJoinCmd(joinCmd)
+			// _, err := RunJoinCmdNew(node, joinCmd)
+			ch <- err
+		}(nodes[i])
+	}
+
+	var errs strings.Builder
+
+	for i := 1; i < n; i++ {
+		err := <-ch
+		if err != nil {
+			errs.WriteString(fmt.Sprintf("Failed to join: %s. ", err))
+		}
+	}
+
+	close(ch)
+
+	str := errs.String()
+	if str != "" {
+		return nil, fmt.Errorf("All workers were not joined successfully. %s", str)
+	}
+
+	log.Println("Nodes were joined successfully, checking for Join Status")
+
+	var joinedNodes []string
+
+	backoffs := 5
+
+	for i := 0; i < backoffs; i++ {
+		secs := 5 * (i + 1)
+		log.Printf("Pausing %d Seconds before checking kubectl get nodes\n", secs)
+
+		time.Sleep(time.Duration(secs) * time.Second)
+		joined, err := VerifyNodes(control, nodes)
+		joinedNodes = joined
+		if err != nil {
+			log.Printf("error from verify nodes: %s\n", err)
+		}
+		if len(joined) >= n {
+			return joined, nil
+		}
+	}
+
+	return joinedNodes, fmt.Errorf("Not able to confirm all nodes are Actively running")
+}
 
 // JoinNodes joins the worker nodes with the Control Node for kubernetes
 func JoinNodes(nodes []string) ([]string, error) {
@@ -23,12 +121,21 @@ func JoinNodes(nodes []string) ([]string, error) {
 		return nil, errors.New("Not enough nodes to form a cluster")
 	}
 
-	fmt.Println(controlDomain)
+	log.Println(controlDomain)
 
+	// here THe ip is not ready even tho lvirt domain is ready
 	control, err := kube.NewControl(controlDomain)
 	if err != nil {
 		return nil, fmt.Errorf("Error:%s", err)
 	}
+
+	// wait for kubeadm-init.log to be available
+	// this could be the longesT wait
+	if _, _, _, err := control.KubeInitalized(); err != nil {
+		return nil, err
+	}
+
+	log.Printf(utils.TurnSuccess("Successfully Initalized kubeadm"))
 
 	joinCmd, serr, err := control.GetJoinCmd()
 	if err != nil {
@@ -62,14 +169,16 @@ func JoinNodes(nodes []string) ([]string, error) {
 		return nil, fmt.Errorf("All workers were not joined successfully. %s", str)
 	}
 
-	log.Println("Pausing 5 Seconds before checking kubectl get nodes")
+	log.Println("Nodes were joined successfully, checking for Join Status")
 
 	var joinedNodes []string
 
-	backoffs := 3
+	backoffs := 5
 
 	for i := 0; i < backoffs; i++ {
 		secs := 5 * (i + 1)
+		log.Printf("Pausing %d Seconds before checking kubectl get nodes\n", secs)
+
 		time.Sleep(time.Duration(secs) * time.Second)
 		joined, err := VerifyNodes(control, nodes)
 		joinedNodes = joined

@@ -100,6 +100,18 @@ func ListDomainXML(conn *libvirt.Connect, domain *libvirt.Domain) error {
 	return nil
 }
 
+func WaitUntilReady(domains []string) error {
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		return fmt.Errorf("Error Connecting %s", err)
+	}
+	defer conn.Close()
+
+	ListAllDomains(conn)
+
+	return nil
+}
+
 // GetDomainInfo prints the Domains Info such as current state and Memory and CPU allocated
 func GetDomainInfo(conn *libvirt.Connect, domain string) error {
 	dom, err := conn.LookupDomainByName(domain)
