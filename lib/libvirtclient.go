@@ -91,11 +91,7 @@ func (v *VirtClient) Running() error {
 		if len(doms) == 0 {
 			break
 		}
-
-		// 3 , 2 , 1
-
 		time.Sleep(time.Duration(delay * (i + 1)))
-
 		i++
 	}
 

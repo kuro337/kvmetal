@@ -566,6 +566,7 @@ func (s *VMConfig) CreateDisks() error {
 	// uses artifacts dir and hcoded + "disks"
 	utils.CreateDirIfNotExist(s.DisksPath())
 
+	fpath.LogCwd()
 	log.Print("Creating VM Disks")
 	err := s.navigateToAbsPath(s.DisksPath())
 	if err != nil {
@@ -573,8 +574,22 @@ func (s *VMConfig) CreateDisks() error {
 	}
 
 	for _, disk := range s.Disks {
+
 		diskPathQemu, err := disk.DiskPathFP.Relative()
+
 		log.Printf("Relative Path returned for disk creation:%s", diskPathQemu)
+
+		/*
+
+					   Wrong : Relative Path returned for disk creation:../../../images/data/artifacts/worker/worker-openebs-disk.qcow2
+
+					   Running qemu-img to create disk : qemu-img create -f qcow2 ../../../images/data/artifacts/worker/worker-openebs-disk.qcow2 10G
+
+			Relative Path returned for disk creation:../control-openebs-disk.qcow2
+
+			2024/07/03 01:57:49 image.go:158: Running q
+				fpath.LogCwd()
+		*/
 		if err != nil {
 			log.Fatalf("Failed to Get Relative Disk Path for QEMU Create. ERROR:%s", err)
 		}
