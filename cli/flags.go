@@ -333,6 +333,7 @@ func TestLaunchConf(controlNode string) error {
 		log.Printf("Error Marshalling: %s\n", err)
 	}
 
+	fmt.Println(utils.LogMainAction(fmt.Sprintf("Yaml Generated")))
 	log.Printf("YAML:\n%s\n", yaml)
 
 	return nil
