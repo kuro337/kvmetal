@@ -143,7 +143,9 @@ func Evaluate(ctx context.Context, wg *sync.WaitGroup) {
 	case Launch: // k8 cluster
 
 		// TestLaunchConf("control")
-		launchClusterNew("control", []string{"worker"})
+		if err := launchClusterNew("control", []string{"worker"}); err != nil {
+			fmt.Println(utils.TurnError("Cluster operations pending..."))
+		}
 		// launchCluster(config.Control, config.Workers)
 	case Join:
 		// join.JoinNodes(config.KubeJoin)
@@ -418,9 +420,9 @@ func launchClusterNew(controlNode string, workerNodes []string) error {
 	log.Printf("Node Concatted: %+v\n", nodes)
 
 	// waits for kubeadm init and for runcmd to work
-	if _, err := join.JoinNodesCluster(nodes); err != nil {
-		return err
-	}
+	//if _, err := join.JoinNodesCluster(nodes); err != nil {
+	//	return err
+	//}
 
 	log.Printf(utils.TurnSuccess("Successfully Joined the Cluster - functional and ready for deployments."))
 

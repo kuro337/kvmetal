@@ -28,8 +28,6 @@ func JoinNodesCluster(nodes []string) ([]string, error) {
 		return nil, err
 	}
 
-	slices.Sort(nodes)
-
 	log.Println(controlDomain)
 
 	// here THe ip is not ready even tho lvirt domain is ready
