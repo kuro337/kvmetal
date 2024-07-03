@@ -138,7 +138,9 @@ func Evaluate(ctx context.Context, wg *sync.WaitGroup) {
 
 	switch config.Action {
 	case Launch: // k8 cluster
-		launchClusterNew("control", []string{"worker"})
+
+		TestLaunchConf("control")
+		// launchClusterNew("control", []string{"worker"})
 		// launchCluster(config.Control, config.Workers)
 	case Join:
 		// join.JoinNodes(config.KubeJoin)
