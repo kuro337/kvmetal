@@ -377,24 +377,22 @@ func TestLaunchConf(controlNode string) error {
 func launchClusterNew(controlNode string, workerNodes []string) error {
 	timeout := time.After(5 * time.Minute)
 
-	// n := len(workerNodes) + 1
-	n := 1
+	n := len(workerNodes) + 1
+
 	errc := make(chan error)
 
 	fmt.Printf("Launching control node: %s\n", controlNode)
 
-	/*
-		for _, worker := range workerNodes {
-			go func(w string) {
-				// log.Println("Waiting for 5s before launching workers")
-				// time.Sleep(5 * time.Second)
+	for _, worker := range workerNodes {
+		go func(w string) {
+			// log.Println("Waiting for 5s before launching workers")
+			// time.Sleep(5 * time.Second)
 
-				workerConf := GetKubeLaunchConfig(w, false)
-				_, err := vm.LaunchNewVM(workerConf)
-				errc <- err
-			}(worker)
-		}
-	*/
+			workerConf := GetKubeLaunchConfig(w, false)
+			_, err := vm.LaunchNewVM(workerConf)
+			errc <- err
+		}(worker)
+	}
 
 	go func() {
 		controlConf := GetKubeLaunchConfig(controlNode, true)
@@ -423,9 +421,9 @@ func launchClusterNew(controlNode string, workerNodes []string) error {
 	log.Printf("Node Concatted: %+v\n", nodes)
 
 	// waits for kubeadm init and for runcmd to work
-	//if _, err := join.JoinNodesCluster(nodes); err != nil {
-	//	return err
-	//}
+	if _, err := join.JoinNodesCluster(nodes); err != nil {
+		return err
+	}
 
 	log.Printf(utils.TurnSuccess("Successfully Joined the Cluster - functional and ready for deployments."))
 
@@ -645,6 +643,8 @@ func GetKubeLaunchConfig(domain string, control bool) *kvm.VMConfig {
 	config := &Config{
 		Name:   domain,
 		Action: Launch,
+		CPU:    4,
+		Memory: 4096,
 	}
 	config.SSH = utils.ReadFileFatal(constants.SshPub)
 
