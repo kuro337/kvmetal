@@ -573,26 +573,64 @@ func (s *VMConfig) CreateDisks() error {
 		log.Fatalf("FAILURE Generating Secondary Disks : %s", err)
 	}
 
+	diskPath := s.DisksPath()
+
+	a := s.DisksPathFP.Abs()
+	b, _ := s.DisksPathFP.Relative()
+	c := s.DisksPathFP.Base()
+	d := s.DisksPathFP.Get()
+
+	if utils.PathResolvable(a) {
+		log.Printf("Abs Path Resolvable: %s\n", a)
+	}
+
+	if utils.PathResolvable(b) {
+		log.Printf("Relative Path Resolvable: %s\n", a)
+	}
+	if utils.PathResolvable(c) {
+		log.Printf("Base Path Resolvable: %s\n", a)
+	}
+
+	if utils.PathResolvable(d) {
+		log.Printf("Get Path Resolvable: %s\n", a)
+	}
+
+	log.Printf("VM Disks Path: %s\n", diskPath)
+
 	for _, disk := range s.Disks {
 
 		diskPathQemu, err := disk.DiskPathFP.Relative()
 
+		absPath := disk.DiskPathFP.Abs()
+
+		base := disk.DiskPathFP.Base()
+
+		if utils.PathResolvable(diskPathQemu) {
+			log.Printf("InnerRelative Path Resolvable: %s\n", a)
+		}
+
+		if utils.PathResolvable(absPath) {
+			log.Printf("InnerAbs Path Resolvable: %s\n", a)
+		}
+		if utils.PathResolvable(base) {
+			log.Printf("InnerBase Path Resolvable: %s\n", a)
+		}
+
 		log.Printf("Relative Path returned for disk creation:%s", diskPathQemu)
 
+		log.Printf("Paths: Relative:%s , Abs:%s, Base:%s\n", diskPathQemu, absPath, base)
+
 		/*
-
 					   Wrong : Relative Path returned for disk creation:../../../images/data/artifacts/worker/worker-openebs-disk.qcow2
-
 					   Running qemu-img to create disk : qemu-img create -f qcow2 ../../../images/data/artifacts/worker/worker-openebs-disk.qcow2 10G
-
 			Relative Path returned for disk creation:../control-openebs-disk.qcow2
-
 			2024/07/03 01:57:49 image.go:158: Running q
 				fpath.LogCwd()
 		*/
 		if err != nil {
 			log.Fatalf("Failed to Get Relative Disk Path for QEMU Create. ERROR:%s", err)
 		}
+
 		if err := utils.CreateDiskQCow(diskPathQemu, disk.Size); err != nil {
 			log.Printf(utils.TurnError(fmt.Sprintf("Failed to Create Disk for VM. ERROR:%s,", err)))
 			return err
