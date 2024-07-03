@@ -125,6 +125,26 @@ func (config *VMConfig) SetImagePath(filePath fpath.FilePath) *VMConfig {
 	return config
 }
 
+// WriteConfigYAML saves the YAML Config for the VM
+func (config *VMConfig) WriteConfigYaml() error {
+	if config.ArtifactPath == "" || config.UserData == "" {
+		return fmt.Errorf("Do not call WriteConfig preemptively")
+	}
+
+	yaml, err := config.YAML()
+	if err != nil {
+		return fmt.Errorf("Error Marshalling: %s\n", err)
+	}
+
+	userdataDirPath := filepath.Join(config.ArtifactPath, "userdata", fmt.Sprintf("%s-vmconfig.yaml", config.VMName))
+
+	log.Printf("Saving YAML Configuration at: %s\n", userdataDirPath)
+
+	os.WriteFile(userdataDirPath, []byte(yaml), 0o644)
+
+	return nil
+}
+
 func (config *VMConfig) SetDisksPath(filePath fpath.FilePath) *VMConfig {
 	config.DisksPathFP = filePath
 	return config
@@ -428,6 +448,8 @@ func (config *VMConfig) GenerateCloudInitImgFromPath() error {
 	}
 
 	log.Printf("Successfully created cloud-init disk with user-data and meta-data: %s", outputImgPath)
+
+	config.WriteConfigYaml()
 
 	return nil
 }
