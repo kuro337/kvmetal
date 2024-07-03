@@ -3,9 +3,7 @@ package main
 import (
 	"context"
 	"log"
-	"os/signal"
 	"sync"
-	"syscall"
 
 	"kvmgo/cli"
 )
@@ -13,8 +11,9 @@ import (
 func main() {
 	log.SetFlags(log.Ldate | log.Ltime | log.Lshortfile)
 
-	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
+	// ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	// defer stop()
+	ctx := context.Background()
 
 	var wg sync.WaitGroup
 
@@ -26,7 +25,7 @@ func main() {
 
 	go func() {
 		wg.Wait()
-		stop()
+		// stop()
 	}()
 
 	<-ctx.Done()

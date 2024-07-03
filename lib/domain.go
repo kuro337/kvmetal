@@ -148,10 +148,7 @@ func (d *Domain) IsRunning() (bool, error) {
 
 	log.Printf("Domain %s State: %+v\n", d.Name, info)
 
-	if info.State == libvirt.DOMAIN_RUNNING {
-		return true, nil
-	}
-	return false, nil
+	return info.State == libvirt.DOMAIN_RUNNING, nil
 }
 
 func (d *Domain) GetInfo() error {
