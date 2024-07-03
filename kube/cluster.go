@@ -27,7 +27,9 @@ func (k *KubeCluster) Workers() map[string]*KubeClient {
 	return k.nodes
 }
 
-// New Kube Cluster
+// NewCluster handles initializing the Virtual Domains for a kicked off Kubernetes Deployment
+// Waits until the nodes are reachable and their IP's can be resolved
+// Returns the Cluster with Domains and clients initialized - so we can Join the Nodes & perform the initial Cluster Health Check
 func NewCluster(controlDomain string, nodes []string) (*KubeCluster, error) {
 	cluster := KubeCluster{
 		nodes: make(map[string]*KubeClient),
