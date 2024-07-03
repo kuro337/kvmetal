@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"kvmgo/types/fpath"
 )
 
 const artifacts = "data/artifacts"
@@ -154,6 +156,8 @@ func CreateBaseImage(imageURL, vmName string) (string, error) {
 // qemu-img create -f qcow2 /var/lib/libvirt/images/myvm-openebs-disk.qcow2 50G
 // Pass the full Path of the Disk - create in data/artifacts/vmname/
 func CreateDiskQCow(diskPath string, diskSize int) error {
+	log.Printf("Logging CWD for Disk Creation")
+	fpath.LogCwd()
 	qemuCmd := fmt.Sprintf("qemu-img create -f qcow2 %s %dG", diskPath, diskSize)
 	log.Printf("Running qemu-img to create disk: %s", qemuCmd)
 
