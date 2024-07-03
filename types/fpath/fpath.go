@@ -271,3 +271,14 @@ func navigateToPath(path string) error {
 	}
 	return nil
 }
+
+// LogCwd() logs cwd
+func LogCwd() (string, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Printf("Error getting current working directory: %v", err)
+		return "", err
+	}
+	log.Printf("Current cwd: %s\n", cwd)
+	return cwd, nil
+}
