@@ -377,21 +377,24 @@ func TestLaunchConf(controlNode string) error {
 func launchClusterNew(controlNode string, workerNodes []string) error {
 	timeout := time.After(5 * time.Minute)
 
-	n := len(workerNodes) + 1
+	// n := len(workerNodes) + 1
+	n := 1
 	errc := make(chan error)
 
 	fmt.Printf("Launching control node: %s\n", controlNode)
 
-	for _, worker := range workerNodes {
-		go func(w string) {
-			// log.Println("Waiting for 5s before launching workers")
-			// time.Sleep(5 * time.Second)
+	/*
+		for _, worker := range workerNodes {
+			go func(w string) {
+				// log.Println("Waiting for 5s before launching workers")
+				// time.Sleep(5 * time.Second)
 
-			workerConf := GetKubeLaunchConfig(w, false)
-			_, err := vm.LaunchNewVM(workerConf)
-			errc <- err
-		}(worker)
-	}
+				workerConf := GetKubeLaunchConfig(w, false)
+				_, err := vm.LaunchNewVM(workerConf)
+				errc <- err
+			}(worker)
+		}
+	*/
 
 	go func() {
 		controlConf := GetKubeLaunchConfig(controlNode, true)
