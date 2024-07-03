@@ -3,6 +3,7 @@ package cli
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -312,6 +313,11 @@ func joinKubeNodes(joinStr string) error {
 
 // launchVM launches a VM from a Preset Config using the config
 func launchVM(launchConfig Config) {
+	prettyJSON, _ := json.MarshalIndent(launchConfig, "", "      ")
+	fmt.Printf("CONFIG NON WORKING BEFORE PASSED: %s\n", prettyJSON)
+
+	return
+
 	vmConfig := CreateVMConfig(launchConfig)
 
 	vmConfig.WriteConfigYaml()
@@ -327,6 +333,8 @@ func TestLaunchConf(controlNode string) error {
 	fmt.Printf("Launching control node: %s\n", controlNode)
 
 	controlConf := GetKubeLaunchConfig(controlNode, true)
+
+	return nil
 
 	controlConf.WriteConfigYaml()
 	return nil
@@ -641,6 +649,9 @@ func GetKubeLaunchConfig(domain string, control bool) *kvm.VMConfig {
 	} else {
 		config.Preset = GetKubePreset(false, domain, config.SSH)
 	}
+
+	prettyJSON, _ := json.MarshalIndent(config, "", "      ")
+	fmt.Printf("CONFIG NON WORKING BEFORE PASSED: %s\n", prettyJSON)
 
 	return CreateVMConfig(*config)
 }
