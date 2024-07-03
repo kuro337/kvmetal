@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -185,10 +186,40 @@ type Config struct {
 	Userdata     string // Inline Userdata from presets
 	UserdataFile string // Optional file on disk with userdata
 	Help         bool
-	Preset       string
+	Preset       Preset
 	Confirm      bool
 
 	KubeJoin []string
+}
+
+type Preset string
+
+const (
+	KubeControl Preset = "kubecontrol"
+	KubeWorker  Preset = "kubeworker"
+	Kafka       Preset = "kafka"
+	Hadoop      Preset = "hadoop"
+	KafkaKraft  Preset = "kafka-kraft"
+	Redpanda    Preset = "redpanda"
+)
+
+func StringToPreset(input string) (Preset, error) {
+	switch strings.ToLower(input) {
+	case string(KubeControl):
+		return KubeControl, nil
+	case string(KubeWorker):
+		return KubeWorker, nil
+	case string(Kafka):
+		return Kafka, nil
+	case string(Hadoop):
+		return Hadoop, nil
+	case string(KafkaKraft):
+		return KafkaKraft, nil
+	case string(Redpanda):
+		return Redpanda, nil
+	default:
+		return "", errors.New("invalid preset")
+	}
 }
 
 func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
@@ -264,7 +295,6 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 		Workers: strings.Split(*workers, ","),
 		Help:    *help,
 		Confirm: *confirm,
-		Preset:  *preset,
 	}
 
 	mem, vcpu := ParseMemoryCPU(*memory, *cpu)
@@ -273,7 +303,13 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 	config.SSH = utils.ReadFileFatal(constants.SshPub)
 
 	if *preset != "" {
-		config.Userdata = CreateUserdataFromPreset(ctx, wg, *preset, config.Name, config.SSH)
+
+		Preset, err := StringToPreset(*preset)
+		if err != nil {
+			return nil, err
+		}
+
+		config.Userdata = CreateUserdataFromPreset(ctx, wg, Preset, config.Name, config.SSH)
 	}
 
 	if *join != "" {
@@ -313,16 +349,7 @@ func joinKubeNodes(joinStr string) error {
 
 // launchVM launches a VM from a Preset Config using the config
 func launchVM(launchConfig Config) {
-	prettyJSON, _ := json.MarshalIndent(launchConfig, "", "      ")
-	fmt.Printf("CONFIG NON WORKING BEFORE PASSED: %s\n", prettyJSON)
-
-	return
-
 	vmConfig := CreateVMConfig(launchConfig)
-
-	vmConfig.WriteConfigYaml()
-
-	return
 
 	if _, err := vm.LaunchNewVM(vmConfig); err != nil {
 		log.Printf("Failed vm.LaunchNewVM(vmConfig) go_err ERROR:%s,", err)
@@ -334,24 +361,11 @@ func TestLaunchConf(controlNode string) error {
 
 	controlConf := GetKubeLaunchConfig(controlNode, true)
 
-	return nil
-
-	controlConf.WriteConfigYaml()
-	return nil
-
 	_, err := vm.LaunchNewVM(controlConf)
 	if err != nil {
 		log.Printf("Error launching test new VM: %s\n", err)
 		return err
 	}
-
-	yaml, err := controlConf.YAML()
-	if err != nil {
-		log.Printf("Error Marshalling: %s\n", err)
-	}
-
-	fmt.Println(utils.LogMainAction(fmt.Sprintf("Yaml Generated")))
-	log.Printf("YAML:\n%s\n", yaml)
 
 	return nil
 }
@@ -645,9 +659,11 @@ func GetKubeLaunchConfig(domain string, control bool) *kvm.VMConfig {
 	config.SSH = utils.ReadFileFatal(constants.SshPub)
 
 	if control {
-		config.Preset = GetKubePreset(true, domain, config.SSH)
+		config.Preset = "kubecontrol"
+		config.Userdata = GetKubePreset(true, domain, config.SSH)
 	} else {
-		config.Preset = GetKubePreset(false, domain, config.SSH)
+		config.Preset = "kubeworker"
+		config.Userdata = GetKubePreset(false, domain, config.SSH)
 	}
 
 	prettyJSON, _ := json.MarshalIndent(config, "", "      ")
@@ -665,8 +681,9 @@ func GetKubePreset(control bool, domain, sshpub string) string {
 }
 
 // Generates the VM according to Presets such as Kubernetes, Spark, Hadoop, and more
-func CreateUserdataFromPreset(ctx context.Context, wg *sync.WaitGroup, preset, launch_vm, sshpub string) string {
-	log.Print(utils.TurnValBoldColor("Preset: ", preset, utils.PURP_HI))
+func CreateUserdataFromPreset(ctx context.Context, wg *sync.WaitGroup, preset Preset, launch_vm, sshpub string) string {
+	log.Print(utils.TurnValBoldColor("Preset: ", string(preset), utils.PURP_HI))
+
 	switch preset {
 	case "kafka":
 		return presets.CreateKafkaUserData("ubuntu", "password", launch_vm, sshpub)
@@ -726,8 +743,8 @@ func ResolvePath(path, cliflag string) (string, error) {
 	return absBootScriptPath, err
 }
 
-func isk8(preset string) bool {
-	return preset == "kubecontrol" || preset == "kubeworker"
+func isk8(preset Preset) bool {
+	return preset == KubeControl || preset == KubeWorker
 }
 
 var (

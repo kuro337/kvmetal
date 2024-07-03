@@ -255,6 +255,7 @@ func (config *VMConfig) SetCores(vcpus int) *VMConfig {
 	return config
 }
 
+// Sets CloudInitUserData dynamically from Presets
 func (config *VMConfig) SetCloudInitDataInline(cloudInitUserData string) *VMConfig {
 	if cloudInitUserData != "" {
 		utils.LogStep("Using Dynamic Preset Config for Userdata")
