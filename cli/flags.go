@@ -126,6 +126,7 @@ go run main.go --expose-vm=kraft \
 --external-ip=192.168.1.225 \
 --protocol=tcp
 */
+
 func Evaluate(ctx context.Context, wg *sync.WaitGroup) {
 	// 1. Parse Flags and take appropriate action
 	config, err := ParseFlags(ctx, wg)
@@ -141,8 +142,8 @@ func Evaluate(ctx context.Context, wg *sync.WaitGroup) {
 	switch config.Action {
 	case Launch: // k8 cluster
 
-		TestLaunchConf("control")
-		// launchClusterNew("control", []string{"worker"})
+		// TestLaunchConf("control")
+		launchClusterNew("control", []string{"worker"})
 		// launchCluster(config.Control, config.Workers)
 	case Join:
 		// join.JoinNodes(config.KubeJoin)
@@ -394,13 +395,6 @@ func launchClusterNew(controlNode string, workerNodes []string) error {
 		controlConf := GetKubeLaunchConfig(controlNode, true)
 		_, err := vm.LaunchNewVM(controlConf)
 		errc <- err
-
-		yaml, err := controlConf.YAML()
-		if err != nil {
-			log.Printf("Error Marshalling: %s\n", err)
-		}
-
-		log.Printf("YAML:\n%s\n", yaml)
 	}()
 
 	for i := 0; i < n; i++ {
@@ -417,16 +411,7 @@ func launchClusterNew(controlNode string, workerNodes []string) error {
 	}
 	close(errc)
 
-	log.Printf(utils.TurnSuccess("Successfully Launched Cluster"))
-
-	// await domains using lvirt
-	//_, err := lib.AwaitDomains(append(workerNodes, controlNode))
-	//if err != nil {
-	//	return err
-	//}
-
 	log.Printf(utils.TurnSuccess("Cluster Nodes are initalized"))
-	// return nil
 
 	nodes := append([]string{controlNode}, workerNodes...)
 
