@@ -66,19 +66,22 @@ func AwaitDomains(domains []string) (*VirtClient, map[string]*Domain, error) {
 
 // Checks if all the Domains are running
 func (v *VirtClient) Running() error {
-	retries := 3
+	retries := 8
 	doms := v.GetDomSlice()
+
+	log.Printf("Doms Size: %d\n", len(doms))
 
 	delay := 5
 
 	i := 0
 
 	for i < retries {
-
-		for j := 0; j < len(doms); {
+		j := 0
+		for j < len(doms) {
 			r, err := doms[j].IsRunning()
 			if err != nil {
-				return fmt.Errorf("Error: %s", err)
+				log.Printf("Domain %s not running, retrying.\n", doms[j].Name)
+				// return fmt.Errorf("Error: %s", err)
 			}
 
 			if r {
@@ -91,7 +94,11 @@ func (v *VirtClient) Running() error {
 		if len(doms) == 0 {
 			break
 		}
-		time.Sleep(time.Duration(delay * (i + 1)))
+
+		wait := delay + (1 << i)
+		log.Printf("Attempt %d: Backoff: %ds\n", i, wait)
+		time.Sleep(time.Duration(wait) * time.Second)
+
 		i++
 	}
 
