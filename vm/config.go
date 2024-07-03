@@ -573,12 +573,16 @@ func (s *VMConfig) CreateDisks() error {
 		log.Fatalf("FAILURE Generating Secondary Disks : %s", err)
 	}
 
+	fmt.Println(utils.LogMainAction("DEBUG PATH ISSUE"))
+
 	diskPath := s.DisksPath()
 
 	a := s.DisksPathFP.Abs()
 	b, _ := s.DisksPathFP.Relative()
 	c := s.DisksPathFP.Base()
 	d := s.DisksPathFP.Get()
+
+	log.Printf("Paths VM: Abs:%s,Relative:%s, Base:%s, Get:%s\n", a, b, c, d)
 
 	if utils.PathResolvable(a) {
 		log.Printf("Abs Path Resolvable: %s\n", a)
@@ -600,9 +604,7 @@ func (s *VMConfig) CreateDisks() error {
 	for _, disk := range s.Disks {
 
 		diskPathQemu, err := disk.DiskPathFP.Relative()
-
 		absPath := disk.DiskPathFP.Abs()
-
 		base := disk.DiskPathFP.Base()
 
 		if utils.PathResolvable(diskPathQemu) {
