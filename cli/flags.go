@@ -313,6 +313,11 @@ func joinKubeNodes(joinStr string) error {
 // launchVM launches a VM from a Preset Config using the config
 func launchVM(launchConfig Config) {
 	vmConfig := CreateVMConfig(launchConfig)
+
+	vmConfig.WriteConfigYaml()
+
+	return
+
 	if _, err := vm.LaunchNewVM(vmConfig); err != nil {
 		log.Printf("Failed vm.LaunchNewVM(vmConfig) go_err ERROR:%s,", err)
 	}
@@ -322,6 +327,10 @@ func TestLaunchConf(controlNode string) error {
 	fmt.Printf("Launching control node: %s\n", controlNode)
 
 	controlConf := GetKubeLaunchConfig(controlNode, true)
+
+	controlConf.WriteConfigYaml()
+	return nil
+
 	_, err := vm.LaunchNewVM(controlConf)
 	if err != nil {
 		log.Printf("Error launching test new VM: %s\n", err)
