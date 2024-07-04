@@ -1,9 +1,12 @@
 package test
 
 import (
+	"log"
 	"testing"
 
 	"kvmgo/lib"
+
+	"libvirt.org/go/libvirt"
 )
 
 /*
@@ -16,10 +19,31 @@ func TestBaseImagePull(t *testing.T) {
 	}
 
 	t.Log("successfully pulled image")
+
 }
+
+	pool, err := im.client.conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return err
+	}
+
+
+
+
 */
 
 func TestFullKvmImageMgmt(t *testing.T) {
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		log.Printf("Error Connecting %s", err)
+		t.Errorf("Error:%s", err)
+	}
+
+	_, err = conn.LookupStoragePoolByName("ubuntu")
+	if err != nil {
+		t.Fatalf("Error:%s", err)
+	}
+
 	imgManager, err := lib.NewImageMgr("ubuntu", "")
 	if err != nil {
 		t.Logf("failed to create imgMgr image, %s\n", err)
@@ -50,51 +74,4 @@ func TestFullKvmImageMgmt(t *testing.T) {
 	if err := imgManager.CreateImageFromBase(name, "kvm", 10); err != nil {
 		t.Logf("failed to Get image, %s\n", err)
 	}
-
-	/*
-
-	   	// Pull image - to /var/lib/libvirt/images/base - we store base images there
-	   	if err := lib.PullImage(baseImgUrl, poolPath); err != nil {
-	   		t.Logf("failed to pull image, %s\n", err)
-	   	}
-
-	   	t.Log("successfully pulled image") // or already exists
-
-	   	poolName := "default"
-	   	mgrName := "default"
-
-	   	baseImgName := "ubuntu-24.04-server-cloudimg-amd64.img"
-
-	   	// Manager - "default"
-	   	client, err := lib.NewImageMgr(mgrName, poolPath)
-
-	   	// "default" storage pool
-	   	if err := client.CreateStoragePool(poolName, poolPath); err != nil {
-	   		t.Fatalf("Failed to create storage pool: %s", err)
-	   	}
-
-	   	// imgPath := poolPath + baseImgName // create our image
-
-	       vmName := "kvm"
-
-	   	if err := client.CreateImgVolume(poolName, vmName, 10); err != nil {
-	   		t.Fatalf("Error checking if image exists: %s", err)
-	   	}
-
-	   	// NEED an imageExists method
-	   	// imageExists , err := client.ImageExists(baseImg)
-
-	   	if err != nil {
-	   		t.Errorf("Error:%s", err)
-	   	}
-
-	*/
-
-	// kvmImg := "worker"
-
-	// client.CreateNewImage(kvmImg, 20)
-
-	// imgExists := client.ImageExists(kvmImg) ???
-
-	// make sure image for
 }
