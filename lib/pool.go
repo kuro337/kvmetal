@@ -171,7 +171,7 @@ func (p *Pool) CreateImagePath(name, fromPath string, capacityGB int) error {
 }
 
 func (p *Pool) CreateImageURL(name, url string, capacityGB int) error {
-	xml := p.GetXmlFromUrl(name, url, capacityGB)
+	xml := p.GetXmlFromUrl(url, name, capacityGB)
 	return p.CreateImageXML(xml)
 }
 
