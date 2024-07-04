@@ -33,13 +33,19 @@ func NewImageMgr(name, path string) (*ImageManager, error) {
 		return nil, fmt.Errorf("Error:%s", err)
 	}
 
+	log.Printf("Pre New")
 	imgMgr := &ImageManager{name: name, client: client, images: make(map[string]string)}
 
 	path = imgMgr.BasePath()
+	log.Printf("got basePath: %s\n", path)
 
 	imgMgr.path = path
 
 	defaultPool := imgMgr.BasePool()
+
+	log.Printf("default pool: %s\n", defaultPool)
+
+	log.Printf("creating storage pool")
 
 	if err := imgMgr.CreateStoragePool(name, defaultPool); err == nil {
 		return nil, err
