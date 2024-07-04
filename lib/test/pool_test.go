@@ -39,6 +39,8 @@ func TestUbuntuPool(t *testing.T) {
 		t.Fatalf("Failed to create storage pool: %v", err)
 	}
 
+	t.Log("created new pool")
+
 	// Add an image with the URL and name "latest"
 	url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
 	volumeNameLatest := "latest"
@@ -47,6 +49,9 @@ func TestUbuntuPool(t *testing.T) {
 		t.Fatalf("Failed to add image 'latest' to pool: %v", err)
 	}
 
+	t.Log("CREATED Pool")
+
+	t.Log("getting volume")
 	// Get and print the path of "latest"
 	latestPath, err := pool.GetVolume(volumeNameLatest)
 	if err != nil {
@@ -56,6 +61,8 @@ func TestUbuntuPool(t *testing.T) {
 
 	// Add another image called "copy"
 	volumeNameCopy := "copy"
+
+	t.Log("creating image path")
 	if err := pool.CreateImagePath(volumeNameCopy, latestPath, 10); err != nil {
 		t.Fatalf("Failed to add image 'copy' to pool: %v", err)
 	}
