@@ -295,3 +295,15 @@ func LogCwd() (string, error) {
 	log.Printf("Current cwd: %s\n", cwd)
 	return cwd, nil
 }
+
+func CreateDirIfNotExists(path string) error {
+	// Check if the poolPath directory exists and create it if it doesn't
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		err := os.MkdirAll(path, 0o755)
+		if err != nil {
+			fmt.Printf("Failed to create directory for storage pool: %v\n", err)
+			return err
+		}
+	}
+	return nil
+}
