@@ -337,3 +337,69 @@ func (v *VirtClient) StoragePoolExists(poolName string) bool {
 
 	return true
 }
+
+// To Delete an Image/Volume when we have the Pool it belongs to
+func (v *VirtClient) DeleteImgVolume(poolName, volumeName string) error {
+	pool, err := v.conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return fmt.Errorf("failed to look up storage pool by name: %v", err)
+	}
+
+	vol, err := pool.LookupStorageVolByName(volumeName)
+	if err != nil {
+		return fmt.Errorf("failed to look up storage volume by name: %v", err)
+	}
+
+	defer vol.Free()
+
+	volPath, err := vol.GetPath()
+	if err != nil {
+		return fmt.Errorf("failed to get the path of the volume: %v", err)
+	}
+
+	fmt.Printf("Deleting storage volume '%s' at path: %s\n", volumeName, volPath)
+
+	err = vol.Delete(0)
+	if err != nil {
+		return fmt.Errorf("failed to delete storage volume: %v", err)
+	}
+
+	fmt.Printf("Storage volume '%s' deleted successfully\n", volumeName)
+	return nil
+}
+
+// To Delete an Image/Volume when we dont have the Pool it belongs to
+func (v *VirtClient) DeleteImgVolumeByName(volumeName string) error {
+	pools, err := v.conn.ListAllStoragePools(0)
+	if err != nil {
+		return fmt.Errorf("failed to list storage pools: %v", err)
+	}
+
+	for _, pool := range pools {
+		vol, err := pool.LookupStorageVolByName(volumeName)
+		if err != nil {
+			if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code == libvirt.ERR_NO_STORAGE_VOL {
+				// Volume not found in this pool, continue to the next pool
+				continue
+			}
+			return fmt.Errorf("failed to look up storage volume by name: %v", err)
+		}
+		defer vol.Free()
+
+		volPath, err := vol.GetPath()
+		if err != nil {
+			return fmt.Errorf("failed to get the path of the volume: %v", err)
+		}
+		fmt.Printf("Deleting storage volume '%s' at path: %s\n", volumeName, volPath)
+
+		err = vol.Delete(0)
+		if err != nil {
+			return fmt.Errorf("failed to delete storage volume: %v", err)
+		}
+
+		fmt.Printf("Storage volume '%s' deleted successfully\n", volumeName)
+		return nil
+	}
+
+	return fmt.Errorf("storage volume '%s' not found in any pool", volumeName)
+}

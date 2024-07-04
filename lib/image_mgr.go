@@ -256,31 +256,35 @@ func (im *ImageManager) CreateImgVolume(poolName, volumeName, baseImagePath stri
 }
 
 func (im *ImageManager) DeleteImgVolume(volumeName string) error {
-	pool, err := im.client.conn.LookupStoragePoolByName(im.name)
-	if err != nil {
-		return fmt.Errorf("failed to look up storage pool by name: %v", err)
-	}
+	return im.client.DeleteImgVolume(im.name, volumeName)
 
-	vol, err := pool.LookupStorageVolByName(volumeName)
-	if err != nil {
-		return fmt.Errorf("failed to look up storage volume by name: %v", err)
-	}
+	/*
+		pool, err := im.client.conn.LookupStoragePoolByName(im.name)
+		if err != nil {
+			return fmt.Errorf("failed to look up storage pool by name: %v", err)
+		}
 
-	defer vol.Free()
+		vol, err := pool.LookupStorageVolByName(volumeName)
+		if err != nil {
+			return fmt.Errorf("failed to look up storage volume by name: %v", err)
+		}
 
-	volPath, err := vol.GetPath()
-	if err != nil {
-		return fmt.Errorf("failed to get the path of the volume: %v", err)
-	}
-	fmt.Printf("Deleting storage volume '%s' at path: %s\n", volumeName, volPath)
+		defer vol.Free()
 
-	err = vol.Delete(0)
-	if err != nil {
-		return fmt.Errorf("failed to delete storage volume: %v", err)
-	}
+		volPath, err := vol.GetPath()
+		if err != nil {
+			return fmt.Errorf("failed to get the path of the volume: %v", err)
+		}
+		fmt.Printf("Deleting storage volume '%s' at path: %s\n", volumeName, volPath)
 
-	fmt.Printf("Storage volume '%s' deleted successfully\n", volumeName)
-	return nil
+		err = vol.Delete(0)
+		if err != nil {
+			return fmt.Errorf("failed to delete storage volume: %v", err)
+		}
+
+		fmt.Printf("Storage volume '%s' deleted successfully\n", volumeName)
+		return nil
+	*/
 }
 
 // NewImageManager creates a new ImageManager instance
