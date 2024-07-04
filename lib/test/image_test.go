@@ -104,4 +104,8 @@ func TestFullKvmImageMgmt(t *testing.T) {
 	if err := imgManager.CreateImageFromBase(name, "kvm", 10); err != nil {
 		t.Logf("failed to Get image, %s\n", err)
 	}
+
+	if err := imgManager.DeleteImgVolume(name, "kvm"); err != nil {
+		t.Logf("failed to Delete image, %s\n", err)
+	}
 }
