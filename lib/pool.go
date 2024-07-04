@@ -254,6 +254,11 @@ func Downloadfile(url string) error {
 		return fmt.Errorf("failed to read response body: %v", err)
 	}
 
+	err = os.MkdirAll("/home/kuro/kvm/test", os.ModePerm)
+	if err != nil {
+		log.Fatalf("Failed to create directory: %v", err)
+	}
+
 	log.Printf("Writing and returning data")
 	return os.WriteFile("/home/kuro/kvm/test/imgfile.img", body, 0o644)
 }
