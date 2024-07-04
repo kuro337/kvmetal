@@ -10,6 +10,10 @@ import (
 )
 
 /*
+
+Storage Pools
+
+
 func TestBaseImagePull(t *testing.T) {
 	baseImgUrl := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
 	baseImgDir := "/var/lib/libvirt/images/base"
@@ -101,6 +105,7 @@ func TestFullKvmImageMgmt(t *testing.T) {
 
 	t.Log("got image")
 
+	//
 	if err := imgManager.CreateImageFromBase(name, "kvm", 10); err != nil {
 		t.Logf("failed to Get image, %s\n", err)
 	}

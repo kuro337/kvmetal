@@ -13,7 +13,13 @@ import (
 	"libvirt.org/go/libvirt"
 )
 
+// ImgManager "ubuntu"
+// Volumes (Images) will be created at the PoolPath we specify
+
 // Deleting a volume : virsh vol-delete myvolume --pool default
+
+// Either each ImageManager will have its' own Pool
+// Or a Single Pool for OS' like Ubuntu
 
 type ImageManager struct {
 	name string
@@ -24,6 +30,12 @@ type ImageManager struct {
 	// "/var/lib/libvirt/images/base"
 	poolPath string
 	images   map[string]string
+
+	// ubuntu
+	baseImg string
+	// only need to define 1st time, or never - for efficiency store it as a field on the struct so we always
+	// dont need to call libvirt to get it
+	basePool string
 }
 
 // NewImageMgr returns the Img Manager with a default Pool
@@ -80,6 +92,22 @@ func (im *ImageManager) CreateImageFromBase(baseImg, newImg string, capacityGB i
 	if err != nil {
 		return fmt.Errorf("Base img does not exist")
 	}
+
+	if err := im.CreateImgVolume(im.name, newImg, baseImgPath, capacityGB); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// AddImage will add an Image from Base Image.
+// Base Image should have the name specified by the AddImage(url,name) call
+func (im *ImageManager) CreateImgFromBaseName(baseImg, newImg string, capacityGB int) error {
+	baseImgPath, err := im.GetImage(baseImg)
+	if err != nil {
+		return fmt.Errorf("Base img does not exist")
+	}
+
 	if err := im.CreateImgVolume(im.name, newImg, baseImgPath, capacityGB); err != nil {
 		return err
 	}
@@ -91,15 +119,11 @@ func (im *ImageManager) CreateImageFromBase(baseImg, newImg string, capacityGB i
 
 // GetImage() returns the Image Path if it exists - or nothing
 func (im *ImageManager) GetImage(imgName string) (string, error) {
-	log.Printf("checking for %s\n", imgName)
 	img, ok := im.images[imgName]
 
-	log.Println("checked")
 	if !ok {
-		return "", fmt.Errorf("Image %s does not exist")
+		return "", fmt.Errorf("Image %s does not exist.")
 	}
-
-	log.Printf("got : %s\n", img)
 
 	return img, nil
 }
@@ -182,6 +206,9 @@ func (v *ImageManager) StoragePoolExists(poolName string) bool {
 
 // CreateImgVolume creates a new image volume in the specified storage pool
 
+// image will belong to a Pool and have a Volume Name
+
+// CreateImgVolume creates the .img Volume at the poolPath specified from the Base Image
 func (im *ImageManager) CreateImgVolume(poolName, volumeName, baseImagePath string, capacityGB int) error {
 	pool, err := im.client.conn.LookupStoragePoolByName(poolName)
 	if err != nil {
@@ -238,6 +265,7 @@ func (im *ImageManager) DeleteImgVolume(volumeName string) error {
 	if err != nil {
 		return fmt.Errorf("failed to look up storage volume by name: %v", err)
 	}
+
 	defer vol.Free()
 
 	volPath, err := vol.GetPath()
@@ -299,8 +327,74 @@ func (im *ImageManager) initDirs() error {
 	return nil
 }
 
-// Images stored in "/var/lib/libvirt/images/base"
-type ImagePool struct {
-	name string
-	path string
+// CreateImage uses the Base Image w/ Pool to create the secondary .img Volume at the poolPath specified from the Base Image
+func (im *ImageManager) CreateImage(poolName, volumeName, baseImagePoolName, baseImageVolumeName string, capacityGB int) error {
+	pool, err := im.client.conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return fmt.Errorf("failed to look up storage pool by name: %v", err)
+	}
+
+	if err := pool.Create(0); err != nil && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
+		fmt.Printf("Failed to activate storage pool: %v\n", err)
+		return fmt.Errorf("Storage Pool not active for %s", poolName)
+	}
+
+	// ex: ubuntu Look up the base image in the specified pool
+	baseImagePool, err := im.client.conn.LookupStoragePoolByName(baseImagePoolName)
+	if err != nil {
+		return fmt.Errorf("failed to look up base image pool by name: %v", err)
+	}
+
+	// ex: ubuntu-22.04.img or whatever we named it
+	// good idea to use a Hash of the URL as Deterministic Volume Names
+	baseImageVol, err := baseImagePool.LookupStorageVolByName(baseImageVolumeName)
+	if err != nil {
+		return fmt.Errorf("failed to look up base image volume by name: %v", err)
+	}
+	defer baseImageVol.Free()
+
+	baseImagePath, err := baseImageVol.GetPath()
+	if err != nil {
+		return fmt.Errorf("failed to get the path of the base image volume: %v", err)
+	}
+
+	volXML := fmt.Sprintf(`<volume>
+                   <name>%s</name>
+                   <allocation>0</allocation>
+                   <capacity unit="G">%d</capacity>
+                   <target>
+                       <format type='qcow2'/>
+                   </target>
+                   <backingStore>
+                       <path>%s</path>
+                       <format type='qcow2'/>
+                   </backingStore>
+               </volume>`, volumeName, capacityGB, baseImagePath)
+
+	// Check if the volume already exists
+	vol, err := pool.LookupStorageVolByName(volumeName)
+	if err == nil {
+		defer vol.Free()
+		volPath, err := vol.GetPath()
+		if err != nil {
+			return fmt.Errorf("failed to get the path of the existing volume: %v", err)
+		}
+		fmt.Printf("Storage volume '%s' already exists at path: %s\n", volumeName, volPath)
+		return nil
+	}
+
+	vol, err = pool.StorageVolCreateXML(volXML, 0)
+	if err != nil {
+		fmt.Printf("Failed to create storage volume: %v\n", err)
+		return err
+	}
+	defer vol.Free()
+
+	volPath, err := vol.GetPath()
+	if err != nil {
+		return fmt.Errorf("failed to get the path of the newly created volume: %v", err)
+	}
+	fmt.Printf("New storage volume '%s' created at path: %s\n", volumeName, volPath)
+
+	return nil
 }
