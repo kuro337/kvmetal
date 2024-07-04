@@ -16,6 +16,7 @@ import (
 
 	"kvmgo/configuration"
 	"kvmgo/constants"
+	"kvmgo/lib"
 	"kvmgo/network"
 	"kvmgo/types/fpath"
 	"kvmgo/utils"
@@ -49,9 +50,6 @@ cmd : qemu-img create -b <backing_img>.img -F qcow2 -f qcow2 <desired_vm_img_nam
 This option specifies the backing file. 
 The new image will be created as a copy-on-write (COW) image based on this backing file. 
 The backing file is typically a base image that contains a standard installation of an operating system.
-
-
-
     `, vm.ImagesDir)
 
 	log.Println(str)
@@ -184,6 +182,11 @@ type VMConfig struct {
 	ImagesPathFP    fpath.FilePath `json:"images_path_fp" yaml:"images_path_fp"`
 	DisksPathFP     fpath.FilePath `json:"disks_path_fp" yaml:"disks_path_fp"`
 	CreateDirsInit  bool           `json:"create_dirs_init" yaml:"create_dirs_init"`
+
+	// kvm img manager
+	imgManager *lib.ImageManager
+
+	baseImgName string
 }
 
 func (fp FilePathWrapper) MarshalYAML() (interface{}, error) {
@@ -231,6 +234,12 @@ func (config *VMConfig) SetImagePath(filePath fpath.FilePath) *VMConfig {
 	return config
 }
 
+// Base Image name for imgManager
+func (config *VMConfig) SetBaseImageName(name string) *VMConfig {
+	config.baseImgName = name
+	return config
+}
+
 // WriteConfigYAML saves the YAML Config for the VM
 func (config *VMConfig) WriteConfigYaml() error {
 	if config.ArtifactPath == "" || config.UserData == "" {
@@ -254,6 +263,15 @@ func (config *VMConfig) WriteConfigYaml() error {
 func (config *VMConfig) SetDisksPath(filePath fpath.FilePath) *VMConfig {
 	config.DisksPathFP = filePath
 	return config
+}
+
+func (config *VMConfig) SetImgManager(manager string) error {
+	imgManager, err := lib.NewImageMgr(manager, "")
+	if err != nil {
+		return fmt.Errorf("failed to create imgMgr image, %s\n", err)
+	}
+	config.imgManager = imgManager
+	return nil
 }
 
 func (d DiskConfig) QcowName() string {
@@ -435,6 +453,19 @@ func (s *VMConfig) PullImage() {
 	if err != nil {
 		slog.Error("Failed HTTP GET", "error", err)
 		os.Exit(1)
+	}
+
+	if s.imgManager != nil {
+
+		url := filepath.Base(s.ImageURL)
+		name := filepath.Base(s.ImageURL)
+		// imagePath := filepath.Join(s.Ima, imageName)
+		// added imageManager
+		if err := s.imgManager.AddImage(url, name); err != nil {
+			slog.Error("Add Image ImageManager", "error", err)
+			os.Exit(1)
+		}
+		s.SetBaseImageName(name)
 	}
 }
 
@@ -663,6 +694,14 @@ func (s *VMConfig) CreateBaseImage() error {
 		s.ImagesDir, modifiedImageOutputPath))
 
 	_ = s.navigateToRoot()
+
+	// using image manager to add VM images
+	if s.imgManager != nil {
+		// name we set during AddImage for Base ubuntu
+		if err := s.imgManager.CreateImageFromBase(s.baseImgName, s.VMName, 10); err != nil {
+			log.Fatalf("failed to Create kvm rom base imgManager image, %s\n", err)
+		}
+	}
 
 	return nil
 }

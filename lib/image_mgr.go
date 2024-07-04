@@ -33,30 +33,15 @@ func NewImageMgr(name, path string) (*ImageManager, error) {
 		return nil, fmt.Errorf("Error:%s", err)
 	}
 
-	log.Printf("Pre New")
 	imgMgr := &ImageManager{name: name, client: client, images: make(map[string]string)}
 
-	defaultPool := imgMgr.BasePool()
-	basePath := imgMgr.BasePath()
-
-	if err := fpath.CreateDirIfNotExists(basePath); err != nil {
-		log.Fatalf("BASE IMGS FAILURE")
-		return nil, fmt.Errorf("failed to create base imgs path %s Error:%s", path, err)
+	if err := imgMgr.initDirs(); err != nil {
+		return nil, fmt.Errorf("Could not generate startup dirs")
 	}
-
-	if err := fpath.CreateDirIfNotExists(defaultPool); err != nil {
-		log.Fatalf("BASE POOL FAILURE")
-		return nil, fmt.Errorf("failed to create base imgs path %s Error:%s", path, err)
-	}
-
-	imgMgr.path = basePath
-
-	log.Printf("default pool: %s\n", defaultPool)
-	log.Printf("default images: %s\n", basePath)
 
 	log.Printf("creating storage pool")
 
-	if err := imgMgr.CreateStoragePool(name, defaultPool); err != nil {
+	if err := imgMgr.CreateStoragePool(name, imgMgr.poolPath); err != nil {
 		return nil, err
 	}
 
@@ -75,8 +60,6 @@ func (im *ImageManager) BasePool() string {
 
 // AddImage will add an Image
 func (im *ImageManager) AddImage(url, imgName string) error {
-	log.Printf("Running AddImage for url:%s , imgName:%s\n", url, imgName)
-
 	if err := PullImage(url, im.BasePath()); err != nil {
 		return fmt.Errorf("failed to pull image, %s\n", err)
 	}
@@ -90,15 +73,18 @@ func (im *ImageManager) AddImage(url, imgName string) error {
 	return nil
 }
 
-// AddImage will add an Image
-func (im *ImageManager) CreateImageFromBase(baseImg, newImg string, capacitGB int) error {
+// AddImage will add an Image from Base Image.
+// Base Image should have the name specified by the AddImage(url,name) call
+func (im *ImageManager) CreateImageFromBase(baseImg, newImg string, capacityGB int) error {
 	baseImgPath, err := im.GetImage(baseImg)
 	if err != nil {
 		return fmt.Errorf("Base img does not exist")
 	}
-	if err := im.CreateImgVolume(im.name, newImg, baseImgPath, capacitGB); err != nil {
+	if err := im.CreateImgVolume(im.name, newImg, baseImgPath, capacityGB); err != nil {
 		return err
 	}
+
+	// im[newImg]
 
 	return nil
 }
@@ -254,45 +240,28 @@ func (im *ImageManager) GeneratedImagePath() string {
 	return fmt.Sprintf("%s/generated", im.path)
 }
 
+func (im *ImageManager) initDirs() error {
+	defaultPool := im.BasePool()
+	basePath := im.BasePath()
+
+	if err := fpath.CreateDirIfNotExists(basePath); err != nil {
+		log.Fatalf("BASE IMGS FAILURE")
+		return fmt.Errorf("failed to create base imgs path %s Error:%s", basePath, err)
+	}
+
+	if err := fpath.CreateDirIfNotExists(defaultPool); err != nil {
+		log.Fatalf("BASE POOL FAILURE")
+		return fmt.Errorf("failed to create base imgs path %s Error:%s", defaultPool, err)
+	}
+
+	im.path = basePath
+	im.poolPath = defaultPool
+
+	return nil
+}
+
 // Images stored in "/var/lib/libvirt/images/base"
 type ImagePool struct {
 	name string
 	path string
 }
-
-/*
-func main() {
-	// Example usage
-	conn, err := libvirt.NewConnect("qemu:///system")
-	if err != nil {
-		fmt.Printf("Failed to connect to hypervisor: %v\n", err)
-		return
-	}
-	defer conn.Close()
-
-
-	client := &VirtClient{conn: conn}
-	imageManager := NewImageManager("default", "/var/lib/libvirt/images", client)
-
-
-	err = imageManager.CreateBaseImageStoragePool()
-	if err != nil {
-		fmt.Printf("Failed to create base image storage pool: %v\n", err)
-		return
-	}
-
-
-	err = imageManager.CreateGeneratedImage("new_img.qcow2", 20)
-	if err != nil {
-		fmt.Printf("Failed to create generated image: %v\n", err)
-		return
-	}
-
-
-	fmt.Println("Base images are stored at:", imageManager.BaseImagePath())
-	fmt.Println("Generated images are stored at:", imageManager.GeneratedImagePath())
-}
-
-*/
-
-/// BUt your above example makes no sense -
