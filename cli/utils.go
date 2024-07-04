@@ -9,6 +9,7 @@ import (
 
 // ResolveArtifactsPath gets the Artifacts Path for the VM - i.e Resolves data/images
 // and appends the VM name & gets the images path where all Images are cached
+// ex. /abs/path/data/images  , /abs/data/artifacts/<vmanme>
 func ResolveArtifactsPath(vmName string) (imagesPath, artifactsPath *fpath.FilePath, ferr error) {
 	// Resolve Images path - i.e VM/OS images are stored/cached here
 	imgsPath, err := fpath.NewPath("data/images", false)

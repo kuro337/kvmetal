@@ -1,4 +1,4 @@
-package lib
+package client
 
 import (
 	"fmt"
@@ -8,6 +8,8 @@ import (
 
 	"libvirt.org/go/libvirt"
 	libvirtxml "libvirt.org/libvirt-go-xml"
+
+	. "kvmgo/lib/domain"
 )
 
 type VirtClient struct {
@@ -24,6 +26,40 @@ func ConnectLibvirt() (*VirtClient, error) {
 	}
 
 	return &VirtClient{conn: conn, domains: make(map[string]*Domain)}, nil
+}
+
+func (v *VirtClient) CreateQemuImg() {
+	poolXML := `<pool type='dir'>
+                    <name>default</name>
+                    <target>
+                        <path>/var/lib/libvirt/images</path>
+                    </target>
+                </pool>`
+
+	pool, err := v.conn.StoragePoolCreateXML(poolXML, 0)
+	if err != nil {
+		fmt.Printf("Failed to create storage pool: %v\n", err)
+		return
+	}
+	defer pool.Free()
+
+	volXML := `<volume>
+                   <name>new_img.qcow2</name>
+                   <allocation>0</allocation>
+                   <capacity unit="G">20</capacity>
+                   <target>
+                       <format type='qcow2'/>
+                   </target>
+               </volume>`
+
+	vol, err := pool.StorageVolCreateXML(volXML, 0)
+	if err != nil {
+		fmt.Printf("Failed to create storage volume: %v\n", err)
+		return
+	}
+	defer vol.Free()
+
+	v.Close()
 }
 
 func (v *VirtClient) Close() {
@@ -191,7 +227,9 @@ func (v *VirtClient) GetDomain(domain string) (*Domain, error) {
 		log.Printf("Failed Lookup Domain %s", domain)
 		return nil, err
 	}
-	return &Domain{Name: domain, domain: dom}, nil
+
+	return NewDomainWrapper(domain, v.conn, dom), nil
+	// return &Domain{Name: domain, domain: dom}, nil
 }
 
 // Parses the XML for a Domain and Prints it
@@ -220,120 +258,4 @@ func (v *VirtClient) ParseXML(domain string) (*libvirtxml.Domain, error) {
 	fmt.Printf("Virt type %s\n", domcfg.Type)
 
 	return domcfg, nil
-}
-
-/////////////////// VM Image Generation for KVM Images from Base Images
-
-// CreateStoragePool creates the Storage pool if it doesnt exist
-// @Usage
-// err := CreateStoragePool("default" , "/var/lib/libvirt/images")
-func (v *VirtClient) CreateStoragePool(poolName, poolPath string) error {
-	// Check if the storage pool already exists
-	pool, err := v.conn.LookupStoragePoolByName(poolName)
-
-	if err == nil {
-		return nil
-	}
-
-	// If the pool does not exist, create it
-	poolXML := fmt.Sprintf(`<pool type='dir'>
-                                    <name>%s</name>
-                                    <target>
-                                        <path>%s</path>
-                                    </target>
-                                </pool>`, poolName, poolPath)
-
-	pool, err = v.conn.StoragePoolCreateXML(poolXML, 0)
-	if err != nil {
-		fmt.Printf("Failed to create storage pool: %v\n", err)
-		return err
-	}
-
-	defer pool.Free()
-
-	return nil
-}
-
-func (v *VirtClient) GetStoragePool(poolName string) (*libvirt.StoragePool, error) {
-	pool, err := v.conn.LookupStoragePoolByName(poolName)
-	return pool, err
-}
-
-func (v *VirtClient) CreateQemuImg() {
-	poolXML := `<pool type='dir'>
-                    <name>default</name>
-                    <target>
-                        <path>/var/lib/libvirt/images</path>
-                    </target>
-                </pool>`
-
-	pool, err := v.conn.StoragePoolCreateXML(poolXML, 0)
-	if err != nil {
-		fmt.Printf("Failed to create storage pool: %v\n", err)
-		return
-	}
-	defer pool.Free()
-
-	volXML := `<volume>
-                   <name>new_img.qcow2</name>
-                   <allocation>0</allocation>
-                   <capacity unit="G">20</capacity>
-                   <target>
-                       <format type='qcow2'/>
-                   </target>
-               </volume>`
-
-	vol, err := pool.StorageVolCreateXML(volXML, 0)
-	if err != nil {
-		fmt.Printf("Failed to create storage volume: %v\n", err)
-		return
-	}
-	defer vol.Free()
-
-	v.Close()
-}
-
-func (v *VirtClient) CreateImgVolume(poolName string) error {
-	pool, err := v.GetStoragePool(poolName)
-	if err != nil {
-		return err
-	}
-
-	// Ensure the pool is active
-	if err := pool.Create(0); err != nil && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
-		fmt.Printf("Failed to activate storage pool: %v\n", err)
-		return fmt.Errorf("Storage Pool not active for %s", poolName)
-	}
-
-	// Create a new storage volume
-	volXML := `<volume>
-                   <name>new_img.qcow2</name>
-                   <allocation>0</allocation>
-                   <capacity unit="G">20</capacity>
-                   <target>
-                       <format type='qcow2'/>
-                   </target>
-               </volume>`
-
-	vol, err := pool.StorageVolCreateXML(volXML, 0)
-	if err != nil {
-		fmt.Printf("Failed to create storage volume: %v\n", err)
-		return err
-	}
-	defer vol.Free()
-
-	v.Close()
-	return nil
-}
-
-func (v *VirtClient) Conn() *libvirt.Connect {
-	return v.conn
-}
-
-func (v *VirtClient) StoragePoolExists(poolName string) bool {
-	if _, err := v.conn.LookupStoragePoolByName(poolName); err != nil {
-		return false
-	}
-
-	return true
 }

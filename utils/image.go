@@ -127,20 +127,33 @@ func ModifiedImageName(vmName string) string {
 }
 
 /*
-CreateBaseImage creates an Image from the base Image for the VM
+	CreateBaseImage creates an Image from the base Image for the VM
+
 This has the OS in data/images/control-vm-disk.qcow2
 
 	qemu-img create -b <base_img>_cloudimg-amd64.img -F qcow2 -f qcow2 <new_vm>-vm-disk.qcow2 20G
+
+Input  : imageURL (to extract name for the OS Image)
+Output : Error if Img was generated and the Name of the VM's Image we created
 */
 func CreateBaseImage(imageURL, vmName string) (string, error) {
-	baseImageName := filepath.Base(imageURL)
-	modifiedImageName := vmName + "-vm-disk.qcow2"
+	log.Printf("utils.CBI(vm.ImageURL,vm.VMName) - utils.CBI(%s,%s)", imageURL, vmName)
+
+	backingImageName := filepath.Base(imageURL)
+
+	if f, _ := fpath.FileExists(backingImageName); !f {
+		log.Println(TurnError(fmt.Sprintf("Backing OS Image File not found: %s", backingImageName)))
+	}
+
+	desiredVMImgName := vmName + "-vm-disk.qcow2"
+
+	fpath.LogCwd()
 
 	// Generate the modified image - from a Base Image in the QCOW2 format
 	qemuCmd := fmt.Sprintf("qemu-img create -b %s -F qcow2 -f qcow2 %s 20G",
-		baseImageName, modifiedImageName)
+		backingImageName, desiredVMImgName)
 
-	log.Println(TurnBlueDelimited(fmt.Sprintf("Base Image Creation. Qemu cmd: %s, baseImageName:%s, modifiedImgName:%s", qemuCmd, baseImageName, modifiedImageName)))
+	log.Println(TurnBlueDelimited(fmt.Sprintf("Base Image Creation. Qemu cmd: %s, baseImageName:%s, modifiedImgName:%s", qemuCmd, backingImageName, desiredVMImgName)))
 
 	log.Printf("Running qemu-img: %s", qemuCmd)
 	// investigate why it's not created in data/artifacts/vm/disks/
@@ -153,9 +166,9 @@ func CreateBaseImage(imageURL, vmName string) (string, error) {
 		return "", err
 	}
 
-	log.Print(TurnSuccess(fmt.Sprintf("Successfully Generated Modified Image: %s", modifiedImageName)))
+	log.Print(TurnSuccess(fmt.Sprintf("Successfully Generated Modified Image: %s", desiredVMImgName)))
 
-	return modifiedImageName, nil
+	return desiredVMImgName, nil
 }
 
 // qemu-img create -f qcow2 /var/lib/libvirt/images/myvm-openebs-disk.qcow2 50G

@@ -1,7 +1,6 @@
 package vm
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -23,7 +22,7 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 		return nil, err
 	}
 
-	return nil, errors.New("Testing Base Image Creation Path")
+	//	return nil, errors.New("Testing Base Image Creation Path")
 
 	// Create additional disks required by the VM (data/artifacts/vm/<disk>.qcow2
 	if err := vmConfig.CreateDisks(); err != nil {
