@@ -22,29 +22,27 @@ func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
                                 </target>
                             </pool>`, name, path)
 
-	log.Println("defiing XML")
-
 	pool, err := conn.StoragePoolDefineXML(poolXML, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to define storage pool: %v", err)
 	}
 
-	log.Println("defiend XML")
-
+	log.Printf("Creating pool %s", name)
 	err = pool.Create(libvirt.STORAGE_POOL_CREATE_WITH_BUILD)
 	if err != nil {
+		pool.Undefine() // clean up the defined pool if creation fails
 		return nil, fmt.Errorf("failed to create storage pool: %v", err)
 	}
 
+	log.Printf("Setting autostart for pool %s", name)
 	err = pool.SetAutostart(true)
 	if err != nil {
+		pool.Destroy()
+		pool.Undefine()
 		return nil, fmt.Errorf("failed to set autostart for storage pool: %v", err)
 	}
 
-	log.Println("autostart set")
-
-	defer pool.Free()
-
+	log.Printf("Pool %s created and autostart set", name)
 	return &Pool{
 		name: name,
 		path: path,
@@ -67,26 +65,26 @@ func PoolExists(conn *libvirt.Connect, poolName string) (bool, error) {
 func DeletePool(conn *libvirt.Connect, poolName string) error {
 	pool, err := conn.LookupStoragePoolByName(poolName)
 	if err != nil {
-		if err.(libvirt.Error).Code == libvirt.ERR_NO_STORAGE_POOL {
+		if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code == libvirt.ERR_NO_STORAGE_POOL {
 			return fmt.Errorf("storage pool %s does not exist", poolName)
 		}
 		return fmt.Errorf("failed to look up storage pool by name: %v", err)
 	}
-	// defer pool.Free()
+	defer pool.Free()
 
-	log.Printf("destroying")
-	if err := pool.Destroy(); err != nil && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
-		return fmt.Errorf("failed to destroy storage pool: %v", err)
+	log.Printf("Destroying pool %s", poolName)
+	if err := pool.Destroy(); err != nil {
+		if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code != libvirt.ERR_OPERATION_INVALID {
+			return fmt.Errorf("failed to destroy storage pool: %v", err)
+		}
 	}
 
-	log.Printf("udefining")
-
+	log.Printf("Undefining pool %s", poolName)
 	if err := pool.Undefine(); err != nil {
 		return fmt.Errorf("failed to undefine storage pool: %v", err)
 	}
 
-	log.Printf("Deleted")
-
+	log.Printf("Deleted pool %s", poolName)
 	return nil
 }
 
