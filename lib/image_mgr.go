@@ -36,14 +36,23 @@ func NewImageMgr(name, path string) (*ImageManager, error) {
 	log.Printf("Pre New")
 	imgMgr := &ImageManager{name: name, client: client, images: make(map[string]string)}
 
-	path = imgMgr.BasePath()
-	log.Printf("got basePath: %s\n", path)
-
-	imgMgr.path = path
-
 	defaultPool := imgMgr.BasePool()
+	basePath := imgMgr.BasePath()
+
+	if err := fpath.CreateDirIfNotExists(basePath); err != nil {
+		return nil, fmt.Errorf("failed to create base imgs path %s Error:%s", path, err)
+	}
+
+	if err := fpath.CreateDirIfNotExists(defaultPool); err != nil {
+		return nil, fmt.Errorf("failed to create base imgs path %s Error:%s", path, err)
+	}
+
+	fpath.CreateDirIfNotExists(path)
+
+	imgMgr.path = basePath
 
 	log.Printf("default pool: %s\n", defaultPool)
+	log.Printf("default images: %s\n", basePath)
 
 	log.Printf("creating storage pool")
 
@@ -56,12 +65,12 @@ func NewImageMgr(name, path string) (*ImageManager, error) {
 
 // image manager has basePath - images are stored here
 func (im *ImageManager) BasePath() string {
-	return fmt.Sprintf("/var/lib/libvirt/images/%s/base", im.name)
+	return fmt.Sprintf("/kvm/images/%s/base", im.name)
 }
 
 // image manager has basePath - images are stored here
 func (im *ImageManager) BasePool() string {
-	return fmt.Sprintf("/var/lib/libvirt/images/%s/pools", im.name)
+	return fmt.Sprintf("/kvm/images/%s/pools", im.name)
 }
 
 // AddImage will add an Image
