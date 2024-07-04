@@ -154,6 +154,7 @@ func (p *Pool) GetXmlFromUrl(url, volume string, capacityGB int) string {
 
 // ImageConfig returns XML required to generate a new Image/volume from an Existing Image
 func (p *Pool) GetXMLFromPath(fromPath, name string, capacityGB int) string {
+	log.Printf("Getting XML , passed path: %s , name:%s, cap:%d\n", fromPath, name, capacityGB)
 	if strings.Contains(name, "/") {
 		log.Fatalf("Invalid volumeName passed: %s\n", name)
 	}
@@ -201,72 +202,60 @@ func (p *Pool) CreateImageURL(name, url string, capacityGB int) error {
 	ThrowIfInvalid(name)
 	// Download the image to a temporary directory
 
+	log.Printf("passed : name %s , url:%s\n", name, url)
 	err := Downloadfile(url)
+
+	log.Printf("completed download")
 	if err != nil {
 		return fmt.Errorf("failed to download image: %v", err)
 	}
+
+	log.Printf("no errors")
 
 	// Use the temporary path in the XML configuration
 
 	tempPath := "/home/kvm/test/imgfile.img"
 	xml := p.GetXMLFromPath(tempPath, name, capacityGB)
+
+	log.Printf("returned xml: from GetXML(): %s\n", xml)
 	return p.CreateImageXML(xml)
 }
 
 func (p *Pool) CreateImageXML(xml string) error {
 	pool := p.pool
+
+	log.Printf("StorageVolCreateXML()\n")
 	vol, err := pool.StorageVolCreateXML(xml, 0)
 	if err != nil {
 		fmt.Printf("Failed to create storage volume: %v\n", err)
 		return err
 	}
+
+	log.Println("returning for createImageXML")
+
 	defer vol.Free() // defer should come after the error check
 	return nil
 }
 
 func Downloadfile(url string) error {
 	// Create a temporary file
-	tempFile, err := os.CreateTemp("", "img-*.img")
-	if err != nil {
-		return nil
-	}
-
-	if url == "" {
-		log.Fatalf("failure empty url")
-	}
-
-	log.Println("Temp File ", tempFile.Name())
 
 	log.Printf("Downloading File - in Proress")
 
-	// Get the image from the URL
 	resp, err := http.Get(url)
-
 	log.Printf("Downloading File - DONE")
 	if err != nil {
-		// tempFile.Close()
-		// os.Remove(tempFile.Name())
 		return err
 	}
 	defer resp.Body.Close()
 
-	// Copy the content to the temporary file
-
-	// Read the response body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response body: %v", err)
 	}
 
-	os.WriteFile("/home/kvm/test/imgfile.img", body, 0o644)
-
-	_, err = io.Copy(tempFile, resp.Body)
-	if err != nil {
-		// tempFile.Close()
-		// os.Remove(tempFile.Name())
-		return err
-	}
-	return err
+	log.Printf("Writing and returning data")
+	return os.WriteFile("/home/kvm/test/imgfile.img", body, 0o644)
 }
 
 /*
