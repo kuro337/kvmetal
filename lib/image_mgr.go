@@ -49,8 +49,6 @@ func NewImageMgr(name, path string) (*ImageManager, error) {
 		return nil, fmt.Errorf("failed to create base imgs path %s Error:%s", path, err)
 	}
 
-	fpath.CreateDirIfNotExists(path)
-
 	imgMgr.path = basePath
 
 	log.Printf("default pool: %s\n", defaultPool)
