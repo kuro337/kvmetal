@@ -180,10 +180,10 @@ func (p *Pool) CreateImageURL(name, url string, capacityGB int) error {
 func (p *Pool) CreateImageXML(xml string) error {
 	pool := p.pool
 	vol, err := pool.StorageVolCreateXML(xml, 0)
-	defer vol.Free()
 	if err != nil {
 		fmt.Printf("Failed to create storage volume: %v\n", err)
 		return err
 	}
+	defer vol.Free() // defer should come after the error check
 	return nil
 }
