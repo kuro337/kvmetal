@@ -69,7 +69,13 @@ func (im *ImageManager) AddImage(url, imgName string) error {
 	if err := PullImage(url, im.BasePath()); err != nil {
 		return fmt.Errorf("failed to pull image, %s\n", err)
 	}
+
+	log.Println("Pull Image done")
+
 	im.images[imgName] = im.BasePath() + imgName
+
+	log.Println("Set to Images Image done")
+
 	return nil
 }
 
