@@ -58,19 +58,19 @@ func PoolExists(conn *libvirt.Connect, poolName string) (bool, error) {
 }
 
 func DeletePool(conn *libvirt.Connect, poolName string) error {
-	// Look up the storage pool by name
 	pool, err := conn.LookupStoragePoolByName(poolName)
 	if err != nil {
+		if err.(libvirt.Error).Code == libvirt.ERR_NO_STORAGE_POOL {
+			return fmt.Errorf("storage pool %s does not exist", poolName)
+		}
 		return fmt.Errorf("failed to look up storage pool by name: %v", err)
 	}
 	defer pool.Free()
 
-	// Destroy the pool if it is active
-	if err := pool.Destroy(); err != nil && err.(libvirt.Error).Code != libvirt.ERR_NO_SUPPORT && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
+	if err := pool.Destroy(); err != nil && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
 		return fmt.Errorf("failed to destroy storage pool: %v", err)
 	}
 
-	// Undefine the pool
 	if err := pool.Undefine(); err != nil {
 		return fmt.Errorf("failed to undefine storage pool: %v", err)
 	}
