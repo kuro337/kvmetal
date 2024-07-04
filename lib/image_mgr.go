@@ -40,10 +40,12 @@ func NewImageMgr(name, path string) (*ImageManager, error) {
 	basePath := imgMgr.BasePath()
 
 	if err := fpath.CreateDirIfNotExists(basePath); err != nil {
+		log.Fatalf("BASE IMGS FAILURE")
 		return nil, fmt.Errorf("failed to create base imgs path %s Error:%s", path, err)
 	}
 
 	if err := fpath.CreateDirIfNotExists(defaultPool); err != nil {
+		log.Fatalf("BASE POOL FAILURE")
 		return nil, fmt.Errorf("failed to create base imgs path %s Error:%s", path, err)
 	}
 
@@ -65,7 +67,7 @@ func NewImageMgr(name, path string) (*ImageManager, error) {
 
 // image manager has basePath - images are stored here
 func (im *ImageManager) BasePath() string {
-	return fmt.Sprintf("/home/kuro//kvm/images/%s/base", im.name)
+	return fmt.Sprintf("/home/kuro/kvm/images/%s/base", im.name)
 }
 
 // image manager has basePath - images are stored here
