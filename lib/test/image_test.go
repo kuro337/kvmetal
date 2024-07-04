@@ -24,8 +24,11 @@ func TestFullKvmImageMgmt(t *testing.T) {
 	if err != nil {
 		t.Logf("failed to create imgMgr image, %s\n", err)
 	}
+
 	url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
 	name := "ubuntu-24.04-server-cloudimg-amd64.img"
+
+	t.Log("returned imgManager - adding Image")
 
 	if err := imgManager.AddImage(url, name); err != nil {
 		t.Logf("failed to pull image, %s\n", err)
