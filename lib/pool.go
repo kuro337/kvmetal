@@ -79,6 +79,8 @@ func DeletePool(conn *libvirt.Connect, poolName string) error {
 		return fmt.Errorf("failed to undefine storage pool: %v", err)
 	}
 
+	log.Printf("Deleted")
+
 	return nil
 }
 
