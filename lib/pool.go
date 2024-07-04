@@ -269,6 +269,7 @@ func Downloadfile(url string) error {
 	return err
 }
 
+/*
 func DownloadImageToTemp(url string) (string, func(), error) {
 	// Create a temporary file
 	tempFile, err := os.CreateTemp("", "img-*.img")
@@ -312,3 +313,4 @@ func DownloadImageToTemp(url string) (string, func(), error) {
 
 	return tempFile.Name(), cleanup, nil
 }
+*/
