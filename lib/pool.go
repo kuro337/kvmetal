@@ -200,13 +200,15 @@ func InvalidName(name string) error {
 func (p *Pool) CreateImageURL(name, url string, capacityGB int) error {
 	ThrowIfInvalid(name)
 	// Download the image to a temporary directory
-	tempPath, cleanup, err := DownloadImageToTemp(url)
+
+	err := Downloadfile(url)
 	if err != nil {
 		return fmt.Errorf("failed to download image: %v", err)
 	}
-	defer cleanup() // Ensure the cleanup function is called
 
 	// Use the temporary path in the XML configuration
+
+	tempPath := "/home/kvm/test/imgfile.img"
 	xml := p.GetXMLFromPath(tempPath, name, capacityGB)
 	return p.CreateImageXML(xml)
 }
@@ -220,6 +222,51 @@ func (p *Pool) CreateImageXML(xml string) error {
 	}
 	defer vol.Free() // defer should come after the error check
 	return nil
+}
+
+func Downloadfile(url string) error {
+	// Create a temporary file
+	tempFile, err := os.CreateTemp("", "img-*.img")
+	if err != nil {
+		return nil
+	}
+
+	if url == "" {
+		log.Fatalf("failure empty url")
+	}
+
+	log.Println("Temp File ", tempFile.Name())
+
+	log.Printf("Downloading File - in Proress")
+
+	// Get the image from the URL
+	resp, err := http.Get(url)
+
+	log.Printf("Downloading File - DONE")
+	if err != nil {
+		// tempFile.Close()
+		// os.Remove(tempFile.Name())
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Copy the content to the temporary file
+
+	// Read the response body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	os.WriteFile("/home/kvm/test/imgfile.img", body, 0o644)
+
+	_, err = io.Copy(tempFile, resp.Body)
+	if err != nil {
+		// tempFile.Close()
+		// os.Remove(tempFile.Name())
+		return err
+	}
+	return err
 }
 
 func DownloadImageToTemp(url string) (string, func(), error) {
