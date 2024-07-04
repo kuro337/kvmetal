@@ -297,6 +297,9 @@ func LogCwd() (string, error) {
 }
 
 func CreateDirIfNotExists(path string) error {
+	if path == "" {
+		return fmt.Errorf("Empty Path passed")
+	}
 	// Check if the poolPath directory exists and create it if it doesn't
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		err := os.MkdirAll(path, 0o755)
