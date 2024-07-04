@@ -214,7 +214,7 @@ func (p *Pool) CreateImageURL(name, url string, capacityGB int) error {
 
 	// Use the temporary path in the XML configuration
 
-	tempPath := "/home/kvm/test/imgfile.img"
+	tempPath := "/home/kuro/kvm/test/imgfile.img"
 	xml := p.GetXMLFromPath(tempPath, name, capacityGB)
 
 	log.Printf("returned xml: from GetXML(): %s\n", xml)
@@ -255,7 +255,7 @@ func Downloadfile(url string) error {
 	}
 
 	log.Printf("Writing and returning data")
-	return os.WriteFile("/home/kvm/test/imgfile.img", body, 0o644)
+	return os.WriteFile("/home/kuro/kvm/test/imgfile.img", body, 0o644)
 }
 
 /*
