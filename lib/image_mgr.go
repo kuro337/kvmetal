@@ -65,12 +65,12 @@ func NewImageMgr(name, path string) (*ImageManager, error) {
 
 // image manager has basePath - images are stored here
 func (im *ImageManager) BasePath() string {
-	return fmt.Sprintf("/kvm/images/%s/base", im.name)
+	return fmt.Sprintf("/home/kuro//kvm/images/%s/base", im.name)
 }
 
 // image manager has basePath - images are stored here
 func (im *ImageManager) BasePool() string {
-	return fmt.Sprintf("/kvm/images/%s/pools", im.name)
+	return fmt.Sprintf("/home/kuro/kvm/images/%s/pools", im.name)
 }
 
 // AddImage will add an Image
