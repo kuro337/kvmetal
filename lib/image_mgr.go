@@ -47,7 +47,7 @@ func NewImageMgr(name, path string) (*ImageManager, error) {
 
 	log.Printf("creating storage pool")
 
-	if err := imgMgr.CreateStoragePool(name, defaultPool); err == nil {
+	if err := imgMgr.CreateStoragePool(name, defaultPool); err != nil {
 		return nil, err
 	}
 
