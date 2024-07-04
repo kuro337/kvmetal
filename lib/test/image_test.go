@@ -39,9 +39,13 @@ func TestFullKvmImageMgmt(t *testing.T) {
 		t.Errorf("Error:%s", err)
 	}
 
-	_, err = conn.LookupStoragePoolByName("ubuntu")
-	if err != nil {
-		t.Fatalf("Error:%s", err)
+	// It is saved globally , anytime created
+	if _, err := conn.LookupStoragePoolByName("bubuntu"); err == nil {
+		t.Fatalf("Nonexistent never created Storage Pool should error:%s", err)
+	}
+
+	if _, err = conn.LookupStoragePoolByName("ubuntu"); err != nil {
+		t.Fatalf("Once created the storage pools should be persistent Error:%s", err)
 	}
 
 	imgManager, err := lib.NewImageMgr("ubuntu", "")
