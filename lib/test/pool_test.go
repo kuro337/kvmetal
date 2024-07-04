@@ -49,7 +49,7 @@ func TestUbuntuPool(t *testing.T) {
 		t.Fatalf("Failed to add image 'latest' to pool: %v", err)
 	}
 
-	t.Log("CREATED Pool")
+	t.Log("CREATED Image XML from URL")
 
 	t.Log("getting volume")
 	// Get and print the path of "latest"
