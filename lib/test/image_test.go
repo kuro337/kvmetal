@@ -21,17 +21,43 @@ func TestBaseImagePull(t *testing.T) {
 	t.Log("successfully pulled image")
 
 }
-
 	pool, err := im.client.conn.LookupStoragePoolByName(poolName)
 	if err != nil {
 		return err
 	}
-
-
-
-
 */
 
+/*
+Can u give me below command with sampel values and paths in a single line so I can run it from the CLI?
+
+	cmdArgs := []string{
+		"--name", s.VMName,
+		"--virt-type", "kvm",
+		"--memory", fmt.Sprint(s.Memory),
+		"--vcpus", fmt.Sprint(s.CPUCores),
+		"--disk", "path=" + generatedVmImg + ",device=disk",
+		"--disk", "path=" + vm_userdata_img + ",format=raw",
+		"--graphics", "none",
+		"--boot", "hd,menu=on",
+		"--network", "network=default",
+		"--os-variant", "ubuntu18.04",
+		"--noautoconsole",
+
+Certainly! Here is the command with sample values and paths in a single line:
+
+virt-install --name sampleVM --virt-type kvm --memory 2048 --vcpus 2 --disk path=/home/kuro/kvm/images/ubuntu/base/ubuntu-24.04-server-cloudimg-amd64.img,device=disk --disk path=tests/user-data.img,format=raw --graphics none --boot hd,menu=on --network network=default --os-variant ubuntu18.04 --noautoconsole
+
+	   data/artifacts/worker/userdata/user-data.img
+
+	   tests/user-data.img
+	/home/kuro/kvm/images/ubuntu/base/ubuntu-24.04-server-cloudimg-amd64.img
+
+imgManager, err := lib.NewImageMgr("ubuntu", "")
+
+	if err != nil {
+		t.Logf("failed to create imgMgr image, %s\n", err)
+	}
+*/
 func TestFullKvmImageMgmt(t *testing.T) {
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
