@@ -204,11 +204,13 @@ func DownloadImageToTemp(url string) (string, func(), error) {
 		return "", nil, err
 	}
 
+	log.Println("Temp File ", tempFile.Name())
+
 	// Get the image from the URL
 	resp, err := http.Get(url)
 	if err != nil {
 		tempFile.Close()
-		os.Remove(tempFile.Name())
+		// os.Remove(tempFile.Name())
 		return "", nil, err
 	}
 	defer resp.Body.Close()
@@ -223,7 +225,7 @@ func DownloadImageToTemp(url string) (string, func(), error) {
 
 	cleanup := func() {
 		tempFile.Close()
-		os.Remove(tempFile.Name())
+		// os.Remove(tempFile.Name())
 	}
 
 	return tempFile.Name(), cleanup, nil
