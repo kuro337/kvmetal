@@ -30,6 +30,10 @@ func TestFullKvmImageMgmt(t *testing.T) {
 
 	t.Log("returned imgManager - adding Image")
 
+	if imgManager == nil {
+		t.Fatal("imgManager is nil")
+	}
+
 	if err := imgManager.AddImage(url, name); err != nil {
 		t.Logf("failed to pull image, %s\n", err)
 	}

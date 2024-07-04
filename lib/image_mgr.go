@@ -66,6 +66,8 @@ func (im *ImageManager) BasePool() string {
 
 // AddImage will add an Image
 func (im *ImageManager) AddImage(url, imgName string) error {
+	log.Printf("Running AddImage for url:%s , imgName:%s\n", url, imgName)
+
 	if err := PullImage(url, im.BasePath()); err != nil {
 		return fmt.Errorf("failed to pull image, %s\n", err)
 	}
