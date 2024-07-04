@@ -259,6 +259,11 @@ func Downloadfile(url string) error {
 		log.Fatalf("Failed to create directory: %v", err)
 	}
 
+	err = os.Chmod("/home/kuro/kvm/test", 0o777)
+	if err != nil {
+		return fmt.Errorf("failed to set directory permissions: %v", err)
+	}
+
 	log.Printf("Writing and returning data")
 	return os.WriteFile("/home/kuro/kvm/test/imgfile.img", body, 0o644)
 }
