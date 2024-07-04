@@ -45,6 +45,56 @@ func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
 	}, nil
 }
 
+func PoolExists(conn *libvirt.Connect, poolName string) (bool, error) {
+	pool, err := conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		if err.(libvirt.Error).Code == libvirt.ERR_NO_STORAGE_POOL {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check if storage pool exists: %v", err)
+	}
+	defer pool.Free()
+	return true, nil
+}
+
+func DeletePool(conn *libvirt.Connect, poolName string) error {
+	// Look up the storage pool by name
+	pool, err := conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return fmt.Errorf("failed to look up storage pool by name: %v", err)
+	}
+	defer pool.Free()
+
+	// Destroy the pool if it is active
+	if err := pool.Destroy(); err != nil && err.(libvirt.Error).Code != libvirt.ERR_NO_SUPPORT && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
+		return fmt.Errorf("failed to destroy storage pool: %v", err)
+	}
+
+	// Undefine the pool
+	if err := pool.Undefine(); err != nil {
+		return fmt.Errorf("failed to undefine storage pool: %v", err)
+	}
+
+	return nil
+}
+
+func (p *Pool) Delete() error {
+	if p.pool == nil {
+		return fmt.Errorf("storage pool is nil")
+	}
+	// Destroy the pool if it is active
+	if active, err := p.Active(); err == nil && active {
+		if err := p.pool.Destroy(); err != nil {
+			return fmt.Errorf("failed to destroy storage pool: %v", err)
+		}
+	}
+	// Undefine the pool
+	if err := p.pool.Undefine(); err != nil {
+		return fmt.Errorf("failed to undefine storage pool: %v", err)
+	}
+	return nil
+}
+
 // Active() checks whether the Pool is Active or not
 func (p *Pool) Active() (bool, error) {
 	pool := p.pool
