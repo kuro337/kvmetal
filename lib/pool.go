@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"libvirt.org/go/libvirt"
 )
@@ -153,6 +154,10 @@ func (p *Pool) GetXmlFromUrl(url, volume string, capacityGB int) string {
 
 // ImageConfig returns XML required to generate a new Image/volume from an Existing Image
 func (p *Pool) GetXMLFromPath(fromPath, name string, capacityGB int) string {
+	if strings.Contains(name, "/") {
+		log.Fatalf("Invalid volumeName passed: %s\n", name)
+	}
+
 	return fmt.Sprintf(`<volume>
                    <name>%s</name>
                    <allocation>0</allocation>
@@ -169,11 +174,31 @@ func (p *Pool) GetXMLFromPath(fromPath, name string, capacityGB int) string {
 
 // CreateImage creates a new Volume from the pool's Base Image
 func (p *Pool) CreateImagePath(name, fromPath string, capacityGB int) error {
-	xml := p.GetXMLFromPath(name, fromPath, capacityGB)
+	// xml := p.GetXMLFromPath(name, fromPath, capacityGB)
+
+	ThrowIfInvalid(name)
+
+	xml := p.GetXMLFromPath(fromPath, name, capacityGB)
 	return p.CreateImageXML(xml)
+
+	// return p.CreateImageXML(xml)
+}
+
+func ThrowIfInvalid(name string) {
+	if err := InvalidName(name); err != nil {
+		log.Fatalf("Invalid volumeName passed: %s\n", name)
+	}
+}
+
+func InvalidName(name string) error {
+	if strings.Contains(name, "/") {
+		return fmt.Errorf("invalid volume name: %s", name)
+	}
+	return nil
 }
 
 func (p *Pool) CreateImageURL(name, url string, capacityGB int) error {
+	ThrowIfInvalid(name)
 	// Download the image to a temporary directory
 	tempPath, cleanup, err := DownloadImageToTemp(url)
 	if err != nil {
