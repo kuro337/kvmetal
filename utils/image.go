@@ -23,7 +23,10 @@ func PullImage(url, dir string) error {
 	imageName := filepath.Base(url)
 	imagePath := filepath.Join(dir, imageName)
 
-	log.Printf("URL:%s, Dir:%s, ImgPath: %s\n", url, dir, imagePath)
+	pullImgsStr := fmt.Sprintf("Pulling Base Image: URL:%s, Dir:%s, ImgPath: %s\n", url, dir, imagePath)
+
+	log.Println(pullImgsStr)
+
 	if ImageExists(imageName, dir) {
 		log.Printf("Image %s already exists", imageName)
 		return nil
@@ -136,6 +139,8 @@ func CreateBaseImage(imageURL, vmName string) (string, error) {
 	// Generate the modified image - from a Base Image in the QCOW2 format
 	qemuCmd := fmt.Sprintf("qemu-img create -b %s -F qcow2 -f qcow2 %s 20G",
 		baseImageName, modifiedImageName)
+
+	log.Println(TurnBlueDelimited(fmt.Sprintf("Base Image Creation. Qemu cmd: %s, baseImageName:%s, modifiedImgName:%s", qemuCmd, baseImageName, modifiedImageName)))
 
 	log.Printf("Running qemu-img: %s", qemuCmd)
 	// investigate why it's not created in data/artifacts/vm/disks/

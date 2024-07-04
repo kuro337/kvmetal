@@ -1,6 +1,7 @@
 package vm
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"log/slog"
@@ -12,6 +13,7 @@ import (
 func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 	LogLaunchInit(vmConfig.VMName, vmConfig.Memory, vmConfig.CPUCores)
 
+	// Pulls Base ubuntu image if not cached
 	vmConfig.PullImage()
 
 	// Creates base image with OS defined in data/images/control-vm-disk.qcow2
@@ -20,6 +22,8 @@ func LaunchNewVM(vmConfig *VMConfig) (*VMConfig, error) {
 		_ = Cleanup(vmConfig.VMName)
 		return nil, err
 	}
+
+	return nil, errors.New("Testing Base Image Creation Path")
 
 	// Create additional disks required by the VM (data/artifacts/vm/<disk>.qcow2
 	if err := vmConfig.CreateDisks(); err != nil {
