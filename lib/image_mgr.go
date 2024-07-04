@@ -88,11 +88,16 @@ func (im *ImageManager) CreateImageFromBase(baseImg, newImg string, capacitGB in
 
 // GetImage() returns the Image Path if it exists - or nothing
 func (im *ImageManager) GetImage(imgName string) (string, error) {
+	log.Printf("checking for %s\n", imgName)
 	img, ok := im.images[imgName]
 
+	log.Println("checked")
 	if !ok {
 		return "", fmt.Errorf("Image %s does not exist")
 	}
+
+	log.Printf("got : %s\n", img)
+
 	return img, nil
 }
 

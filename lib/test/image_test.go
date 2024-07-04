@@ -34,9 +34,14 @@ func TestFullKvmImageMgmt(t *testing.T) {
 		t.Logf("failed to pull image, %s\n", err)
 	}
 
+	t.Log("added image")
+
+	t.Log("getting image")
 	if _, err := imgManager.GetImage(name); err != nil {
 		t.Logf("failed to Get image, %s\n", err)
 	}
+
+	t.Log("got image")
 
 	if err := imgManager.CreateImageFromBase(name, "kvm", 10); err != nil {
 		t.Logf("failed to Get image, %s\n", err)
