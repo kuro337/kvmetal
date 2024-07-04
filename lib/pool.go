@@ -2,7 +2,10 @@ package lib
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"os"
 
 	"libvirt.org/go/libvirt"
 )
@@ -171,7 +174,15 @@ func (p *Pool) CreateImagePath(name, fromPath string, capacityGB int) error {
 }
 
 func (p *Pool) CreateImageURL(name, url string, capacityGB int) error {
-	xml := p.GetXmlFromUrl(url, name, capacityGB)
+	// Download the image to a temporary directory
+	tempPath, cleanup, err := DownloadImageToTemp(url)
+	if err != nil {
+		return fmt.Errorf("failed to download image: %v", err)
+	}
+	defer cleanup() // Ensure the cleanup function is called
+
+	// Use the temporary path in the XML configuration
+	xml := p.GetXMLFromPath(tempPath, name, capacityGB)
 	return p.CreateImageXML(xml)
 }
 
@@ -184,4 +195,36 @@ func (p *Pool) CreateImageXML(xml string) error {
 	}
 	defer vol.Free() // defer should come after the error check
 	return nil
+}
+
+func DownloadImageToTemp(url string) (string, func(), error) {
+	// Create a temporary file
+	tempFile, err := os.CreateTemp("", "img-*.img")
+	if err != nil {
+		return "", nil, err
+	}
+
+	// Get the image from the URL
+	resp, err := http.Get(url)
+	if err != nil {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+		return "", nil, err
+	}
+	defer resp.Body.Close()
+
+	// Copy the content to the temporary file
+	_, err = io.Copy(tempFile, resp.Body)
+	if err != nil {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+		return "", nil, err
+	}
+
+	cleanup := func() {
+		tempFile.Close()
+		os.Remove(tempFile.Name())
+	}
+
+	return tempFile.Name(), cleanup, nil
 }
