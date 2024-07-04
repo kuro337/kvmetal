@@ -229,12 +229,20 @@ func DownloadImageToTemp(url string) (string, func(), error) {
 		return "", nil, err
 	}
 
+	if url == "" {
+		log.Fatalf("failure empty url")
+	}
+
 	log.Println("Temp File ", tempFile.Name())
+
+	log.Printf("Downloading File - in Proress")
 
 	// Get the image from the URL
 	resp, err := http.Get(url)
+
+	log.Printf("Downloading File - DONE")
 	if err != nil {
-		tempFile.Close()
+		// tempFile.Close()
 		// os.Remove(tempFile.Name())
 		return "", nil, err
 	}
@@ -243,14 +251,16 @@ func DownloadImageToTemp(url string) (string, func(), error) {
 	// Copy the content to the temporary file
 	_, err = io.Copy(tempFile, resp.Body)
 	if err != nil {
-		tempFile.Close()
-		os.Remove(tempFile.Name())
+		// tempFile.Close()
+		// os.Remove(tempFile.Name())
 		return "", nil, err
 	}
 
+	// Ensure the temporary file is removed after use
 	cleanup := func() {
-		tempFile.Close()
+		// tempFile.Close()
 		// os.Remove(tempFile.Name())
+		log.Println("Temp File Removed ", tempFile.Name())
 	}
 
 	return tempFile.Name(), cleanup, nil
