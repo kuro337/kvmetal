@@ -17,6 +17,18 @@ type Pool struct {
 	pool *libvirt.StoragePool
 }
 
+func (p *Pool) DeleteImage(image string) error {
+	if ex, _ := ImageExists(p.pool, image); ex {
+		log.Printf("Volume %s already exists", image)
+		if err := DeleteImage(p.pool, image); err != nil {
+			log.Fatalf("failed to delete volume: %s\n", err)
+		}
+		log.Printf("Deleted volume %s", image)
+	}
+
+	return nil
+}
+
 // NewPool creates and returns a new storage pool
 func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
 	poolXML := fmt.Sprintf(`<pool type='dir'>
@@ -52,6 +64,37 @@ func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
 		path: path,
 		pool: pool,
 	}, nil
+}
+
+func ImageExists(pool *libvirt.StoragePool, volumeName string) (bool, error) {
+	vol, err := pool.LookupStorageVolByName(volumeName)
+	if err != nil {
+		if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code == libvirt.ERR_NO_STORAGE_VOL {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to check if volume exists: %v", err)
+	}
+	defer vol.Free()
+	return true, nil
+}
+
+func DeleteImage(pool *libvirt.StoragePool, volumeName string) error {
+	vol, err := pool.LookupStorageVolByName(volumeName)
+	if err != nil {
+		if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code == libvirt.ERR_NO_STORAGE_VOL {
+			return fmt.Errorf("storage volume %s does not exist", volumeName)
+		}
+		return fmt.Errorf("failed to look up storage volume by name: %v", err)
+	}
+	defer vol.Free()
+
+	log.Printf("Deleting volume %s", volumeName)
+	if err := vol.Delete(0); err != nil {
+		return fmt.Errorf("failed to delete storage volume: %v", err)
+	}
+
+	log.Printf("Deleted volume %s", volumeName)
+	return nil
 }
 
 func PoolExists(conn *libvirt.Connect, poolName string) (bool, error) {
