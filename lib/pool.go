@@ -1,11 +1,13 @@
 package lib
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"libvirt.org/go/libvirt"
@@ -280,6 +282,56 @@ func (p *Pool) CreateImageXML(xml string) error {
 	return nil
 }
 
+// DownloadFileTemp downloads a file from the given URL and saves it to the specified temporary directory.
+// It returns the path to the downloaded file, a cleanup function to delete the file, and an error if any.
+func DownloadFileTemp(url, tempDir string) (string, func(), error) {
+	if url == "" {
+		return "", nil, errors.New("Invalid URL passed")
+	}
+
+	if tempDir == "" {
+		return "", nil, errors.New("Invalid tempDir passed")
+	}
+
+	log.Printf("Downloading File - in Progress")
+	resp, err := http.Get(url)
+	log.Printf("Downloading File - DONE")
+	if err != nil {
+		return "", nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to read response body: %v", err)
+	}
+
+	err = os.MkdirAll(tempDir, os.ModePerm)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create directory: %v", err)
+	}
+
+	err = os.Chmod(tempDir, 0o755)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to set directory permissions: %v", err)
+	}
+
+	tempFilePath := tempDir + filepath.Base(url)
+
+	log.Printf("Writing and returning data")
+	err = os.WriteFile(tempFilePath, body, 0o644)
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to write file: %v", err)
+	}
+
+	cleanup := func() {
+		os.Remove(tempFilePath)
+		log.Printf("Deleted temp file: %s", tempFilePath)
+	}
+
+	return tempFilePath, cleanup, nil
+}
+
 func Downloadfile(url string) error {
 	// Create a temporary file
 
@@ -311,48 +363,12 @@ func Downloadfile(url string) error {
 	return os.WriteFile("/home/kuro/kvm/test/imgfile.img", body, 0o644)
 }
 
-/*
-func DownloadImageToTemp(url string) (string, func(), error) {
-	// Create a temporary file
-	tempFile, err := os.CreateTemp("", "img-*.img")
-	if err != nil {
-		return "", nil, err
+func DeletePoolIfExists(conn *libvirt.Connect, poolName string) error {
+	if ex, _ := PoolExists(conn, poolName); ex {
+		log.Print("Pool exists")
+		if err := DeletePool(conn, poolName); err != nil {
+			return fmt.Errorf("failed to delete: %s\n", err)
+		}
 	}
-
-	if url == "" {
-		log.Fatalf("failure empty url")
-	}
-
-	log.Println("Temp File ", tempFile.Name())
-
-	log.Printf("Downloading File - in Proress")
-
-	// Get the image from the URL
-	resp, err := http.Get(url)
-
-	log.Printf("Downloading File - DONE")
-	if err != nil {
-		// tempFile.Close()
-		// os.Remove(tempFile.Name())
-		return "", nil, err
-	}
-	defer resp.Body.Close()
-
-	// Copy the content to the temporary file
-	_, err = io.Copy(tempFile, resp.Body)
-	if err != nil {
-		// tempFile.Close()
-		// os.Remove(tempFile.Name())
-		return "", nil, err
-	}
-
-	// Ensure the temporary file is removed after use
-	cleanup := func() {
-		// tempFile.Close()
-		// os.Remove(tempFile.Name())
-		log.Println("Temp File Removed ", tempFile.Name())
-	}
-
-	return tempFile.Name(), cleanup, nil
+	return nil
 }
-*/
