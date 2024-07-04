@@ -45,6 +45,7 @@ func TestUbuntuPool(t *testing.T) {
 	url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
 	volumeNameLatest := "latest"
 
+	t.Log("Creating Image URL")
 	if err := pool.CreateImageURL(volumeNameLatest, url, 10); err != nil {
 		t.Fatalf("Failed to add image 'latest' to pool: %v", err)
 	}
