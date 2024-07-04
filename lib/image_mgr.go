@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"kvmgo/types/fpath"
+
 	"libvirt.org/go/libvirt"
 )
 
@@ -131,6 +133,10 @@ func PullImage(url, dir string) error {
 // CreateStoragePool creates the storage pool if it doesn't exist
 func (im *ImageManager) CreateStoragePool(poolName, poolPath string) error {
 	// Check if the storage pool already exists
+
+	if err := fpath.CreateDirIfNotExists(poolPath); err != nil {
+		return err
+	}
 
 	pool, err := im.client.GetStoragePool(poolName)
 	if err == nil {
