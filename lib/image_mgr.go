@@ -13,7 +13,7 @@ import (
 	"libvirt.org/go/libvirt"
 )
 
-var baseOsImgDir = "/kvm/images"
+// Deleting a volume : virsh vol-delete myvolume --pool default
 
 type ImageManager struct {
 	name string
@@ -225,6 +225,33 @@ func (im *ImageManager) CreateImgVolume(poolName, volumeName, baseImagePath stri
 	}
 	defer vol.Free()
 
+	return nil
+}
+
+func (im *ImageManager) DeleteImgVolume(poolName, volumeName string) error {
+	pool, err := im.client.conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return fmt.Errorf("failed to look up storage pool by name: %v", err)
+	}
+
+	vol, err := pool.LookupStorageVolByName(volumeName)
+	if err != nil {
+		return fmt.Errorf("failed to look up storage volume by name: %v", err)
+	}
+	defer vol.Free()
+
+	volPath, err := vol.GetPath()
+	if err != nil {
+		return fmt.Errorf("failed to get the path of the volume: %v", err)
+	}
+	fmt.Printf("Deleting storage volume '%s' at path: %s\n", volumeName, volPath)
+
+	err = vol.Delete(0)
+	if err != nil {
+		return fmt.Errorf("failed to delete storage volume: %v", err)
+	}
+
+	fmt.Printf("Storage volume '%s' deleted successfully\n", volumeName)
 	return nil
 }
 
