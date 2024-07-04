@@ -461,6 +461,8 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 		log.Fatalf("Failure Resolving Paths:%s", err)
 	}
 
+	//    utils.LogWarning(fmt.Sprintf("1. imgsPath: %s , artifactsPath: %s\n",imgsPath)
+
 	/*
 				1. Uses base ubuntu image to generate a VM specific img
 				This servers as the primary image - in data/images/control-vm-disk.qcow2
@@ -497,6 +499,10 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 
 	// Get Artifacts Path for VM - i.e Resolve data/images and append VM name
 	log.Printf("Images Path : %s , Artifacts Path : %s", imgsPath.Get(), artifactsPath.Get())
+
+	// Ubuntu Releases : https://cloud-images.ubuntu.com/releases/noble/release/
+	// https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img
+	// https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img
 
 	vmConfig := vm.NewVMConfig(config.Name).
 		SetImageURL("https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img").
