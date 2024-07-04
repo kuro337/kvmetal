@@ -28,7 +28,11 @@ func TestUbuntuPool(t *testing.T) {
 		if err := lib.DeletePool(conn, poolName); err != nil {
 			t.Fatalf("failed to delete: %s\n", err)
 		}
+
+		t.Log("Deleted the active Pool")
 	}
+
+	t.Log("Deleted")
 
 	pool, err := lib.NewPool(conn, poolName, poolPath)
 	if err != nil {
