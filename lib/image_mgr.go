@@ -228,8 +228,8 @@ func (im *ImageManager) CreateImgVolume(poolName, volumeName, baseImagePath stri
 	return nil
 }
 
-func (im *ImageManager) DeleteImgVolume(poolName, volumeName string) error {
-	pool, err := im.client.conn.LookupStoragePoolByName(poolName)
+func (im *ImageManager) DeleteImgVolume(volumeName string) error {
+	pool, err := im.client.conn.LookupStoragePoolByName(im.name)
 	if err != nil {
 		return fmt.Errorf("failed to look up storage pool by name: %v", err)
 	}
