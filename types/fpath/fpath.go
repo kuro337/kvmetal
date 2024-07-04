@@ -272,6 +272,19 @@ func navigateToPath(path string) error {
 	return nil
 }
 
+// FileExists checks if a file or directory exists at the given path.
+func FileExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil // File exists
+	}
+	// IsNotExist validates against the err
+	if os.IsNotExist(err) {
+		return false, nil // File does not exist
+	}
+	return false, err // Other errors, such as permission issues
+}
+
 // LogCwd() logs cwd
 func LogCwd() (string, error) {
 	cwd, err := os.Getwd()

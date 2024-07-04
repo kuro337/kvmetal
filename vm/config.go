@@ -3,6 +3,7 @@ package vm
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"log"
@@ -22,31 +23,6 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-type VMConfigY struct {
-	VMName         string
-	InlineUserdata string
-	ImageURL       string
-	ImagesDir      string
-	BootFilesDir   string
-	ScriptsDir     string
-	BootScript     string
-	SystemdScript  string
-	UserData       string
-	RootDir        string
-	CPUCores       int
-	Memory         int
-	EnableServices []string
-	Artifacts      []string
-	disks          []DiskConfig
-	sshPub         string
-	ArtifactPath   string
-
-	ArtifactsPathFP fpath.FilePath
-	ImagesPathFP    fpath.FilePath
-	DisksPathFP     fpath.FilePath
-	createDirsInit  bool
-}
-
 func (vm *VMConfig) YAML() (string, error) { // Convert to YAML
 	yamlData, err := yaml.Marshal(&vm)
 	if err != nil {
@@ -56,10 +32,140 @@ func (vm *VMConfig) YAML() (string, error) { // Convert to YAML
 	return string(yamlData), nil
 }
 
+func (vm *VMConfig) GetImagesPath() (string, error) { // Convert to YAML
+
+	str := fmt.Sprintf(`1. Generating the Base Image
+
+1. Navigate to vm.ImagesDir() to generate the Base Qemu Image for VM
+
+Requirements : OS Backing Image must be Present & Reachable from cwd 
+
+cmd : qemu-img create -b <backing_img>.img -F qcow2 -f qcow2 <desired_vm_img_nam>.qcow2 20G 
+
+    _ = s.navigateToAbsPath(s.ImagesDir) 
+    backing_img := filepath.Base(imageURL) // extracts os name from URL of ubuntu image
+    desiredImgName := vmName + "-vm-disk.qcow2"
+
+This option specifies the backing file. 
+The new image will be created as a copy-on-write (COW) image based on this backing file. 
+The backing file is typically a base image that contains a standard installation of an operating system.
+
+
+
+    `, vm.ImagesDir)
+
+	log.Println(str)
+
+	// 1. Calls vm.CreateBaseImage()
+
+	log.Printf("Navigate to %s and use base OS image to generate VM Image.\n", vm.ImagesDir)
+
+	// 1.A - Calls utils.CreateBaseImage(vm.ImageURL, vm.VMName)
+	log.Printf("vm.CBI calls utils.CBI(%s,%s). [createBaseImage]", vm.ImageURL, vm.VMName)
+
+	// utils.CBI calls  	modifiedImageOutputPath, err := utils.CreateBaseImage(s.ImageURL, s.VMName)
+
+	backingImgFile := filepath.Base(vm.ImageURL)
+	desiredVMImg := vm.VMName + "-vm-disk.qcow2"
+
+	createVMImage := fmt.Sprintf("utils.CBI() expects to find %s and generates the VM Img: %s\n", backingImgFile, desiredVMImg)
+
+	log.Println("Step 1A. %s", createVMImage)
+
+	// Step 2. CreateDisks
+
+	log.Printf("2. vm.CreateDisks() - calls utils.CreateDirIfNotExist(vm.DisksPath())")
+
+	disksPath := vm.DisksPath()
+
+	log.Printf("Navigate to Disks Path: %s\n", &disksPath)
+
+	var disksPaths []string
+	var diskPathCmds []string
+
+	log.Println("For each path in vm.Disks - creates the disk by running utils.CreateDiskQcow(diskPath)")
+
+	for _, disk := range vm.Disks {
+		diskPathQemu, _ := disk.DiskPathFP.Relative()
+		disksPaths = append(disksPaths, diskPathQemu)
+
+		diskCmd := fmt.Sprintf("qemu-img create -f qcow2 %s <diskSize>G", diskPathQemu)
+		diskPathCmds = append(diskPathCmds, diskCmd)
+
+		log.Println("utils.CDQCow runs: DiskCmd: %s\n", diskCmd)
+
+	}
+
+	log.Println("Navigate back to Root")
+
+	// 3.
+
+	userdataDirPath := filepath.Join(vm.ArtifactPath, "userdata")
+
+	log.Printf("Step 3: Generating User Data: %s\n", userdataDirPath)
+
+	log.Println("Calls vmc.GenerateCloudInitImgFromPath()")
+
+	log.Println("If vm.InlineUserdata empty - uses default Userdata with zsh installed")
+
+	if vm.InlineUserdata == "" {
+		log.Println("will use Default User Data using:  configuration.SubstituteHostNameAndFqdnUserdataSSHPublicKey")
+	}
+
+	log.Println("Generates user-data.txt, metadata , user-data.img at: %s/\n", userdataDirPath)
+
+	log.Println("Step 4 : Runs virt-install from Root")
+
+	//
+	//    log.Println("If
+
+	generatedVmImg := filepath.Join(vm.ImagesDir, vm.VMName+"-vm-disk.qcow2")
+	vm_userdata_img := filepath.Join("data", "artifacts", vm.VMName, "userdata", "user-data.img")
+
+	if f, _ := fpath.FileExists(generatedVmImg); !f {
+		log.Println(utils.TurnError(fmt.Sprintf("VM OS Image not found: %s", generatedVmImg)))
+	}
+
+	if f, _ := fpath.FileExists(vm_userdata_img); !f {
+		log.Println(utils.TurnError(fmt.Sprintf("VM Userdata Image not found: %s", generatedVmImg)))
+	}
+
+	log.Println("If either cannot be found - will fail: %s %s\n", generatedVmImg, vm_userdata_img)
+
+	cmdArgs := []string{
+		"--name", vm.VMName,
+		"--virt-type", "kvm",
+		"--memory", fmt.Sprint(vm.Memory),
+		"--vcpus", fmt.Sprint(vm.CPUCores),
+		"--disk", "path=" + generatedVmImg + ",device=disk",
+		"--disk", "path=" + vm_userdata_img + ",format=raw",
+		"--graphics", "none",
+		"--boot", "hd,menu=on",
+		"--network", "network=default",
+		"--os-variant", "ubuntu18.04",
+		"--noautoconsole",
+	}
+
+	virtInstallCmd := strings.Join(cmdArgs, "")
+
+	log.Println("Runs virt-install cmd : %s\n", virtInstallCmd)
+
+	fpath.LogCwd()
+
+	yamlData, err := yaml.Marshal(&vm)
+	if err != nil {
+		return "", err
+	}
+
+	return string(yamlData), nil
+}
+
 type VMConfig struct {
-	VMName          string       `json:"vm_name" yaml:"vm_name"`
-	InlineUserdata  string       `json:"inline_userdata" yaml:"inline_userdata"`
-	ImageURL        string       `json:"image_url" yaml:"image_url"`
+	VMName         string `json:"vm_name" yaml:"vm_name"`
+	InlineUserdata string `json:"inline_userdata" yaml:"inline_userdata"`
+	ImageURL       string `json:"image_url" yaml:"image_url"`
+
+	// Central Images Dir
 	ImagesDir       string       `json:"images_dir" yaml:"images_dir"`
 	BootFilesDir    string       `json:"boot_files_dir" yaml:"boot_files_dir"`
 	ScriptsDir      string       `json:"scripts_dir" yaml:"scripts_dir"`
@@ -537,11 +643,12 @@ func (config *VMConfig) GenerateUserDataImgDefault() error {
 }
 
 // Navigates to Dir for VM and creates the base image using qemu-img create -b
+// Note : Navgates + Creates VM Image in CENTRAL IMAGES dir
 func (s *VMConfig) CreateBaseImage() error {
-	log.Print("Creating Base Image")
+	log.Print("Creating Base Image. Navigating to dir with Base OS Image: %s\n", s.ImagesDir)
 
 	// 	_ = s.navigateToDirWithISOImages()
-	_ = s.navigateToAbsPath(s.ImagesDir)
+	_ = s.navigateToAbsPath(s.ImagesDir) // navigate to central images dir
 
 	log.Print(utils.TurnSuccess(fmt.Sprintf("CREATBASEIMAGE() Old s.ImagesDir:%s | New ImgsDir %s",
 		s.ImagesDir, s.ImagesPathFP.Get())))
@@ -568,6 +675,7 @@ func (s *VMConfig) CreateDisks() error {
 
 	fpath.LogCwd()
 	log.Print("Creating VM Disks")
+
 	err := s.navigateToAbsPath(s.DisksPath())
 	if err != nil {
 		log.Fatalf("FAILURE Generating Secondary Disks : %s", err)
@@ -679,7 +787,12 @@ func (s *VMConfig) ResolveFQDNBootBehaviorImg() error {
 func (s *VMConfig) SetupVM() error {
 	utils.LogStep("MOUNTING IMAGE")
 
-	_ = s.navigateToDirWithISOImages()
+	if err := s.navigateToDirWithISOImages(); err != nil {
+		errStr := utils.TurnError(fmt.Sprintf("Failed to navigate to Dir with VM Base Image (central repo) to modify the VM Base Image"))
+		log.Println(errStr)
+		return errors.New(errStr)
+
+	}
 
 	modifiedImagePath := filepath.Join(s.VMName + "-vm-disk.qcow2")
 	log.Printf("modified Image Path %s", modifiedImagePath)
@@ -737,7 +850,8 @@ func (s *VMConfig) SetupVM() error {
 	return nil
 }
 
-// CreateVM() uses libvirtd to create the VM and boot it.
+// CreateVM() runs virt-install - needs paths for the VM Image and the user-data.img files
+// uses libvirtd to create the VM and boot it.
 // The state will change to Running and the boot scripts will run followed by systemd services
 // Uses the image from data/images/control-vm-disk.qcow2
 // Adds any extra disks defined on the Struct
@@ -747,7 +861,9 @@ func (s *VMConfig) CreateVM() error {
 		log.Printf("Failed to Navigate to Root Dir. Virt-install must be ran with relative pathing. :%s", err)
 	}
 
-	modifiedImagePath := filepath.Join(s.ImagesDir, s.VMName+"-vm-disk.qcow2")
+	// Currently vm images generated in data/images/<vmaame> itself
+
+	generatedVmImg := filepath.Join(s.ImagesDir, s.VMName+"-vm-disk.qcow2")
 	vm_userdata_img := filepath.Join("data", "artifacts", s.VMName, "userdata", "user-data.img")
 
 	cmdArgs := []string{
@@ -755,7 +871,7 @@ func (s *VMConfig) CreateVM() error {
 		"--virt-type", "kvm",
 		"--memory", fmt.Sprint(s.Memory),
 		"--vcpus", fmt.Sprint(s.CPUCores),
-		"--disk", "path=" + modifiedImagePath + ",device=disk",
+		"--disk", "path=" + generatedVmImg + ",device=disk",
 		"--disk", "path=" + vm_userdata_img + ",format=raw",
 		"--graphics", "none",
 		"--boot", "hd,menu=on",
