@@ -2,6 +2,7 @@ package lib
 
 import (
 	"fmt"
+	"log"
 
 	"libvirt.org/go/libvirt"
 )
@@ -65,11 +66,14 @@ func DeletePool(conn *libvirt.Connect, poolName string) error {
 		}
 		return fmt.Errorf("failed to look up storage pool by name: %v", err)
 	}
-	defer pool.Free()
+	// defer pool.Free()
 
+	log.Printf("destroying")
 	if err := pool.Destroy(); err != nil && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
 		return fmt.Errorf("failed to destroy storage pool: %v", err)
 	}
+
+	log.Printf("udefining")
 
 	if err := pool.Undefine(); err != nil {
 		return fmt.Errorf("failed to undefine storage pool: %v", err)

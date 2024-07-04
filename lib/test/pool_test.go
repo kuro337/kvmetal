@@ -23,6 +23,8 @@ func TestUbuntuPool(t *testing.T) {
 	poolPath := "/home/kuro/kvm/test"
 
 	if ex, _ := lib.PoolExists(conn, poolName); ex {
+		t.Logf("Pool exists")
+
 		if err := lib.DeletePool(conn, poolName); err != nil {
 			t.Fatalf("failed to delete: %s\n", err)
 		}
