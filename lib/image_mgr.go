@@ -206,7 +206,19 @@ func (im *ImageManager) CreateImgVolume(poolName, volumeName, baseImagePath stri
                    </backingStore>
                </volume>`, volumeName, capacityGB, baseImagePath)
 
-	vol, err := pool.StorageVolCreateXML(volXML, 0)
+	// Check if the volume already exists
+	vol, err := pool.LookupStorageVolByName(volumeName)
+	if err == nil {
+		defer vol.Free()
+		volPath, err := vol.GetPath()
+		if err != nil {
+			return fmt.Errorf("failed to get the path of the existing volume: %v", err)
+		}
+		fmt.Printf("Storage volume '%s' already exists at path: %s\n", volumeName, volPath)
+		return nil
+	}
+
+	vol, err = pool.StorageVolCreateXML(volXML, 0)
 	if err != nil {
 		fmt.Printf("Failed to create storage volume: %v\n", err)
 		return err
