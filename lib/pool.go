@@ -22,10 +22,14 @@ func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
                                 </target>
                             </pool>`, name, path)
 
+	log.Println("defiing XML")
+
 	pool, err := conn.StoragePoolDefineXML(poolXML, 0)
 	if err != nil {
 		return nil, fmt.Errorf("failed to define storage pool: %v", err)
 	}
+
+	log.Println("defiend XML")
 
 	err = pool.Create(libvirt.STORAGE_POOL_CREATE_WITH_BUILD)
 	if err != nil {
@@ -36,6 +40,8 @@ func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to set autostart for storage pool: %v", err)
 	}
+
+	log.Println("autostart set")
 
 	defer pool.Free()
 
