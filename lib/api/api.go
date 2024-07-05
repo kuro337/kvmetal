@@ -71,3 +71,47 @@ func ListPoolVolumes(conn *libvirt.Connect, poolName string) ([]string, error) {
 
 	return volumePaths, nil
 }
+
+func DeletePool(conn *libvirt.Connect, poolName string, deleteContents bool) error {
+	pool, err := conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		return fmt.Errorf("failed to lookup pool: %v", err)
+	}
+	defer pool.Free()
+
+	// Stop the pool
+	err = pool.Destroy()
+	if err != nil {
+		return fmt.Errorf("failed to stop pool: %v", err)
+	}
+
+	if deleteContents {
+		// Delete all volumes in the pool
+		volumes, err := pool.ListAllStorageVolumes(0)
+		if err != nil {
+			return fmt.Errorf("failed to list volumes: %v", err)
+		}
+		for _, vol := range volumes {
+			err = vol.Delete(0)
+			if err != nil {
+				vol.Free()
+				return fmt.Errorf("failed to delete volume: %v", err)
+			}
+			vol.Free()
+		}
+
+		// Delete the pool itself (including on-disk data)
+		err = pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL)
+		if err != nil {
+			return fmt.Errorf("failed to delete pool data: %v", err)
+		}
+	}
+
+	// Undefine the pool
+	err = pool.Undefine()
+	if err != nil {
+		return fmt.Errorf("failed to undefine pool: %v", err)
+	}
+
+	return nil
+}
