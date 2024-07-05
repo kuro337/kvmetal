@@ -1,4 +1,4 @@
-package samp
+package main
 
 import (
 	"log"
