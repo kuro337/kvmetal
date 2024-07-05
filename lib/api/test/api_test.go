@@ -30,11 +30,11 @@ func TestImageApi(t *testing.T) {
 
 	imgs, err := api.ListPoolVolumes(conn, path)
 	if err != nil {
-		t.Fatal("Failed to get Path Error:%s", err)
+		t.Fatalf("Failed to get Path Error:%s", err)
 	}
 
 	if imgs == nil || len(imgs) == 0 {
-		t.Errorf("No Images Present")
+		t.Error("No Images Present")
 	}
 
 	t.Logf("Volumes: %s\n", strings.Join(imgs, "\n"))
