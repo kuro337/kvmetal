@@ -28,7 +28,9 @@ func TestImageApi(t *testing.T) {
 		t.Fatalf("Failed to get Path Error:%s", err)
 	}
 
-	imgs, err := api.ListPoolVolumes(conn, path)
+	t.Logf("Pool Path: %s\n", path)
+
+	imgs, err := api.ListPoolVolumes(conn, base)
 	if err != nil {
 		t.Fatalf("Failed to get Path Error:%s", err)
 	}
