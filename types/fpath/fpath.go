@@ -214,13 +214,20 @@ func (f *FilePath) CreateFile() error {
 
 // CreateFolder creates a new folder at the FilePath's current path.
 func (f *FilePath) CreateFolder() error {
-	if err := os.MkdirAll(f.Get(), os.ModePerm); err != nil {
-		log.Printf("Failed to create folder: %v", err)
-		return err
-	} else {
-		log.Printf("Folder created successfully: %s", f.Get())
-	}
+	p := f.Get()
+
+	log.Printf("f.Get(): %s\n", p)
 	return nil
+
+	/*
+		if err := os.MkdirAll(f.Get(), os.ModePerm); err != nil {
+			log.Printf("Failed to create folder: %v", err)
+			return err
+		} else {
+			log.Printf("Folder created successfully: %s", f.Get())
+		}
+		return nil
+	*/
 }
 
 func (f *FilePath) DeleteFile() error {

@@ -34,14 +34,9 @@ func NewVM(name, path string) (*VM, error) {
 	}
 	vm := &VM{name: name, client: conn, images: map[string]*libvirt.StorageVol{}}
 
-	fpath := fpath.SecurePath(path)
-	if err := fpath.CreateFolder(); err != nil {
-		return nil, fmt.Errorf("Failed to validate path. Error:%s\n", err)
+	if err := vm.initPath(path); err != nil {
+		return nil, err
 	}
-
-	//	fpath.PrintPaths()
-
-	vm.basePath = fpath
 
 	pool, err := conn.GetOrCreatePool(name, path)
 	if err != nil {
@@ -51,6 +46,20 @@ func NewVM(name, path string) (*VM, error) {
 	vm.pool = lib.InitPool(pool, name, path)
 
 	return vm, nil
+}
+
+func (vm *VM) initPath(path string) error {
+	fpath := fpath.SecurePath(path)
+
+	if err := fpath.CreateFolder(); err != nil {
+		return fmt.Errorf("Failed to validate path. Error:%s\n", err)
+	}
+
+	fpath.PrintPaths()
+
+	vm.basePath = fpath
+
+	return nil
 }
 
 func (vm *VM) ListImages() error {
