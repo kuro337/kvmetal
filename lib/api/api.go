@@ -128,7 +128,7 @@ func FetchImageUrl(url, dir string) (string, error) {
 
 	// Create HTTP client with timeout
 	client := &http.Client{
-		Timeout: time.Duration(30 * time.Second),
+		Timeout: time.Duration(160 * time.Second),
 	}
 
 	// Send GET request
@@ -142,6 +142,8 @@ func FetchImageUrl(url, dir string) (string, error) {
 	if resp.StatusCode != http.StatusOK {
 		return "", fmt.Errorf("bad status: %s", resp.Status)
 	}
+
+	log.Printf("Download Completed")
 
 	// Extract the filename from the URL
 	fileName := filepath.Base(url)
