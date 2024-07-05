@@ -95,11 +95,20 @@ func (vm *VM) AddImageHttp(url, name string) (string, error) {
 
 func (vm *VM) initPath(path string) error {
 	fpath := fpath.SecurePath(path)
+
 	imgs := filepath.Join(fpath.Abs(), "images")
+	tmp := filepath.Join(fpath.Abs(), "tmp")
+
 	if err := os.MkdirAll(imgs, os.ModePerm); err != nil {
 		log.Printf("Failed to create folder: %v", err)
 		return err
 	}
+
+	if err := os.MkdirAll(tmp, os.ModePerm); err != nil {
+		log.Printf("Failed to create folder: %v", err)
+		return err
+	}
+
 	vm.path = path
 	return nil
 }
