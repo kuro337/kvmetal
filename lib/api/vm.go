@@ -39,7 +39,7 @@ func NewVM(name, path string) (*VM, error) {
 		return nil, fmt.Errorf("Failed to validate path. Error:%s\n", err)
 	}
 
-	fpath.PrintPaths()
+	//	fpath.PrintPaths()
 
 	vm.basePath = fpath
 
