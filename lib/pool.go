@@ -17,6 +17,10 @@ type Pool struct {
 	name string
 	path string
 	pool *libvirt.StoragePool
+
+	volumes map[string]*libvirt.StorageVol
+
+	preserve bool
 }
 
 func (p *Pool) DeleteImage(image string) error {
@@ -29,6 +33,15 @@ func (p *Pool) DeleteImage(image string) error {
 	}
 
 	return nil
+}
+
+func InitPool(pool *libvirt.StoragePool, name, path string) *Pool {
+	return &Pool{
+		name:    name,
+		path:    path,
+		pool:    pool,
+		volumes: map[string]*libvirt.StorageVol{},
+	}
 }
 
 // NewPool creates and returns a new storage pool
@@ -62,9 +75,10 @@ func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
 
 	log.Printf("Pool %s created and autostart set", name)
 	return &Pool{
-		name: name,
-		path: path,
-		pool: pool,
+		name:    name,
+		path:    path,
+		pool:    pool,
+		volumes: map[string]*libvirt.StorageVol{},
 	}, nil
 }
 
@@ -122,6 +136,7 @@ func DeletePool(conn *libvirt.Connect, poolName string) error {
 	defer pool.Free()
 
 	log.Printf("Destroying pool %s", poolName)
+
 	if err := pool.Destroy(); err != nil {
 		if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code != libvirt.ERR_OPERATION_INVALID {
 			return fmt.Errorf("failed to destroy storage pool: %v", err)
@@ -137,20 +152,42 @@ func DeletePool(conn *libvirt.Connect, poolName string) error {
 	return nil
 }
 
+func (p *Pool) destroy() error {
+	if active, err := p.Active(); err == nil && active {
+		if err := p.pool.Destroy(); err != nil {
+			if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code != libvirt.ERR_OPERATION_INVALID {
+				return fmt.Errorf("failed to destroy storage pool: %v", err)
+			}
+		}
+	}
+	return nil
+}
+
 func (p *Pool) Delete() error {
 	if p.pool == nil {
 		return fmt.Errorf("storage pool is nil")
 	}
-	// Destroy the pool if it is active
-	if active, err := p.Active(); err == nil && active {
-		if err := p.pool.Destroy(); err != nil {
-			return fmt.Errorf("failed to destroy storage pool: %v", err)
-		}
+
+	if err := p.UpdateVolumes(); err != nil {
+		return fmt.Errorf("Failed to Delete Pool as volumes could not be retrieved. Error %s\n", err)
 	}
-	// Undefine the pool
+
+	if err := p.DeleteVolumes(); err != nil {
+		return fmt.Errorf("Failed to Delete - volumes could not be deleted. Error %s\n", err)
+	}
+	// Destroy the pool if it is active
+	if err := p.destroy(); err != nil {
+		return err
+	}
+
+	if err := p.pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL); err != nil {
+		return fmt.Errorf("failed to delete pool data: %v", err)
+	}
+
 	if err := p.pool.Undefine(); err != nil {
 		return fmt.Errorf("failed to undefine storage pool: %v", err)
 	}
+
 	return nil
 }
 
@@ -162,6 +199,85 @@ func (p *Pool) Active() (bool, error) {
 		return false, fmt.Errorf("Storage Pool not active for %s", p.name)
 	}
 	return true, nil
+}
+
+func (p *Pool) UpdateVolumes() error {
+	pool := p.pool
+	// Refresh the pool to get the latest state
+	if err := pool.Refresh(0); err != nil {
+		return fmt.Errorf("failed to refresh pool: %v", err)
+	}
+	volumes, err := pool.ListAllStorageVolumes(0)
+	if err != nil {
+		return fmt.Errorf("failed to list volumes: %v", err)
+	}
+	// libvirt.StorageVol
+	for _, vol := range volumes {
+		path, err := vol.GetPath()
+		if err != nil {
+			vol.Free()
+			return fmt.Errorf("failed to get volume path: %v", err)
+		}
+
+		p.volumes[path] = &vol
+		vol.Free()
+	}
+	return nil
+}
+
+func (p *Pool) GetImages() (map[string]*libvirt.StorageVol, error) {
+	if p.volumes == nil {
+		if err := p.UpdateVolumes(); err != nil {
+			return nil, err
+		}
+	}
+	return p.volumes, nil
+}
+
+func (p *Pool) GetVolumes() ([]string, error) {
+	if err := p.UpdateVolumes(); err != nil {
+		return nil, fmt.Errorf("Failed to update volumes, %s\n", err)
+	}
+	pool := p.pool
+	// Refresh the pool to get the latest state
+	if err := pool.Refresh(0); err != nil {
+		return nil, fmt.Errorf("failed to refresh pool: %v", err)
+	}
+
+	var volumePaths []string
+	for _, vol := range p.volumes {
+		path, err := vol.GetPath()
+		if err != nil {
+			vol.Free()
+			return nil, fmt.Errorf("failed to get volume path: %v", err)
+		}
+		volumePaths = append(volumePaths, path)
+		vol.Free()
+	}
+	return volumePaths, nil
+}
+
+func (p *Pool) DeleteVolume(path string) error {
+	vol, ok := p.volumes[path]
+	if !ok {
+		return fmt.Errorf("Volume at path %s not found\n", path)
+	}
+	if err := vol.Delete(0); err != nil {
+		vol.Free()
+		return fmt.Errorf("failed to delete volume: %v", err)
+	}
+	return nil
+}
+
+func (p *Pool) DeleteVolumes() error {
+	for _, vol := range p.volumes {
+		if err := vol.Delete(0); err != nil {
+			vol.Free()
+			return fmt.Errorf("failed to delete volume: %v", err)
+		}
+		vol.Free()
+	}
+	return nil
 }
 
 func (p *Pool) GetVolume(name string) (string, error) {

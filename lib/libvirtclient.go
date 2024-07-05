@@ -224,9 +224,39 @@ func (v *VirtClient) ParseXML(domain string) (*libvirtxml.Domain, error) {
 
 /////////////////// VM Image Generation for KVM Images from Base Images
 
+func (v *VirtClient) GetOrCreatePool(poolName, poolPath string) (*libvirt.StoragePool, error) {
+	if pool, err := v.conn.LookupStoragePoolByName(poolName); err == nil {
+		return pool, nil
+	}
+
+	if poolPath == "" {
+		return nil, fmt.Errorf("Provide a path to create a new pool for %s\n", poolName)
+	}
+	return v.createPool(poolName, poolPath)
+}
+
+func (v *VirtClient) createPool(name, path string) (*libvirt.StoragePool, error) {
+	// If the pool does not exist, create it
+	poolXML := fmt.Sprintf(`<pool type='dir'>
+                                    <name>%s</name>
+                                    <target>
+                                        <path>%s</path>
+                                    </target>
+                                </pool>`, name, path)
+
+	pool, err := v.conn.StoragePoolCreateXML(poolXML, 0)
+	if err != nil {
+		fmt.Printf("Failed to create storage pool: %v\n", err)
+		return nil, err
+	}
+
+	return pool, nil
+}
+
 // CreateStoragePool creates the Storage pool if it doesnt exist
 // @Usage
 // err := CreateStoragePool("default" , "/var/lib/libvirt/images")
+
 func (v *VirtClient) CreateStoragePool(poolName, poolPath string) error {
 	// Check if the storage pool already exists
 	pool, err := v.conn.LookupStoragePoolByName(poolName)

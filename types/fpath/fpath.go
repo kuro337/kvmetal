@@ -57,6 +57,30 @@ func NewPath(path string, lazy bool) (*FilePath, error) {
 	return &FilePath{absPath: absPath}, nil
 }
 
+func SecurePath(path string) *FilePath {
+	if path == "" || len(path) <= 1 {
+		log.Fatalf("Not allowed: %s\n", path)
+	}
+
+	if path[0] == '/' {
+		path = path[1:]
+	}
+	home := os.Getenv("HOME")
+	if strings.HasSuffix(path, "usr") || strings.HasSuffix(path, "etc") {
+		log.Fatalf("Not allowed: %s\n", path)
+	}
+	if !strings.HasSuffix(path, home) {
+		log.Fatalf("Not allowed: %s. Must be in %s\n", path, home)
+	}
+
+	fpath, err := NewPath(path, false)
+	if err != nil {
+		log.Fatalf("Invalid Path passed:%s", err)
+	}
+
+	return fpath
+}
+
 // New method creates a new FilePath instance with the provided path.
 // The path is treated as an absolute path.
 func (f FilePath) New(path string) FPath {
