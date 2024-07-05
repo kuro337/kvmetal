@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"libvirt.org/go/libvirt"
@@ -15,6 +16,8 @@ func CheckPoolExists(conn *libvirt.Connect, poolName string) bool {
 }
 
 func GetPoolPath(conn *libvirt.Connect, poolName string) (string, error) {
+	log.Printf("Checking if Pool %s exists\n", poolName)
+
 	pool, err := conn.LookupStoragePoolByName(poolName)
 	if err != nil {
 		return "", err
