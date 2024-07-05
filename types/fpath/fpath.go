@@ -62,15 +62,18 @@ func SecurePath(path string) *FilePath {
 		log.Fatalf("Not allowed: %s\n", path)
 	}
 
+	comp := path
+
 	if path[0] == '/' {
-		path = path[1:]
+		comp = path[1:]
 	}
+
 	home := os.Getenv("HOME")
-	if strings.HasSuffix(path, "usr") || strings.HasSuffix(path, "etc") {
+	if strings.HasSuffix(comp, "usr") || strings.HasSuffix(comp, "etc") {
 		log.Fatalf("Not allowed: %s\n", path)
 	}
 
-	if !strings.HasPrefix(path, home[1:]) {
+	if !strings.HasPrefix(path, home) {
 		log.Fatalf("Not allowed: %s. Must be in %s\n", path, home)
 	}
 
