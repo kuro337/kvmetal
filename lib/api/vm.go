@@ -99,12 +99,12 @@ func (vm *VM) initPath(path string) error {
 	imgs := filepath.Join(fpath.Abs(), "images")
 	tmp := filepath.Join(fpath.Abs(), "tmp")
 
-	if err := os.MkdirAll(imgs, os.ModePerm); err != nil {
+	if err := os.MkdirAll(imgs, 0o755); err != nil {
 		log.Printf("Failed to create folder: %v", err)
 		return err
 	}
 
-	if err := os.MkdirAll(tmp, os.ModePerm); err != nil {
+	if err := os.MkdirAll(tmp, 0o755); err != nil {
 		log.Printf("Failed to create folder: %v", err)
 		return err
 	}
