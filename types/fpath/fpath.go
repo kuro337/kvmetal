@@ -69,7 +69,7 @@ func SecurePath(path string) *FilePath {
 	if strings.HasSuffix(path, "usr") || strings.HasSuffix(path, "etc") {
 		log.Fatalf("Not allowed: %s\n", path)
 	}
-	if !strings.HasSuffix(path, home) {
+	if !strings.HasSuffix(path, home[1:]) {
 		log.Fatalf("Not allowed: %s. Must be in %s\n", path, home)
 	}
 
