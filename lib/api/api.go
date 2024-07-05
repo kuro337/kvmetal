@@ -2,8 +2,13 @@ package api
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
 	"libvirt.org/go/libvirt"
 )
@@ -114,4 +119,64 @@ func DeletePool(conn *libvirt.Connect, poolName string, deleteContents bool) err
 	}
 
 	return nil
+}
+
+func FetchImageUrl(url, dir string) (string, error) {
+	if url == "" {
+		return "", fmt.Errorf("passed empty URL")
+	}
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: time.Duration(30 * time.Second),
+	}
+
+	// Send GET request
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to GET from %s: %v", url, err)
+	}
+	defer resp.Body.Close()
+
+	// Check server response
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	// Extract the filename from the URL
+	fileName := filepath.Base(url)
+	if fileName == "." || fileName == "/" {
+		fileName = "downloaded_image"
+	}
+
+	// If the filename doesn't have an extension, try to get it from the Content-Type
+	if !strings.Contains(fileName, ".") {
+		contentType := resp.Header.Get("Content-Type")
+		ext := ""
+		switch contentType {
+		case "application/x-qemu-disk":
+			ext = ".qcow2"
+		case "application/x-raw-disk-image":
+			ext = ".img"
+		}
+		fileName += ext
+	}
+
+	// Create the full file path
+	filePath := filepath.Join(dir, fileName)
+
+	// Create the file
+	out, err := os.Create(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create file %s: %v", filePath, err)
+	}
+	defer out.Close()
+
+	// Write the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to save file %s: %v", filePath, err)
+	}
+
+	return filePath, nil
 }
