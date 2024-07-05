@@ -9,6 +9,29 @@ import (
 	"libvirt.org/go/libvirt"
 )
 
+func TestDeletePool(t *testing.T) {
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		log.Printf("Error Connecting %s", err)
+		t.Errorf("Error:%s", err)
+	}
+	defer conn.Close()
+	// Create pool "ubuntu" at "/home/kuro/kvm/test"
+	poolName := "ubuntu"
+
+	if ex, _ := lib.PoolExists(conn, poolName); ex {
+		t.Logf("Pool exists")
+
+		if err := lib.DeletePool(conn, poolName); err != nil {
+			t.Fatalf("failed to delete: %s\n", err)
+		}
+
+		t.Log("Deleted the active Pool")
+	}
+
+	log.Printf("Pool %s successfully deleted\n", poolName)
+}
+
 func TestUbuntuPool(t *testing.T) {
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
