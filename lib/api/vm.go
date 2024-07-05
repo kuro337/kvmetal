@@ -20,8 +20,8 @@ type VM struct {
 	poolPath string
 	pool     *lib.Pool
 
-	basePath *fpath.FilePath
-	images   map[string]*libvirt.StorageVol
+	// basePath *fpath.FilePath
+	images map[string]*libvirt.StorageVol
 }
 
 // NewImageMgr returns the Img Manager with a default Pool
@@ -51,14 +51,29 @@ func NewVM(name, path string) (*VM, error) {
 func (vm *VM) initPath(path string) error {
 	fpath := fpath.SecurePath(path)
 
-	if err := fpath.CreateFolder(); err != nil {
-		return fmt.Errorf("Failed to validate path. Error:%s\n", err)
+	imgs := filepath.Join(fpath.Abs(), "images")
+
+	log.Println("GENERATED PATH: %s\n", imgs)
+
+	exp := "/home/kuro/testtemp/images"
+	if imgs != exp {
+		log.Fatalf("Got : %s, Expected: %s\n", exp)
 	}
 
-	fpath.PrintPaths()
+	// if err := fpath.CreateFolder(); err != nil {
+	//	return fmt.Errorf("Failed to validate path. Error:%s\n", err)
+	// }
 
-	vm.basePath = fpath
+	/*
+		if err := os.MkdirAll(imgs, os.ModePerm); err != nil {
+			log.Printf("Failed to create folder: %v", err)
+			return err
+		} else {
+			log.Printf("Folder created successfully: %s", imgs)
+		}
+	*/
 
+	vm.path = path
 	return nil
 }
 
@@ -75,8 +90,13 @@ func (vm *VM) ListImages() error {
 	return nil
 }
 
+// path will be path + images
 func (vm *VM) tempPath() string {
-	return filepath.Join(vm.basePath.Abs(), "tmp")
+	return filepath.Join(vm.path, "tmp")
+}
+
+func (vm *VM) Images() string {
+	return filepath.Join(vm.path, "images")
 }
 
 func (vm *VM) GetImage(name string) (string, error) {
