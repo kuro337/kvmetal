@@ -12,15 +12,15 @@ import (
 
 func TestVM(t *testing.T) {
 	name := "testTemp"
-
 	path := "/home/kuro/testtemp"
-
 	vm, err := api.NewVM(name, path)
 	if err != nil {
 		t.Errorf("Error new VM: %s\n", err)
 	}
 
-	tmp, err := vm.AddImageHttp("someVM")
+	url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
+
+	tmp, err := vm.AddImageHttp(url, "someVM")
 	if err != nil {
 		t.Errorf("Error new VM: %s\n", err)
 	}

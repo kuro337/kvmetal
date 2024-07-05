@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"log"
+	"os"
 	"path/filepath"
 
 	"kvmgo/lib"
@@ -48,35 +49,6 @@ func NewVM(name, path string) (*VM, error) {
 	return vm, nil
 }
 
-func (vm *VM) initPath(path string) error {
-	fpath := fpath.SecurePath(path)
-
-	imgs := filepath.Join(fpath.Abs(), "images")
-
-	log.Println("GENERATED PATH: %s\n", imgs)
-
-	exp := "/home/kuro/testtemp/images"
-	if imgs != exp {
-		log.Fatalf("Got : %s, Expected: %s\n", exp)
-	}
-
-	// if err := fpath.CreateFolder(); err != nil {
-	//	return fmt.Errorf("Failed to validate path. Error:%s\n", err)
-	// }
-
-	/*
-		if err := os.MkdirAll(imgs, os.ModePerm); err != nil {
-			log.Printf("Failed to create folder: %v", err)
-			return err
-		} else {
-			log.Printf("Folder created successfully: %s", imgs)
-		}
-	*/
-
-	vm.path = path
-	return nil
-}
-
 func (vm *VM) ListImages() error {
 	if vm.images == nil {
 
@@ -108,8 +80,26 @@ func (vm *VM) GetImage(name string) (string, error) {
 	return path, nil
 }
 
-func (vm *VM) AddImageHttp(name string) (string, error) {
-	return vm.tempPath(), nil
+func (vm *VM) AddImageHttp(url, name string) (string, error) {
+	path, err := FetchImageUrl(url, vm.tempPath())
+	if err != nil {
+		return "", fmt.Errorf("Failed to pull image: %s\n", err)
+	}
+
+	log.Printf("Successfully pulled image to %s\n", path)
+
+	return path, nil
 }
 
 // NewVM done - now list all images for it
+
+func (vm *VM) initPath(path string) error {
+	fpath := fpath.SecurePath(path)
+	imgs := filepath.Join(fpath.Abs(), "images")
+	if err := os.MkdirAll(imgs, os.ModePerm); err != nil {
+		log.Printf("Failed to create folder: %v", err)
+		return err
+	}
+	vm.path = path
+	return nil
+}
