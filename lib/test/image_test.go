@@ -62,6 +62,24 @@ imgManager, err := lib.NewImageMgr("ubuntu", "")
 		t.Logf("failed to create imgMgr image, %s\n", err)
 	}
 */
+
+func TestAPI(t *testing.T) {
+	base := "ubuntu"
+	vm := "kube"
+	// getImage(base)
+	log.Println(base, vm)
+
+	// getBaseImage()
+
+	// createVM for kube at path
+
+	// specify Kube path
+
+	// check if kube img already exists
+
+	// create the Pool with name of VM
+}
+
 func TestFullKvmImageMgmt(t *testing.T) {
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {

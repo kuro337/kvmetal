@@ -334,7 +334,6 @@ func (v *VirtClient) StoragePoolExists(poolName string) bool {
 	if _, err := v.conn.LookupStoragePoolByName(poolName); err != nil {
 		return false
 	}
-
 	return true
 }
 
