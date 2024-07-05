@@ -20,12 +20,12 @@ func TestImageApi(t *testing.T) {
 	}
 
 	if !api.CheckPoolExists(conn, base) {
-		t.Fatalf("Pool does not exist")
+		t.Fatal("Pool does not exist")
 	}
 
 	path, err := api.GetPoolPath(conn, base)
 	if err != nil {
-		t.Fatal("Failed to get Path Error:%s", err)
+		t.Fatalf("Failed to get Path Error:%s", err)
 	}
 
 	imgs, err := api.ListPoolVolumes(conn, path)
