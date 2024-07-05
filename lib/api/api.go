@@ -167,18 +167,19 @@ func FetchImageUrl(url, dir string) (string, error) {
 	// Create the full file path
 	filePath := filepath.Join(dir, fileName)
 
-	// Create the file
+	log.Printf("Creating file at: %s", filePath)
 	out, err := os.Create(filePath)
 	if err != nil {
 		return "", fmt.Errorf("failed to create file %s: %v", filePath, err)
 	}
 	defer out.Close()
 
-	// Write the body to file
-	_, err = io.Copy(out, resp.Body)
+	log.Printf("Starting to copy data to file")
+	written, err := io.Copy(out, resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to save file %s: %v", filePath, err)
 	}
+	log.Printf("Copied %d bytes to file", written)
 
 	return filePath, nil
 }
