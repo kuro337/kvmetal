@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"kvmgo/utils"
+
 	"libvirt.org/go/libvirt"
 )
 
@@ -123,6 +125,7 @@ func DeletePool(conn *libvirt.Connect, poolName string, deleteContents bool) err
 }
 
 // FetchImageUrl pulls an image using a URL to a Directory
+// This .img file will be used by the VM's as a Base Image by defining it using the StorageCreateXML
 func FetchImageUrl(url, dir string) (string, error) {
 	if url == "" {
 		return "", fmt.Errorf("passed empty URL")
@@ -185,6 +188,109 @@ func FetchImageUrl(url, dir string) (string, error) {
 		return "", fmt.Errorf("failed to save file %s: %v", filePath, err)
 	}
 	log.Printf("Copied %d bytes to file", written)
+
+	return filePath, nil
+}
+
+// Downloads an Image with Progress logs
+func DownloadImage(url, dir string) (string, error) {
+	if url == "" {
+		return "", fmt.Errorf("passed empty URL")
+	}
+
+	if err := utils.CreateDirIfNotExist(dir); err != nil {
+		return "", fmt.Errorf("failed to create the dir %s", dir)
+	}
+
+	// Create HTTP client with timeout
+	client := &http.Client{
+		Timeout: time.Duration(500 * time.Second),
+	}
+
+	// Send GET request
+	resp, err := client.Get(url)
+	if err != nil {
+		return "", fmt.Errorf("failed to GET from %s: %v", url, err)
+	}
+	defer resp.Body.Close()
+
+	// Check server response
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("bad status: %s", resp.Status)
+	}
+
+	log.Printf("Download Started")
+
+	// Extract the filename from the URL
+	fileName := filepath.Base(url)
+	if fileName == "." || fileName == "/" {
+		fileName = "downloaded_image"
+	}
+
+	// If the filename doesn't have an extension, try to get it from the Content-Type
+	if !strings.Contains(fileName, ".") {
+		contentType := resp.Header.Get("Content-Type")
+		ext := ""
+		switch contentType {
+		case "application/x-qemu-disk":
+			ext = ".qcow2"
+		case "application/x-raw-disk-image":
+			ext = ".img"
+		}
+		fileName += ext
+	}
+
+	// Create the full file path
+	filePath := filepath.Join(dir, fileName)
+
+	log.Printf("Creating file at: %s", filePath)
+	out, err := os.Create(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to create file %s: %v", filePath, err)
+	}
+	defer out.Close()
+
+	fileSize := resp.ContentLength
+	log.Printf("Starting to copy data to file. Size is %d bytes\n", fileSize)
+
+	// Progress tracking variables
+	var written int64
+	buf := make([]byte, 32*1024) // 32 KB buffer
+	startTime := time.Now()
+
+	// Function to log progress
+	logProgress := func() {
+		elapsed := time.Since(startTime).Seconds()
+		speed := float64(written) / elapsed / (1024 * 1024) // Speed in MB/s
+		percent := float64(written) / float64(fileSize) * 100
+		log.Printf("Progress: %.2f%%, Speed: %.2f MB/s, Written: %d bytes\n", percent, speed, written)
+	}
+
+	// Read from response body and write to file with progress logging
+	for {
+		nr, er := resp.Body.Read(buf)
+		if nr > 0 {
+			nw, ew := out.Write(buf[0:nr])
+			if nw > 0 {
+				written += int64(nw)
+				logProgress()
+			}
+			if ew != nil {
+				return "", fmt.Errorf("failed to write to file %s: %v", filePath, ew)
+			}
+			if nr != nw {
+				return "", fmt.Errorf("failed to write all bytes to file %s", filePath)
+			}
+		}
+		if er != nil {
+			if er == io.EOF {
+				break
+			}
+			return "", fmt.Errorf("failed to read from response body: %v", er)
+		}
+	}
+
+	log.Printf("Download completed. Total bytes written: %d\n", written)
 
 	return filePath, nil
 }

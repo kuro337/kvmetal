@@ -27,7 +27,9 @@ type VM struct {
 }
 
 // NewImageMgr returns the Img Manager with a default Pool with the name provided
-// The storage pool is created at the path provided - and a /tmp and /images dir is created at the Path for the VM
+// The storage pool is created at the path provided - and a /storage , /tmp and /images dir is created at the Path for the VM
+// /storage is the libvirt managed Storage Pool
+// The path defined here must be entirely managed by libvirt - i.e do not create any dirs/files manually within the Storage Pool
 // @Usage
 // NewVM("ubuntu","/home/kuro/testubuntu") - creates /testubuntu/tmp and /testubuntu/images
 func NewVM(name, path string) (*VM, error) {
@@ -36,11 +38,13 @@ func NewVM(name, path string) (*VM, error) {
 	if err != nil {
 		return nil, fmt.Errorf("Error:%s", err)
 	}
+
 	vm := &VM{name: name, client: conn, images: map[string]*libvirt.StorageVol{}}
 
-	if err := vm.initPath(path); err != nil {
-		return nil, err
-	}
+	// note: do not create dirs where we register the Storage Pool - it has to be managed by libvirt
+	//	if err := vm.initPath(path); err != nil {
+	//		return nil, err
+	//	}
 
 	pool, err := conn.GetOrCreatePool(name, path)
 	if err != nil {
@@ -133,7 +137,7 @@ func (vm *VM) AddImageHttp(url, name string) (string, error) {
 	return path, nil
 }
 
-// NewVM done - now list all images for it
+// Creates images and tmp dir for the VM under its' storage pool path
 func (vm *VM) initPath(path string) error {
 	fpath := fpath.SecurePath(path)
 
