@@ -53,7 +53,7 @@ func TestListAll(t *testing.T) {
 	}
 
 	for _, p := range all {
-		t.Logf("%+v\n", p)
+		t.Logf("Name:%s Path:%s\n", p.Name, p.Path)
 	}
 }
 
