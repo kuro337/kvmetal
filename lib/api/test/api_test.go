@@ -17,7 +17,7 @@ func TestWrite(t *testing.T) {
 
 	imagesDir := "/home/kuro/kvm/images/ubuntu"
 
-	s, err := api.DownloadImage(url, imagesDir)
+	s, err := api.DownloadImageProgress(url, imagesDir)
 	// s, err := api.FetchImageUrl(url, "/home/kuro/kvm/test/")
 	if err != nil {
 		log.Printf("Failed operation Error:%s", err)
