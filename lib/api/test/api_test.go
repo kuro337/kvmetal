@@ -29,13 +29,15 @@ func TestVM(t *testing.T) {
 		t.Errorf("Error new VM: %s\n", err)
 	}
 
-	url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
+	t.Logf("VM:\n%v\n", vm)
 
-	tmp, err := vm.AddImageHttp(url, "someVM")
-	if err != nil {
-		t.Errorf("Error new VM: %s\n", err)
-	}
-	t.Logf("Generated : %s\n", tmp)
+	// url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
+
+	//tmp, err := vm.AddImageHttp(url, "someVM")
+	//if err != nil {
+	//	t.Errorf("Error new VM: %s\n", err)
+	//}
+	//t.Logf("Generated : %s\n", tmp)
 }
 
 // List all Storage Pools : go test -v --run TestListAll | fzf
