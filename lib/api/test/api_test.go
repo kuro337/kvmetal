@@ -10,6 +10,17 @@ import (
 	"libvirt.org/go/libvirt"
 )
 
+func TestWrite(t *testing.T) {
+	url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
+
+	s, err := api.FetchImageUrl(url, "/home/kuro/kvm/test/")
+	if err != nil {
+		log.Printf("Failed operation Error:%s", err)
+	}
+
+	t.Log(s)
+}
+
 func TestVM(t *testing.T) {
 	name := "testTemp"
 	path := "/home/kuro/testtemp"
@@ -28,6 +39,7 @@ func TestVM(t *testing.T) {
 	t.Logf("Generated : %s\n", tmp)
 }
 
+// List all Storage Pools : go test -v --run TestListAll | fzf
 func TestListAll(t *testing.T) {
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
