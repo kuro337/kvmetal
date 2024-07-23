@@ -285,7 +285,7 @@ func (p *Pool) GetVolumes() ([]string, error) {
 			return nil, fmt.Errorf("failed to get volume path: %v", err)
 		}
 		volumePaths = append(volumePaths, path)
-		vol.Free()
+//		vol.Free()
 	}
 	return volumePaths, nil
 }
