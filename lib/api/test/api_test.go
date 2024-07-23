@@ -29,7 +29,7 @@ func TestVM(t *testing.T) {
 		t.Errorf("Error new VM: %s\n", err)
 	}
 
-	t.Logf("VM:\n%v\n", vm)
+	t.Logf("VM:\n%+v\n", vm)
 
 	// url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
 
