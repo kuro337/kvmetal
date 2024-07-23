@@ -23,6 +23,39 @@ type Pool struct {
 	preserve bool
 }
 
+func GetPool(conn *libvirt.Connect, poolName string) (*Pool, error) {
+	// Check if the pool exists
+	pool, err := conn.LookupStoragePoolByName(poolName)
+	if err != nil {
+		if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code == libvirt.ERR_NO_STORAGE_POOL {
+			return nil, fmt.Errorf("storage pool %s does not exist", poolName)
+		}
+		return nil, fmt.Errorf("failed to lookup storage pool: %v", err)
+	}
+
+	// Get the XML description of the pool to extract the path
+	xmlDesc, err := pool.GetXMLDesc(0)
+	if err != nil {
+		pool.Free()
+		return nil, fmt.Errorf("failed to get pool XML description: %v", err)
+	}
+
+	pathStart := strings.Index(xmlDesc, "<path>")
+	pathEnd := strings.Index(xmlDesc, "</path>")
+	if pathStart == -1 || pathEnd == -1 {
+		pool.Free()
+		return nil, fmt.Errorf("path not found in pool XML")
+	}
+	path := xmlDesc[pathStart+6 : pathEnd]
+
+	return &Pool{
+		name:    poolName,
+		path:    path,
+		pool:    pool,
+		volumes: map[string]*libvirt.StorageVol{},
+	}, nil
+}
+
 func (p *Pool) DeleteImage(image string) error {
 	if ex, _ := ImageExists(p.pool, image); ex {
 		log.Printf("Volume %s already exists", image)

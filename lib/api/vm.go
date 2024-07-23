@@ -80,6 +80,7 @@ func (vm *VM) GetImage(name string) (string, error) {
 	return path, nil
 }
 
+// Fetch the Base OS Image
 func (vm *VM) AddImageHttp(url, name string) (string, error) {
 	path, err := FetchImageUrl(url, vm.tempPath())
 	if err != nil {
