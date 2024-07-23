@@ -59,7 +59,7 @@ func TestListAll(t *testing.T) {
 
 	for _, p := range all {
 
-		fmt.Println("%d\n", p.Raw())
+		fmt.Printf("%s\n", p.Raw())
 
 		t.Logf("%s\n", p.Raw())
 	}
@@ -90,7 +90,7 @@ func TestImageApi(t *testing.T) {
 		t.Fatalf("Failed to get Path Error:%s", err)
 	}
 
-	if imgs == nil || len(imgs) == 0 {
+	if len(imgs) == 0 {
 		t.Error("No Images Present")
 	}
 
