@@ -130,7 +130,7 @@ func FetchImageUrl(url, dir string) (string, error) {
 
 	// Create HTTP client with timeout
 	client := &http.Client{
-		Timeout: time.Duration(160 * time.Second),
+		Timeout: time.Duration(500 * time.Second),
 	}
 
 	// Send GET request

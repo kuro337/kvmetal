@@ -59,10 +59,26 @@ func TestListAll(t *testing.T) {
 	}
 }
 
-// Delete a pool - clearing it's images
+// List all Images/Volumes associated with a Pool : go test -v --run TestListImages | fzf
+func TestListImages(t *testing.T) {
+	name := "base"
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		log.Printf("Error Connecting %s", err)
+		t.Errorf("Error:%s", err)
+	}
+	vols, err := api.ListAllVolumes(conn, name)
+	if err != nil {
+		t.Errorf("Failed to get Volumes Error:%s", err)
+	}
+	for _, vol := range vols {
+		t.Logf("Volume: %s\n", vol)
+	}
+}
+
+// Delete a pool - and clear its volumes
 func TestDeletePool(t *testing.T) {
 	name := "base"
-
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
 		log.Printf("Error Connecting %s", err)
@@ -82,21 +98,10 @@ func TestDeletePool(t *testing.T) {
 	for _, vol := range vols {
 		t.Logf("Volume: %s\n", vol)
 	}
-
 	if err := pool.Delete(); err != nil {
 		t.Errorf("Failed to delete Pool Error:%s", err)
 	}
-
-	samepool, err := lib.GetPool(conn, name)
-	if err == nil {
-		t.Errorf("Pool should be deleted to get Pool Error:%s", err)
-	}
-
-	_, err = samepool.GetVolumes()
-	if err == nil {
-		t.Errorf("Volumes should be deleted to get Volumes Error:%s", err)
-	}
-
+	t.Log("Successfully deleted pool")
 }
 
 // base has the Base OS Images

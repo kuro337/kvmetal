@@ -8,6 +8,7 @@ import (
 
 	"kvmgo/lib"
 	"kvmgo/types/fpath"
+	"kvmgo/utils"
 
 	"libvirt.org/go/libvirt"
 )
@@ -25,10 +26,12 @@ type VM struct {
 	images map[string]*libvirt.StorageVol
 }
 
-// NewImageMgr returns the Img Manager with a default Pool
+// NewImageMgr returns the Img Manager with a default Pool with the name provided
+// The storage pool is created at the path provided - and a /tmp and /images dir is created at the Path for the VM
+// @Usage
+// NewVM("ubuntu","/home/kuro/testubuntu") - creates /testubuntu/tmp and /testubuntu/images
 func NewVM(name, path string) (*VM, error) {
 	log.Printf("VM for %s at %s\n", name, path)
-
 	conn, err := lib.ConnectLibvirt()
 	if err != nil {
 		return nil, fmt.Errorf("Error:%s", err)
@@ -49,24 +52,62 @@ func NewVM(name, path string) (*VM, error) {
 	return vm, nil
 }
 
+// CreateBaseImage will use the vm name to generate a default <vm-name>-base.img file as the base backing image
+func (vm *VM) CreateBaseImage(imgPath string, capacityGB int) error {
+	return vm.CreateImage(imgPath, vm.name+"-base", capacityGB)
+}
+
+// CreateImage creates a new Image for this VM from a backing image such as an Ubuntu base Image
+//
+//	vm.CreateImage("/ubuntu-22.04.img","kafka-base",20) note can also pass kafka-vm.img - the suffix is added if not present
+func (vm *VM) CreateImage(imgPath, imageName string, capacityGB int) error {
+	xml := getXMLFromBaseImage(imgPath, imageName, capacityGB)
+	if err := vm.pool.CreateImageXML(xml); err != nil {
+		return fmt.Errorf("failed to create volume: %v", err)
+	}
+	return nil
+}
+
+// Define the XML for the new volume
+// @Usage:
+// getXMLFromBaseImage("/path/v.img", "kafka", 20) // or "kafka.img" - it is added if not specified
+func getXMLFromBaseImage(baseImagePath, newName string, capacityGB int) string {
+	// make sure it has an .img extension if not provided
+	newName = utils.AddExtensionIfRequired(newName, ".img")
+
+	return fmt.Sprintf(`
+<volume>
+	<name>%s</name>
+	<allocation>0</allocation>
+	<capacity unit="G">%d</capacity>
+	<target>
+		<format type='qcow2'/>
+	</target>
+	<backingStore>
+		<path>%s</path>
+		<format type='qcow2'/>
+	</backingStore>
+</volume>`, newName, capacityGB, baseImagePath)
+}
+
 func (vm *VM) ListImages() error {
 	if vm.images == nil {
-
 		imgs, err := vm.pool.GetImages()
 		if err != nil {
 			return fmt.Errorf("failed to get images. Err:%s")
 		}
 		vm.images = imgs
-
 	}
+
 	return nil
 }
 
-// path will be path + images
+// path will be path + tmp
 func (vm *VM) tempPath() string {
 	return filepath.Join(vm.path, "tmp")
 }
 
+// Images path is path + images
 func (vm *VM) Images() string {
 	return filepath.Join(vm.path, "images")
 }
@@ -93,7 +134,6 @@ func (vm *VM) AddImageHttp(url, name string) (string, error) {
 }
 
 // NewVM done - now list all images for it
-
 func (vm *VM) initPath(path string) error {
 	fpath := fpath.SecurePath(path)
 

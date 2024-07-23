@@ -115,6 +115,35 @@ func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
 	}, nil
 }
 
+// Delete deletes a Pool entirely clearing all the volumes associated with it
+func (p *Pool) Delete() error {
+	if p.pool == nil {
+		return fmt.Errorf("storage pool is nil")
+	}
+
+	if err := p.UpdateVolumes(); err != nil {
+		return fmt.Errorf("Failed to Delete Pool as volumes could not be retrieved. Error %s\n", err)
+	}
+
+	if err := p.DeleteVolumes(); err != nil {
+		return fmt.Errorf("Failed to Delete - volumes could not be deleted. Error %s\n", err)
+	}
+	// Destroy the pool if it is active
+	if err := p.destroy(); err != nil {
+		return err
+	}
+
+	if err := p.pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL); err != nil {
+		return fmt.Errorf("failed to delete pool data: %v", err)
+	}
+
+	if err := p.pool.Undefine(); err != nil {
+		return fmt.Errorf("failed to undefine storage pool: %v", err)
+	}
+
+	return nil
+}
+
 func ImageExists(pool *libvirt.StoragePool, volumeName string) (bool, error) {
 	vol, err := pool.LookupStorageVolByName(volumeName)
 	if err != nil {
@@ -196,34 +225,6 @@ func (p *Pool) destroy() error {
 	return nil
 }
 
-func (p *Pool) Delete() error {
-	if p.pool == nil {
-		return fmt.Errorf("storage pool is nil")
-	}
-
-	if err := p.UpdateVolumes(); err != nil {
-		return fmt.Errorf("Failed to Delete Pool as volumes could not be retrieved. Error %s\n", err)
-	}
-
-	if err := p.DeleteVolumes(); err != nil {
-		return fmt.Errorf("Failed to Delete - volumes could not be deleted. Error %s\n", err)
-	}
-	// Destroy the pool if it is active
-	if err := p.destroy(); err != nil {
-		return err
-	}
-
-	if err := p.pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL); err != nil {
-		return fmt.Errorf("failed to delete pool data: %v", err)
-	}
-
-	if err := p.pool.Undefine(); err != nil {
-		return fmt.Errorf("failed to undefine storage pool: %v", err)
-	}
-
-	return nil
-}
-
 // Active() checks whether the Pool is Active or not
 func (p *Pool) Active() (bool, error) {
 	pool := p.pool
@@ -246,6 +247,7 @@ func (p *Pool) UpdateVolumes() error {
 	}
 	// libvirt.StorageVol
 	for _, vol := range volumes {
+		vol.GetKey()
 		path, err := vol.GetPath()
 		if err != nil {
 			vol.Free()
@@ -258,6 +260,7 @@ func (p *Pool) UpdateVolumes() error {
 	return nil
 }
 
+// GetImages updates the current images/volumes and returns the Volumes
 func (p *Pool) GetImages() (map[string]*libvirt.StorageVol, error) {
 	if p.volumes == nil {
 		if err := p.UpdateVolumes(); err != nil {
@@ -267,6 +270,7 @@ func (p *Pool) GetImages() (map[string]*libvirt.StorageVol, error) {
 	return p.volumes, nil
 }
 
+// GetVolumes returns the Paths of the Volumes - convenience fn over GetImages() which returns the full Volume
 func (p *Pool) GetVolumes() ([]string, error) {
 	if err := p.UpdateVolumes(); err != nil {
 		return nil, fmt.Errorf("Failed to update volumes, %s\n", err)
@@ -415,6 +419,7 @@ func (p *Pool) CreateImageURL(name, url string, capacityGB int) error {
 	return p.CreateImageXML(xml)
 }
 
+// CreateImageXML generates the XML required to create a new Image/Volume
 func (p *Pool) CreateImageXML(xml string) error {
 	pool := p.pool
 
