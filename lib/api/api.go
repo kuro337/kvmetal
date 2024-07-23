@@ -46,6 +46,7 @@ func GetPoolPath(conn *libvirt.Connect, poolName string) (string, error) {
 	return path, nil
 }
 
+// ListPoolVolumes lists the volumes associated with the Storage Pool such as ubuntu for Images
 func ListPoolVolumes(conn *libvirt.Connect, poolName string) ([]string, error) {
 	pool, err := conn.LookupStoragePoolByName(poolName)
 	if err != nil {
@@ -144,7 +145,7 @@ func FetchImageUrl(url, dir string) (string, error) {
 		return "", fmt.Errorf("bad status: %s", resp.Status)
 	}
 
-	log.Printf("Download Completed")
+	log.Printf("Download Started")
 
 	// Extract the filename from the URL
 	fileName := filepath.Base(url)

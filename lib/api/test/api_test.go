@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"kvmgo/lib"
 	"kvmgo/lib/api"
 
 	"libvirt.org/go/libvirt"
@@ -58,6 +59,32 @@ func TestListAll(t *testing.T) {
 	}
 }
 
+// Delete a pool - clearing it's images
+func TestDeletePool(t *testing.T) {
+	name := "base"
+
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		log.Printf("Error Connecting %s", err)
+		t.Errorf("Error:%s", err)
+	}
+
+	pool, err := lib.GetPool(conn, name)
+	if err != nil {
+		t.Errorf("Failed to get Pool Error:%s", err)
+	}
+
+	vols, err := pool.GetVolumes()
+	if err != nil {
+		t.Errorf("Failed to get Volumes Error:%s", err)
+	}
+
+	for _, vol := range vols {
+		t.Logf("Volume: %s\n", vol)
+	}
+}
+
+// base has the Base OS Images
 func TestImageApi(t *testing.T) {
 	base := "base"
 

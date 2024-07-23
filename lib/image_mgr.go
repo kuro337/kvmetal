@@ -40,7 +40,9 @@ type ImageManager struct {
 	basePool string
 }
 
-// NewImageMgr returns the Img Manager with a default Pool
+// NewImageMgr returns the Img Manager with a default Pool.
+// The name passed will check if a storage pool exists with the name - or it will create a Storage Pool with the Path provided.
+// Path is required if the pool does not exist
 func NewImageMgr(name, path string) (*ImageManager, error) {
 	client, err := ConnectLibvirt()
 	if err != nil {
@@ -390,6 +392,7 @@ func (im *ImageManager) GeneratedImagePath() string {
 	return fmt.Sprintf("%s/generated", im.path)
 }
 
+// initDirs initializes the Path for the Storage Pool for this Image Manager
 func (im *ImageManager) initDirs() error {
 	defaultPool := im.BasePool()
 	basePath := im.BasePath()
