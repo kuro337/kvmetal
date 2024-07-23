@@ -121,6 +121,7 @@ func DeletePool(conn *libvirt.Connect, poolName string, deleteContents bool) err
 	return nil
 }
 
+// FetchImageUrl pulls an image using a URL to a Directory
 func FetchImageUrl(url, dir string) (string, error) {
 	if url == "" {
 		return "", fmt.Errorf("passed empty URL")
