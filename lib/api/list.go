@@ -10,6 +10,11 @@ import (
 type PoolInfo struct {
 	Name string
 	Path string
+	raw  string
+}
+
+func (p *PoolInfo) Raw() string {
+	return p.raw
 }
 
 func ListAllStoragePools(conn *libvirt.Connect) ([]PoolInfo, error) {
@@ -47,6 +52,7 @@ func ListAllStoragePools(conn *libvirt.Connect) ([]PoolInfo, error) {
 		poolInfos = append(poolInfos, PoolInfo{
 			Name: name,
 			Path: path,
+			raw:  xmlDesc,
 		})
 	}
 
