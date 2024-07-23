@@ -175,7 +175,10 @@ func FetchImageUrl(url, dir string) (string, error) {
 	}
 	defer out.Close()
 
-	log.Printf("Starting to copy data to file")
+	fileSize := resp.ContentLength
+
+	log.Printf("Starting to copy data to file. Size is %d\n", fileSize)
+
 	written, err := io.Copy(out, resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to save file %s: %v", filePath, err)
