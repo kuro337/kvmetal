@@ -59,3 +59,8 @@ func ListAllStoragePools(conn *libvirt.Connect) ([]PoolInfo, error) {
 
 	return poolInfos, nil
 }
+
+// List all Images/Volumes associated with a Pool : go test -v --run TestListAll | fzf
+func ListAllVolumes(conn *libvirt.Connect, name string) ([]string, error) {
+	return ListPoolVolumes(conn, name)
+}

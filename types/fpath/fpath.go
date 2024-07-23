@@ -51,7 +51,7 @@ func NewPath(path string, lazy bool) (*FilePath, error) {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
 		log.Printf("\nNOTE: Pass lazy=true if the Path is meant to be Resolved at a Later Point.")
-		return nil, fmt.Errorf("Failed to Resolve Current Passed Path to Absolute Path. ERROR:%s", err)
+		return nil, fmt.Errorf("failed to Resolve Current Passed Path to Absolute Path. ERROR:%s", err)
 
 	}
 	return &FilePath{absPath: absPath}, nil
