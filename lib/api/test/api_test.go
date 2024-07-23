@@ -35,7 +35,6 @@ func TestVM(t *testing.T) {
 	if err != nil {
 		t.Errorf("Error new VM: %s\n", err)
 	}
-
 	t.Logf("Generated : %s\n", tmp)
 }
 

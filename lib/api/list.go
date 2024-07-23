@@ -17,6 +17,7 @@ func (p *PoolInfo) Raw() string {
 	return p.raw
 }
 
+// List the Name and Path of the Storage Pools for the LibVirt connection
 func ListAllStoragePools(conn *libvirt.Connect) ([]PoolInfo, error) {
 	pools, err := conn.ListAllStoragePools(0)
 	if err != nil {
