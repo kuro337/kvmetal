@@ -12,7 +12,8 @@ import (
 )
 
 func TestWrite(t *testing.T) {
-	url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
+	//	url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
+	url := "https://cloud-images.ubuntu.com/releases/mantic/release/ubuntu-23.10-server-cloudimg-amd64.img"
 
 	imagesDir := "/home/kuro/kvm/images/ubuntu"
 
