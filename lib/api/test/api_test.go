@@ -14,7 +14,10 @@ import (
 func TestWrite(t *testing.T) {
 	url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
 
-	s, err := api.FetchImageUrl(url, "/home/kuro/kvm/test/")
+	imagesDir := "/home/kuro/kvm/images/ubuntu"
+
+	s, err := api.DownloadImage(url, imagesDir)
+	// s, err := api.FetchImageUrl(url, "/home/kuro/kvm/test/")
 	if err != nil {
 		log.Printf("Failed operation Error:%s", err)
 	}
@@ -22,6 +25,7 @@ func TestWrite(t *testing.T) {
 	t.Log(s)
 }
 
+// Create a VM with a Storage Pool - which stores libvirt managed files such as .img , etc.
 func TestVM(t *testing.T) {
 	name := "testTemp"
 	path := "/home/kuro/testtemp"
