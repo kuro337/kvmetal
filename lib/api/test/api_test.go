@@ -82,6 +82,21 @@ func TestDeletePool(t *testing.T) {
 	for _, vol := range vols {
 		t.Logf("Volume: %s\n", vol)
 	}
+
+	if err := pool.Delete(); err != nil {
+		t.Errorf("Failed to delete Pool Error:%s", err)
+	}
+
+	samepool, err := lib.GetPool(conn, name)
+	if err == nil {
+		t.Errorf("Pool should be deleted to get Pool Error:%s", err)
+	}
+
+	_, err = samepool.GetVolumes()
+	if err == nil {
+		t.Errorf("Volumes should be deleted to get Volumes Error:%s", err)
+	}
+
 }
 
 // base has the Base OS Images
