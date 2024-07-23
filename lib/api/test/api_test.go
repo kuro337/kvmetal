@@ -61,7 +61,7 @@ func TestListAll(t *testing.T) {
 
 // List all Images/Volumes associated with a Pool : go test -v --run TestListImages | fzf
 func TestListImages(t *testing.T) {
-	name := "testTemp"
+	name := "images"
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
 		log.Printf("Error Connecting %s", err)
@@ -98,6 +98,7 @@ func TestDeletePool(t *testing.T) {
 	for _, vol := range vols {
 		t.Logf("Volume: %s\n", vol)
 	}
+
 	if err := pool.Delete(); err != nil {
 		t.Errorf("Failed to delete Pool Error:%s", err)
 	}
