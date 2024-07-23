@@ -59,7 +59,7 @@ func TestListAll(t *testing.T) {
 }
 
 func TestImageApi(t *testing.T) {
-	base := "ubuntu"
+	base := "images"
 
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
