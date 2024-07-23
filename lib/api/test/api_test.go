@@ -1,6 +1,7 @@
 package test
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"testing"
@@ -54,6 +55,13 @@ func TestListAll(t *testing.T) {
 
 	for _, p := range all {
 		t.Logf("%+v\n", p)
+	}
+
+	for _, p := range all {
+
+		fmt.Println("%d\n", p.Raw())
+
+		t.Logf("%s\n", p.Raw())
 	}
 }
 
