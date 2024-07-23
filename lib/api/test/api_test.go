@@ -78,7 +78,7 @@ func TestListImages(t *testing.T) {
 
 // Delete a pool - and clear its volumes
 func TestDeletePool(t *testing.T) {
-	name := "testTemp"
+	name := "images"
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
 		log.Printf("Error Connecting %s", err)
