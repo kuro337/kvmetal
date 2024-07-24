@@ -454,68 +454,6 @@ func (s *VMConfig) PullImage() {
 		slog.Error("Failed HTTP GET", "error", err)
 		os.Exit(1)
 	}
-
-	if s.imgManager != nil {
-
-		url := filepath.Base(s.ImageURL)
-		name := filepath.Base(s.ImageURL)
-		// imagePath := filepath.Join(s.Ima, imageName)
-		// added imageManager
-		if err := s.imgManager.AddImage(url, name); err != nil {
-			slog.Error("Add Image ImageManager", "error", err)
-			os.Exit(1)
-		}
-		s.SetBaseImageName(name)
-	}
-}
-
-/*
-GenerateCustomUserDataImg creates the raw disk and attaches it as a secondary disk to the VM for user-data.
-This enables username/pw access for the VM.
-
-	virsh domblklist vm_name  // view attached disks
-	qemu-img info user-data.img // Viewing Disk Type
-
-To view Logs for CloudInit user data if boot script was set check
-
-	cat /var/log/cloud-init-output.log | less
-*/
-func (config *VMConfig) GenerateCustomUserDataImg(bootScriptPath string) error {
-	// Create the directory for userdata if it doesn't exist
-	// userdataDirPath := filepath.Join(config.artifactPath, config.VMName, "userdata")
-	userdataDirPath := filepath.Join(config.ArtifactPath, "userdata")
-
-	if err := os.MkdirAll(userdataDirPath, 0o755); err != nil {
-		return fmt.Errorf("failed to create userdata directory: %v", err)
-	}
-
-	userDataContent, _ := CreateCloudInitDynamically(config.VMName, bootScriptPath)
-
-	utils.LogOffwhite("CloudInit UserData set to:")
-	utils.LogDottedLineDelimitedText(userDataContent)
-
-	// Create a temporary user-data file
-	userDataFilePath := filepath.Join(userdataDirPath, "user-data.txt")
-	err := os.WriteFile(userDataFilePath, []byte(userDataContent), 0o644)
-	if err != nil {
-		return fmt.Errorf("failed to write user-data file: %v", err)
-	}
-
-	// Path for the output user-data.img
-	outputImgPath := filepath.Join(userdataDirPath, "user-data.img")
-
-	// Generate the user-data.img
-	cmd := exec.Command("cloud-localds", outputImgPath, userDataFilePath)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to run cloud-localds: %v", err)
-	}
-
-	// Optionally, remove the temporary user-data file after creating the image
-	// if err := os.Remove(userDataFilePath); err != nil {
-	// 	log.Printf("Warning: failed to remove temporary user-data file: %v", err)
-	// }
-
-	return nil
 }
 
 // Create Image (user-data.img) from UserData for VM
@@ -590,6 +528,24 @@ func (config *VMConfig) GenerateCloudInitImgFromPath() error {
 	config.WriteConfigYaml()
 
 	return nil
+}
+
+// GetUserData for the VM from the Config
+func GetUserData(config *VMConfig) string {
+	if config.InlineUserdata != "" {
+		return config.InlineUserdata
+	}
+	log.Print("Using Default userdata with ZSH Shell. Optionally use DefaultUserdata to launch with Bash.")
+	return configuration.SubstituteHostNameAndFqdnUserdataSSHPublicKey(
+		constants.DefaultUserDataShellZsh,
+		config.VMName,
+		config.sshPub)
+}
+
+// GetMetaData for the VM using the Name
+func GetMetaData(vmName string) string {
+	return fmt.Sprintf("instance-id: %s\nlocal-hostname: %s\n",
+		vmName, vmName)
 }
 
 func CreateCloudInitData(userdata, metadata, path string) error {
@@ -720,14 +676,6 @@ func (s *VMConfig) CreateBaseImage() error {
 		s.ImagesDir, modifiedImageOutputPath))
 
 	_ = s.navigateToRoot()
-
-	// using image manager to add VM images
-	if s.imgManager != nil {
-		// name we set during AddImage for Base ubuntu
-		if err := s.imgManager.CreateImageFromBase(s.baseImgName, s.VMName, 10); err != nil {
-			log.Fatalf("failed to Create kvm rom base imgManager image, %s\n", err)
-		}
-	}
 
 	return nil
 }
@@ -927,7 +875,6 @@ func (s *VMConfig) CreateVM() error {
 	}
 
 	// Currently vm images generated in data/images/<vmaame> itself
-
 	generatedVmImg := filepath.Join(s.ImagesDir, s.VMName+"-vm-disk.qcow2")
 	vm_userdata_img := filepath.Join("data", "artifacts", s.VMName, "userdata", "user-data.img")
 

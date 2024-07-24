@@ -306,12 +306,10 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 	config.SSH = utils.ReadFileFatal(constants.SshPub)
 
 	if *preset != "" {
-
 		Preset, err := StringToPreset(*preset)
 		if err != nil {
 			return nil, err
 		}
-
 		config.Userdata = CreateUserdataFromPreset(ctx, wg, Preset, config.Name, config.SSH)
 	}
 
@@ -430,21 +428,6 @@ func launchClusterNew(controlNode string, workerNodes []string) error {
 	return nil
 }
 
-// launchCluster launches a kube predefined cluster with passed specs
-func launchCluster(controlNode string, workerNodes []string) {
-	fmt.Printf("Launching control node: %s\n", controlNode)
-
-	for _, worker := range workerNodes {
-		if worker != "" {
-			log.Printf("NOTE:PLACEHOLDER. Actually Launches 1 Control + 1 Worker.Launching worker node: %s with control node: %s\n", worker, controlNode)
-		}
-	}
-	err := vm.LaunchCluster(controlNode, "worker")
-	if err != nil {
-		log.Print(utils.TurnError("Failed to Launch k8 Cluster"))
-	}
-}
-
 // CreateVMConfig initializes the Configuration according to the Preset
 // Required:
 //   - config.Name required
@@ -480,8 +463,6 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 				    i. Primary image from data/images/control-vm-disk.qcow2
 				    2. user-data.img
 				    3. Optionally - attach any additional disks defined for the VM
-
-
 
 		               data/images    : Images -> Images are stored here (data/images)
 
