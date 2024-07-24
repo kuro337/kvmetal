@@ -27,6 +27,19 @@ func (v *Volume) Delete() error {
 	return v.volume.Delete(libvirt.STORAGE_VOL_DELETE_NORMAL)
 }
 
+func GetVolumeByPath(client *libvirt.Connect, path string) (*Volume, error) {
+	vol, err := client.LookupStorageVolByPath(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to find volume: %v", err)
+	}
+	defer vol.Free()
+	volume, err := NewVolume(vol)
+	if err != nil {
+		return nil, err
+	}
+	return volume, nil
+}
+
 func NewVolume(vol *libvirt.StorageVol) (*Volume, error) {
 	errStr := ""
 	volume := &Volume{volume: vol}

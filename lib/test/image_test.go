@@ -16,6 +16,9 @@ func TestCreateVM(t *testing.T) {
 	userdata := "/home/kuro/Documents/Code/Go/kvmgo/data/userdata/default/user-data.img"
 	img := "/home/kuro/testtemp/testTemp-base.img"
 
+	// ls /home/kuro/Documents/Code/Go/kvmgo/data/userdata/default/user-data.img
+	// ls /home/kuro/testtemp/testTemp-base.img
+
 	vm.SetMemory(2048).
 		SetCores(2).
 		SetBaseImage(img).
@@ -32,6 +35,28 @@ func TestCreateVM(t *testing.T) {
 	if err := vm.CreateAndStartVM(conn); err != nil {
 		t.Fatalf("Error Starting VM:%s", err)
 	}
+}
+
+// Delete the VM
+func TestDelete(t *testing.T) {
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		log.Printf("Error Connecting %s", err)
+		t.Fatalf("Error:%s", err)
+	}
+
+	if err := lib.DeleteVM(conn, "testvm"); err != nil {
+		t.Fatalf("failed Delete:%s", err.Error())
+	}
+
+	img := "/home/kuro/testtemp/testTemp-base.img"
+
+	vol, err := lib.GetVolumeByPath(conn, img)
+	if err != nil {
+		t.Fatalf("Error getting volume by path %s", err)
+	}
+
+	t.Logf("Volume:%s\n", vol.String())
 }
 
 /*
