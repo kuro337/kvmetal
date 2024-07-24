@@ -224,8 +224,24 @@ func DeletePool(conn *libvirt.Connect, poolName string) error {
 }
 
 // destroy destroys an active Storage Pool. Destroy after deleting the Volumes
-func (p *Pool) destroy() error {
+func (p *Pool) _destroy() error {
 	if active, err := p.Active(); err == nil && active {
+		if err := p.pool.Destroy(); err != nil {
+			if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code != libvirt.ERR_OPERATION_INVALID {
+				return fmt.Errorf("failed to destroy storage pool: %v", err)
+			}
+		}
+	}
+	return nil
+}
+
+// destroy stops (destroys) the pool if it is active
+func (p *Pool) destroy() error {
+	active, err := p.pool.IsActive()
+	if err != nil {
+		return fmt.Errorf("failed to check if pool is active: %v", err)
+	}
+	if active {
 		if err := p.pool.Destroy(); err != nil {
 			if libvirtError, ok := err.(libvirt.Error); ok && libvirtError.Code != libvirt.ERR_OPERATION_INVALID {
 				return fmt.Errorf("failed to destroy storage pool: %v", err)
