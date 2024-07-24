@@ -43,6 +43,10 @@ func TestVM(t *testing.T) {
 		t.Errorf("Error creating image :%s", err)
 	}
 
+	if err := vm.ListImages(); err != nil {
+		t.Errorf("Error listing images :%s", err)
+	}
+
 	t.Log("VM Base Image Created")
 
 	// url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
@@ -91,7 +95,7 @@ func TestListImages(t *testing.T) {
 
 // Delete a pool - and clear its volumes
 func TestDeletePool(t *testing.T) {
-	name := "images"
+	name := "testTemp"
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
 		log.Printf("Error Connecting %s", err)
@@ -103,7 +107,7 @@ func TestDeletePool(t *testing.T) {
 		t.Errorf("Failed to get Pool Error:%s", err)
 	}
 
-	vols, err := pool.GetVolumes()
+	vols, err := pool.GetVolumes(true)
 	if err != nil {
 		t.Errorf("Failed to get Volumes Error:%s", err)
 	}
@@ -114,6 +118,10 @@ func TestDeletePool(t *testing.T) {
 
 	if err := pool.Delete(); err != nil {
 		t.Errorf("Failed to delete Pool Error:%s", err)
+	}
+
+	if api.CheckPoolExists(conn, name) {
+		t.Error("Pool still exists")
 	}
 	t.Log("Successfully deleted pool")
 }
