@@ -8,7 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"kvmgo/lib"
+	// "kvmgo/lib"
+	dom "kvmgo/lib/domain"
 	"kvmgo/network"
 )
 
@@ -29,10 +30,10 @@ type KubeClient struct {
 	Children     []string
 	role         KubeNode
 
-	dom *lib.Domain
+	dom *dom.Domain
 }
 
-func NewKubeNodeFromDomain(domain *lib.Domain, control bool) (*KubeClient, error) {
+func NewKubeNodeFromDomain(domain *dom.Domain, control bool) (*KubeClient, error) {
 	sshClient, err := domain.NewSSHClient()
 	if err != nil {
 		return nil, err
