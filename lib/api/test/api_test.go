@@ -74,7 +74,7 @@ func TestListAll(t *testing.T) {
 
 // List all Images/Volumes associated with a Pool : go test -v --run TestListImages | fzf
 func TestListImages(t *testing.T) {
-	name := "images"
+	name := "testTemp"
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
 		log.Printf("Error Connecting %s", err)
