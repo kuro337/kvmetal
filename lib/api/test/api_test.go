@@ -37,6 +37,10 @@ func TestVM(t *testing.T) {
 
 	t.Logf("VM:\n%+v\n", vm)
 
+	img := "/home/kuro/kvm/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img"
+
+	vm.CreateBaseImage(img, 20)
+
 	// url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
 
 	//tmp, err := vm.AddImageHttp(url, "someVM")
