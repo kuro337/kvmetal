@@ -20,6 +20,11 @@ func CreateDirIfNotExist(path string) error {
 	return nil
 }
 
+func FileExists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
+}
+
 func ImageExists(imageName, dir string) bool {
 	imagePath := filepath.Join(dir, imageName)
 	_, err := os.Stat(imagePath)
