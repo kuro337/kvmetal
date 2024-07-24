@@ -12,8 +12,9 @@ import (
 func TestCreateVM(t *testing.T) {
 	vm := lib.NewVMConfig("testvm")
 
+	//	img := "/home/kuro/kvm/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img"
 	userdata := "/home/kuro/Documents/Code/Go/kvmgo/data/userdata/default/user-data.img"
-	img := "/home/kuro/kvm/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img"
+	img := "/home/kuro/testtemp/testTemp-base.img"
 
 	vm.SetMemory(2048).
 		SetCores(2).
