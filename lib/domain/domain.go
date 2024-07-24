@@ -72,7 +72,8 @@ func NewDomain(conn *libvirt.Connect, domain string) (*Domain, error) {
 
 	ip, err := d.IP()
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get Domain IP: %s\n", err)
+		// return nil, fmt.Errorf("Failed to get Domain IP: %s\n", err)
+		return d, fmt.Errorf("Failed to get Domain IP: %s\n", err)
 	}
 
 	log.Printf("Domain IP: Retreived domain.go %s\n", ip)
