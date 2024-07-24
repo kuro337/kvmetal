@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"log"
 
+	ldom "kvmgo/lib/domain"
+
 	"libvirt.org/go/libvirt"
 )
 
@@ -80,6 +82,39 @@ func (c *VMConfig) SetOSVariant(osVariant string) *VMConfig {
 	"--noautoconsole",
 } */
 
+func xmlName(name string) string {
+	return fmt.Sprintf("<name>%s</name>", name)
+}
+
+func xmlCpuMem(vcpu, mem int) string {
+	return fmt.Sprintf(`<memory unit='MiB'>%d</memory>
+  <vcpu placement='static'>%d</vcpu>`, mem, vcpu)
+}
+
+func xmlPrimaryDisk(path string) string {
+	return fmt.Sprintf(`<disk type='file' device='disk'>
+      <driver name='qemu' type='qcow2'/>
+      <source file='%s'/>
+      <target dev='vda' bus='virtio'/>
+    </disk>`, path)
+}
+
+func xmlCloudInitDisk(path string) string {
+	return fmt.Sprintf(`<disk type='file' device='cdrom'>
+      <driver name='qemu' type='raw'/>
+      <source file='%s'/>
+      <target dev='hda' bus='ide'/>
+      <readonly/>
+    </disk>`, path)
+}
+
+func xmlNetwork(iface string) string {
+	return fmt.Sprintf(`<interface type='network'>
+      <source network='%s'/>
+      <model type='virtio'/>
+    </interface>`, iface)
+}
+
 func (c *VMConfig) GenerateDomainXML() string {
 	return fmt.Sprintf(`
 <domain type='kvm'>
@@ -134,5 +169,19 @@ func (vm *VMConfig) CreateAndStartVM(client *libvirt.Connect) error {
 	//	}
 
 	log.Printf("VM %s created and started", vm.Name)
+	return nil
+}
+
+// Delete the VM by the Domain Name
+func DeleteVM(client *libvirt.Connect, domain string) error {
+	dom, err := ldom.GetDomain(client, domain)
+	if err != nil {
+		return fmt.Errorf("failed to get domain: %v", err)
+	}
+
+	if err := dom.Delete(); err != nil {
+		return fmt.Errorf("failed to Delete VM:%s", err.Error())
+	}
+
 	return nil
 }

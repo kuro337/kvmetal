@@ -55,6 +55,10 @@ func NewDomainWrapper(name string, conn *libvirt.Connect, domain *libvirt.Domain
 	return &Domain{Name: name, domain: domain}
 }
 
+func GetDomain(conn *libvirt.Connect, domain string) (*Domain, error) {
+	return NewDomain(conn, domain)
+}
+
 func NewDomain(conn *libvirt.Connect, domain string) (*Domain, error) {
 	dom, err := conn.LookupDomainByName(domain)
 	// DOMAIN_GUEST_INFO_INTERFACES
@@ -83,6 +87,38 @@ func (d *Domain) IP() (string, error) {
 		return "", err
 	}
 	return ip, nil
+}
+
+func (d *Domain) Delete() error {
+	domain := d.domain
+
+	active, err := domain.IsActive()
+	if err != nil {
+		return fmt.Errorf("failed to check if domain is active: %v", err)
+	}
+
+	if active { // If the domain is running, stop it
+
+		err = domain.Shutdown()
+		if err != nil {
+			return fmt.Errorf("failed to initiate shutdown: %v", err)
+		}
+		log.Printf("Initiated shutdown for domain %s", d.Name)
+
+		err = domain.Destroy()
+		if err != nil {
+			return fmt.Errorf("failed to stop domain: %v", err)
+		}
+		log.Printf("Domain %s stopped", d.Name)
+	}
+
+	err = domain.Undefine()
+	if err != nil {
+		return fmt.Errorf("failed to undefine domain: %v", err)
+	}
+	log.Printf("Domain %s undefined", d.Name)
+
+	return nil
 }
 
 /*
