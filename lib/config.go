@@ -99,7 +99,6 @@ func (c *VMConfig) GenerateDomainXML() string {
       <driver name='qemu' type='qcow2'/>
       <source file='%s'/>
       <target dev='vda' bus='virtio'/>
-      <boot order='1'/>
     </disk>
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
@@ -116,10 +115,6 @@ func (c *VMConfig) GenerateDomainXML() string {
       <target type='serial' port='0'/>
     </console>
   </devices>
-  <os>
-    <type arch='x86_64'>hvm</type>
-    <boot dev='hd'/>
-  </os>
 </domain>`, c.Name, c.Memory, c.CPUCores, c.DiskPath, c.UserDataPath, c.Network)
 }
 
