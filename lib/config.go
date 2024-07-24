@@ -155,21 +155,24 @@ func (c *VMConfig) GenerateDomainXML() string {
 
 // Create the VM with the config
 func (vm *VMConfig) CreateAndStartVM(client *libvirt.Connect) error {
+	if ex, _ := ldom.DomainExists(client, vm.Name); ex {
+		return fmt.Errorf("VM already exists %s", vm.Name)
+	}
+
 	domainXML := vm.GenerateDomainXML()
 
-	domain, err := client.DomainDefineXML(domainXML )
+	domain, err := client.DomainDefineXML(domainXML)
 	if err != nil {
 		return fmt.Errorf("failed to create VM: %v", err)
 	}
 	defer domain.Free()
 
-	// DomainCreateXML creates a non-persistent VM and starts it w/o requiring domain.Create() 
-  // this means upon Shutdown() it will be deleted
+	// DomainCreateXML creates a non-persistent VM and starts it w/o requiring domain.Create()
+	// this means upon Shutdown() it will be deleted
 
-  if err := domain.Create(); err != nil {
-        return fmt.Errorf("failed to start domain: %v", err)
-    }
-
+	if err := domain.Create(); err != nil {
+		return fmt.Errorf("failed to start domain: %v", err)
+	}
 
 	log.Printf("VM %s created and started", vm.Name)
 	return nil
@@ -178,7 +181,6 @@ func (vm *VMConfig) CreateAndStartVM(client *libvirt.Connect) error {
 // Delete the VM by the Domain Name
 func DeleteVM(client *libvirt.Connect, domain string) error {
 	dom, err := ldom.GetDomain(client, domain)
-
 	if dom == nil {
 		return fmt.Errorf("failed to get domain: %v", err)
 	}
