@@ -103,7 +103,7 @@ func (vm *VM) ListImages() error {
 		vm.images = imgs
 	}
 
-	vols, err := vm.pool.GetVolumes()
+	vols, err := vm.pool.GetVolumes(false)
 	if err != nil {
 		return fmt.Errorf("Failed to get Volumes/Images Error:%s", err)
 	}

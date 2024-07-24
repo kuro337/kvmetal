@@ -271,14 +271,17 @@ func (p *Pool) GetImages() (map[string]*libvirt.StorageVol, error) {
 }
 
 // GetVolumes returns the Paths of the Volumes - convenience fn over GetImages() which returns the full Volume
-func (p *Pool) GetVolumes() ([]string, error) {
-	if err := p.UpdateVolumes(); err != nil {
-		return nil, fmt.Errorf("Failed to update volumes, %s\n", err)
-	}
-	pool := p.pool
-	// Refresh the pool to get the latest state
-	if err := pool.Refresh(0); err != nil {
-		return nil, fmt.Errorf("failed to refresh pool: %v", err)
+// Refresh whether to pull latest volumes or use existing
+func (p *Pool) GetVolumes(refresh bool) ([]string, error) {
+	if refresh {
+		if err := p.UpdateVolumes(); err != nil {
+			return nil, fmt.Errorf("Failed to update volumes, %s\n", err)
+		}
+		pool := p.pool
+		// Refresh the pool to get the latest state
+		if err := pool.Refresh(0); err != nil {
+			return nil, fmt.Errorf("failed to refresh pool: %v", err)
+		}
 	}
 
 	var volumePaths []string
