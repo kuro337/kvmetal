@@ -77,20 +77,9 @@ func (p *Pool) Delete() error {
 		return err
 	}
 
-	active, err := p.pool.IsActive()
-	if err != nil {
-		fmt.Printf("Error checking pool active:%s\n", err.Error())
-	}
-	if active {
-		fmt.Println("Pool Is ACTIVE")
-	} else {
-		fmt.Println("Pool Is INACTIVE")
-	}
-
 	if _, err := p.client.LookupStoragePoolByName(p.name); err != nil {
-		fmt.Printf("Pool does not exist:%s", err.Error())
-	} else {
-		fmt.Printf("Pool exists:%s", err.Error())
+		fmt.Printf("pool does not exist after destroy:%s", err.Error())
+		return nil
 	}
 
 	// Undefine an Inactive Storage Pool - call after destroy
