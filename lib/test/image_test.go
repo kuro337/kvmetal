@@ -38,7 +38,7 @@ func TestCreateVM(t *testing.T) {
 }
 
 // Delete the VM
-func TestDelete(t *testing.T) {
+func TestDeleteVM(t *testing.T) {
 	conn, err := libvirt.NewConnect("qemu:///system")
 	if err != nil {
 		log.Printf("Error Connecting %s", err)
@@ -46,7 +46,7 @@ func TestDelete(t *testing.T) {
 	}
 
 	if err := lib.DeleteVM(conn, "testvm"); err != nil {
-		t.Fatalf("failed Delete:%s", err.Error())
+		t.Errorf("failed Delete:%s", err.Error())
 	}
 
 	img := "/home/kuro/testtemp/testTemp-base.img"

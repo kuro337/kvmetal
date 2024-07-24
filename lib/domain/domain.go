@@ -97,6 +97,13 @@ func (d *Domain) Delete() error {
 		return fmt.Errorf("failed to check if domain is active: %v", err)
 	}
 
+	// Check if the domain is persistent
+	persistent, err := domain.IsPersistent()
+	if err != nil {
+		return fmt.Errorf("failed to check if domain is persistent: %v", err)
+	}
+	log.Printf("Domain %s is persistent: %v", d.Name, persistent)
+
 	if active { // If the domain is running, stop it
 
 		err = domain.Shutdown()
