@@ -175,7 +175,8 @@ func (vm *VMConfig) CreateAndStartVM(client *libvirt.Connect) error {
 // Delete the VM by the Domain Name
 func DeleteVM(client *libvirt.Connect, domain string) error {
 	dom, err := ldom.GetDomain(client, domain)
-	if err != nil {
+
+	if dom == nil {
 		return fmt.Errorf("failed to get domain: %v", err)
 	}
 
