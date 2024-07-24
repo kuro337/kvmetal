@@ -57,11 +57,14 @@ func NewVM(name, path string) (*VM, error) {
 
 // CreateBaseImage will use the vm name to generate a default <vm-name>-base.img file as the base backing image
 func (vm *VM) CreateBaseImage(imgPath string, capacityGB int) error {
-	if CheckPoolExists(vm.client.Conn(), vm.Name+"-base") {
+	basePool := vm.Name + "-base"
+	if CheckPoolExists(vm.client.Conn(), basePool) {
 		return nil // already exists
+	} else {
+		fmt.Printf("Pool %s does not exist, creating.\n", basePool)
 	}
 
-	return vm.CreateImage(imgPath, vm.Name+"-base", capacityGB)
+	return vm.CreateImage(imgPath, basePool, capacityGB)
 }
 
 // CreateImage creates a new Image for this VM from a backing image such as an Ubuntu base Image
