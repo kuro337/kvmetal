@@ -55,6 +55,16 @@ func (vm *VM) baseImageName() string {
 	return utils.AddExtensionIfRequired(vm.Name+"-base", ".img")
 }
 
+// Get the Image/Volume Path associated with the Base Image
+// Use this to configure the VM
+func (vm *VM) BaseImagePath() (string, error) {
+	imgPath, err := vm.pool.GetImage(vm.baseImageName())
+	if err != nil {
+		return "", fmt.Errorf("failed to get Base Image Path:%s", err)
+	}
+	return imgPath, nil
+}
+
 // CreateBaseImage will use the vm name to generate a default <vm-name>-base.img file as the base backing image
 func (vm *VM) CreateBaseImage(imgPath string, capacityGB int) error {
 	baseImageName := vm.baseImageName()
@@ -99,6 +109,12 @@ func getXMLFromBaseImage(baseImagePath, newName string, capacityGB int) string {
 		<format type='qcow2'/>
 	</backingStore>
 </volume>`, newName, capacityGB, baseImagePath)
+}
+
+///////////////////////
+
+func (vm *VM) ConfigureLaunchVM() string {
+	return ""
 }
 
 func (vm *VM) ListImages() error {

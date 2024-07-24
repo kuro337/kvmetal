@@ -6,13 +6,15 @@ import (
 	"slices"
 	"time"
 
+	dom "kvmgo/lib/domain"
+
 	"libvirt.org/go/libvirt"
 	libvirtxml "libvirt.org/libvirt-go-xml"
 )
 
 type VirtClient struct {
 	conn    *libvirt.Connect
-	domains map[string]*Domain
+	domains map[string]*dom.Domain
 }
 
 /* Connect to Libvirt and Return the Client */
@@ -23,15 +25,15 @@ func ConnectLibvirt() (*VirtClient, error) {
 		return nil, err
 	}
 
-	return &VirtClient{conn: conn, domains: make(map[string]*Domain)}, nil
+	return &VirtClient{conn: conn, domains: make(map[string]*dom.Domain)}, nil
 }
 
 func (v *VirtClient) Close() {
 	v.Close()
 }
 
-func (v *VirtClient) GetDomSlice() []*Domain {
-	var doms []*Domain
+func (v *VirtClient) GetDomSlice() []*dom.Domain {
+	var doms []*dom.Domain
 
 	for _, d := range v.domains {
 		doms = append(doms, d)
@@ -41,7 +43,7 @@ func (v *VirtClient) GetDomSlice() []*Domain {
 }
 
 // AwaitDomains will wait until Domains are Ready and if they do not become Ready, returns an Error
-func AwaitDomains(domains []string) (*VirtClient, map[string]*Domain, error) {
+func AwaitDomains(domains []string) (*VirtClient, map[string]*dom.Domain, error) {
 	l, err := ConnectLibvirt()
 	if err != nil {
 		return nil, nil, fmt.Errorf("Error Connecting %s", err)
@@ -118,7 +120,7 @@ func (v *VirtClient) AddDomain(domain string) error {
 
 	for i < retries {
 
-		dom, err := NewDomain(v.conn, domain)
+		dom, err := dom.NewDomain(v.conn, domain)
 
 		if err == nil {
 			v.domains[domain] = dom
@@ -185,13 +187,15 @@ func (v *VirtClient) GetIPFromDHCPLeases(domainName string) ([]string, error) {
 }
 
 // Get the Domain (VM)
-func (v *VirtClient) GetDomain(domain string) (*Domain, error) {
-	dom, err := v.conn.LookupDomainByName(domain)
+func (v *VirtClient) GetDomain(domain string) (*dom.Domain, error) {
+	vdom, err := v.conn.LookupDomainByName(domain)
 	if err != nil {
 		log.Printf("Failed Lookup Domain %s", domain)
 		return nil, err
 	}
-	return &Domain{Name: domain, domain: dom}, nil
+
+	return dom.NewDomainWrapper(domain, v.conn, vdom), nil
+	// return &dom.Domain{Name: domain, domain: dom}, nil
 }
 
 // Parses the XML for a Domain and Prints it

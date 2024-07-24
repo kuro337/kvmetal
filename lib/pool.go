@@ -365,6 +365,11 @@ func (p *Pool) DeleteVolumes() error {
 	return nil
 }
 
+// GetImage gets the path for an Image/Volume from the Storage Pool
+func (p *Pool) GetImage(name string) (string, error) {
+	return p.GetVolume(name)
+}
+
 func (p *Pool) GetVolume(name string) (string, error) {
 	pool := p.pool
 

@@ -24,6 +24,37 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+type VMConfig struct {
+	VMName         string `json:"vm_name" yaml:"vm_name"`
+	InlineUserdata string `json:"inline_userdata" yaml:"inline_userdata"`
+	ImageURL       string `json:"image_url" yaml:"image_url"`
+
+	// Central Images Dir
+	ImagesDir       string       `json:"images_dir" yaml:"images_dir"`
+	BootFilesDir    string       `json:"boot_files_dir" yaml:"boot_files_dir"`
+	ScriptsDir      string       `json:"scripts_dir" yaml:"scripts_dir"`
+	BootScript      string       `json:"boot_script" yaml:"boot_script"`
+	SystemdScript   string       `json:"systemd_script" yaml:"systemd_script"`
+	UserData        string       `json:"user_data" yaml:"user_data"`
+	RootDir         string       `json:"root_dir" yaml:"root_dir"`
+	CPUCores        int          `json:"cpu_cores" yaml:"cpu_cores"`
+	Memory          int          `json:"memory" yaml:"memory"`
+	EnableServices  []string     `json:"enable_services" yaml:"enable_services"`
+	Artifacts       []string     `json:"artifacts" yaml:"artifacts"`
+	Disks           []DiskConfig `json:"disks" yaml:"disks"`
+	sshPub          string
+	ArtifactPath    string         `json:"artifact_path" yaml:"artifact_path"`
+	ArtifactsPathFP fpath.FilePath `json:"artifacts_path_fp" yaml:"artifacts_path_fp"`
+	ImagesPathFP    fpath.FilePath `json:"images_path_fp" yaml:"images_path_fp"`
+	DisksPathFP     fpath.FilePath `json:"disks_path_fp" yaml:"disks_path_fp"`
+	CreateDirsInit  bool           `json:"create_dirs_init" yaml:"create_dirs_init"`
+
+	// kvm img manager
+	imgManager *lib.ImageManager
+
+	baseImgName string
+}
+
 func (vm *VMConfig) YAML() (string, error) { // Convert to YAML
 	yamlData, err := yaml.Marshal(&vm)
 	if err != nil {
@@ -156,37 +187,6 @@ The backing file is typically a base image that contains a standard installation
 	}
 
 	return string(yamlData), nil
-}
-
-type VMConfig struct {
-	VMName         string `json:"vm_name" yaml:"vm_name"`
-	InlineUserdata string `json:"inline_userdata" yaml:"inline_userdata"`
-	ImageURL       string `json:"image_url" yaml:"image_url"`
-
-	// Central Images Dir
-	ImagesDir       string       `json:"images_dir" yaml:"images_dir"`
-	BootFilesDir    string       `json:"boot_files_dir" yaml:"boot_files_dir"`
-	ScriptsDir      string       `json:"scripts_dir" yaml:"scripts_dir"`
-	BootScript      string       `json:"boot_script" yaml:"boot_script"`
-	SystemdScript   string       `json:"systemd_script" yaml:"systemd_script"`
-	UserData        string       `json:"user_data" yaml:"user_data"`
-	RootDir         string       `json:"root_dir" yaml:"root_dir"`
-	CPUCores        int          `json:"cpu_cores" yaml:"cpu_cores"`
-	Memory          int          `json:"memory" yaml:"memory"`
-	EnableServices  []string     `json:"enable_services" yaml:"enable_services"`
-	Artifacts       []string     `json:"artifacts" yaml:"artifacts"`
-	Disks           []DiskConfig `json:"disks" yaml:"disks"`
-	sshPub          string
-	ArtifactPath    string         `json:"artifact_path" yaml:"artifact_path"`
-	ArtifactsPathFP fpath.FilePath `json:"artifacts_path_fp" yaml:"artifacts_path_fp"`
-	ImagesPathFP    fpath.FilePath `json:"images_path_fp" yaml:"images_path_fp"`
-	DisksPathFP     fpath.FilePath `json:"disks_path_fp" yaml:"disks_path_fp"`
-	CreateDirsInit  bool           `json:"create_dirs_init" yaml:"create_dirs_init"`
-
-	// kvm img manager
-	imgManager *lib.ImageManager
-
-	baseImgName string
 }
 
 func (fp FilePathWrapper) MarshalYAML() (interface{}, error) {
@@ -588,6 +588,32 @@ func (config *VMConfig) GenerateCloudInitImgFromPath() error {
 	log.Printf("Successfully created cloud-init disk with user-data and meta-data: %s", outputImgPath)
 
 	config.WriteConfigYaml()
+
+	return nil
+}
+
+func CreateCloudInitData(userdata, metadata, path string) error {
+	userDataFilePath := filepath.Join(path, "user-data.txt")
+	metaDataFilePath := filepath.Join(path, "meta-data")
+	outputImgPath := filepath.Join(path, "user-data.img")
+
+	// write the userdata
+	if err := os.WriteFile(userDataFilePath, []byte(userdata), 0o644); err != nil {
+		return fmt.Errorf("failed to write user-data file: %v", err)
+	}
+
+	// Write the meta-data content to a file
+	if err := os.WriteFile(metaDataFilePath, []byte(metadata), 0o644); err != nil {
+		return fmt.Errorf("failed to write meta-data file: %v", err)
+	}
+
+	// combine both for the cloud init disk
+	cmd := exec.Command("cloud-localds", outputImgPath, userDataFilePath, metaDataFilePath)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run cloud-localds with meta-data: %v", err)
+	}
+
+	log.Printf("Successfully created cloud-init disk with user-data and meta-data: %s", outputImgPath)
 
 	return nil
 }

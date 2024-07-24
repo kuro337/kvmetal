@@ -29,6 +29,9 @@ func TestWrite(t *testing.T) {
 func TestVM(t *testing.T) {
 	name := "testTemp"
 	path := "/home/kuro/testtemp"
+	img := "/home/kuro/kvm/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img"
+
+	// 1. Create the VM (retrieve/create the Storage Pool)
 	vm, err := api.NewVM(name, path)
 	if err != nil {
 		t.Fatalf("Error creating new VM: %s\n", err)
@@ -36,8 +39,7 @@ func TestVM(t *testing.T) {
 
 	t.Logf("VM created:%s path:%s\n", vm.Name, vm.Path)
 
-	img := "/home/kuro/kvm/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img"
-
+	// 2. Create the Base Image we need to create a VM
 	if err := vm.CreateBaseImage(img, 20); err != nil {
 		t.Fatalf("Error creating image :%s", err)
 	}
