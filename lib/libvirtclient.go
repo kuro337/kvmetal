@@ -226,6 +226,7 @@ func (v *VirtClient) ParseXML(domain string) (*libvirtxml.Domain, error) {
 
 func (v *VirtClient) GetOrCreatePool(poolName, poolPath string) (*libvirt.StoragePool, error) {
 	if pool, err := v.conn.LookupStoragePoolByName(poolName); err == nil {
+		log.Printf("Pool %s already exists", poolName)
 		return pool, nil
 	}
 

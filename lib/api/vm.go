@@ -38,11 +38,6 @@ func NewVM(name, path string) (*VM, error) {
 
 	vm := &VM{Name: name, Path: path, client: conn, images: map[string]*lib.Volume{}}
 
-	// note: do not create dirs where we register the Storage Pool - it has to be managed by libvirt
-	//	if err := vm.initPath(path); err != nil {
-	//		return nil, err
-	//	}
-
 	pool, err := conn.GetOrCreatePool(name, path)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to create Storage Pool for VM. Error:%s\n", err)
@@ -65,9 +60,8 @@ func (vm *VM) CreateBaseImage(imgPath string, capacityGB int) error {
 	baseImageName := vm.baseImageName()
 	// <vm.Name>-base.img
 	if vm.pool.ImageExists(baseImageName) {
-		return nil // already exists
-	} else {
-		fmt.Printf("Pool %s does not exist, creating.\n", baseImageName)
+		log.Printf("Image %s already exists\n", baseImageName)
+		return nil
 	}
 
 	return vm.CreateImage(imgPath, baseImageName, capacityGB)
@@ -77,6 +71,10 @@ func (vm *VM) CreateBaseImage(imgPath string, capacityGB int) error {
 //
 //	vm.CreateImage("/ubuntu-22.04.img","kafka-base",20) note can also pass kafka-vm.img - the suffix is added if not present
 func (vm *VM) CreateImage(imgPath, imageName string, capacityGB int) error {
+	if !utils.FileExists(imgPath) {
+		return fmt.Errorf("image file %s does not exist", imgPath)
+	}
+
 	xml := getXMLFromBaseImage(imgPath, imageName, capacityGB)
 	if err := vm.pool.CreateImageXML(xml); err != nil {
 		return fmt.Errorf("failed to create volume: %v", err)
