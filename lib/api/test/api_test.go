@@ -35,7 +35,7 @@ func TestVM(t *testing.T) {
 		t.Errorf("Error new VM: %s\n", err)
 	}
 
-	t.Logf("VM:\n%+v\n", vm)
+	t.Logf("VM created:%s path:%s\n", vm.Name, vm.Path)
 
 	img := "/home/kuro/kvm/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img"
 

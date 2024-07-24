@@ -14,13 +14,12 @@ import (
 )
 
 type VM struct {
-	name   string
-	path   string
+	Name   string
+	Path   string
 	client *lib.VirtClient
 
 	// "/var/lib/libvirt/images/base"
-	poolPath string
-	pool     *lib.Pool
+	pool *lib.Pool
 
 	// basePath *fpath.FilePath
 	images map[string]*libvirt.StorageVol
@@ -39,7 +38,7 @@ func NewVM(name, path string) (*VM, error) {
 		return nil, fmt.Errorf("Error:%s", err)
 	}
 
-	vm := &VM{name: name, client: conn, images: map[string]*libvirt.StorageVol{}}
+	vm := &VM{Name: name, Path: path, client: conn, images: map[string]*libvirt.StorageVol{}}
 
 	// note: do not create dirs where we register the Storage Pool - it has to be managed by libvirt
 	//	if err := vm.initPath(path); err != nil {
@@ -58,7 +57,11 @@ func NewVM(name, path string) (*VM, error) {
 
 // CreateBaseImage will use the vm name to generate a default <vm-name>-base.img file as the base backing image
 func (vm *VM) CreateBaseImage(imgPath string, capacityGB int) error {
-	return vm.CreateImage(imgPath, vm.name+"-base", capacityGB)
+	if CheckPoolExists(vm.client.Conn(), vm.Name+"-base") {
+		return nil // already exists
+	}
+
+	return vm.CreateImage(imgPath, vm.Name+"-base", capacityGB)
 }
 
 // CreateImage creates a new Image for this VM from a backing image such as an Ubuntu base Image
@@ -117,12 +120,12 @@ func (vm *VM) ListImages() error {
 
 // path will be path + tmp
 func (vm *VM) tempPath() string {
-	return filepath.Join(vm.path, "tmp")
+	return filepath.Join(vm.Path, "tmp")
 }
 
 // Images path is path + images
 func (vm *VM) Images() string {
-	return filepath.Join(vm.path, "images")
+	return filepath.Join(vm.Path, "images")
 }
 
 func (vm *VM) GetImage(name string) (string, error) {
@@ -163,6 +166,6 @@ func (vm *VM) initPath(path string) error {
 		return err
 	}
 
-	vm.path = path
+	vm.Path = path
 	return nil
 }
