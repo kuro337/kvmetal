@@ -21,6 +21,7 @@ type Pool struct {
 	//	volumes map[string]*libvirt.StorageVol
 	volumes  map[string]*Volume
 	preserve bool
+	client   *libvirt.Connect
 }
 
 func GetPool(conn *libvirt.Connect, poolName string) (*Pool, error) {
@@ -53,6 +54,7 @@ func GetPool(conn *libvirt.Connect, poolName string) (*Pool, error) {
 		path:    path,
 		pool:    pool,
 		volumes: map[string]*Volume{},
+		client:  conn,
 	}, nil
 }
 
@@ -83,6 +85,12 @@ func (p *Pool) Delete() error {
 		fmt.Println("Pool Is ACTIVE")
 	} else {
 		fmt.Println("Pool Is INACTIVE")
+	}
+
+	if _, err := p.client.LookupStoragePoolByName(p.name); err != nil {
+		fmt.Printf("Pool does not exist:%s", err.Error())
+	} else {
+		fmt.Printf("Pool exists:%s", err.Error())
 	}
 
 	// Undefine an Inactive Storage Pool - call after destroy
