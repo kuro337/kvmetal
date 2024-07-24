@@ -9,6 +9,28 @@ import (
 	"libvirt.org/go/libvirt"
 )
 
+func TestCreateVM(t *testing.T) {
+	vm := lib.NewVMConfig("testvm")
+
+	userdata := "/home/kuro/Documents/Code/Go/kvmgo/data/userdata/default/user-data.img"
+	img := "/home/kuro/kvm/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img"
+
+	vm.SetMemory(2048).
+		SetCores(2).
+		SetBaseImage(img).
+		SetUserDataPath(userdata).
+		SetNetwork("default").
+		SetOSVariant("ubuntu18.04")
+
+	conn, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		log.Printf("Error Connecting %s", err)
+		t.Fatalf("Error:%s", err)
+	}
+
+	vm.CreateAndStartVM(conn)
+}
+
 /*
 
 Storage Pools
