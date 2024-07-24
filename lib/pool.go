@@ -115,6 +115,14 @@ func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
 	}, nil
 }
 
+func (p *Pool) ImageExists(imageName string) bool {
+	ex, err := ImageExists(p.pool, imageName)
+	if err != nil || !ex {
+		return false
+	}
+	return true
+}
+
 // Delete deletes a Pool entirely clearing all the volumes associated with it
 func (p *Pool) Delete() error {
 	if p.pool == nil {
