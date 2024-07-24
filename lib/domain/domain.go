@@ -59,6 +59,19 @@ func GetDomain(conn *libvirt.Connect, domain string) (*Domain, error) {
 	return NewDomain(conn, domain)
 }
 
+// DomainExists checks if the VM/Domain already exists
+func DomainExists(conn *libvirt.Connect, domain string) (bool, error) {
+	dom, err := conn.LookupDomainByName(domain)
+	if err != nil {
+		if err.(libvirt.Error).Code == libvirt.ERR_NO_DOMAIN {
+			return false, nil // Domain doesn't exist
+		}
+		return false, err // Some other error occurred
+	}
+	defer dom.Free() // Don't forget to free the domain to avoid memory leaks
+	return true, nil // Domain exists
+}
+
 func NewDomain(conn *libvirt.Connect, domain string) (*Domain, error) {
 	dom, err := conn.LookupDomainByName(domain)
 	// DOMAIN_GUEST_INFO_INTERFACES
