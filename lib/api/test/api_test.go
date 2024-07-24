@@ -37,7 +37,7 @@ func TestVM(t *testing.T) {
 		t.Fatalf("Error creating new VM: %s\n", err)
 	}
 
-	t.Logf("VM created:%s path:%s\n", vm.Name, vm.Path)
+	t.Logf("VM created:%s path:%s\n", vm.Name, vm.StoragePath)
 
 	// 2. Create the Base Image we need to create a VM
 	if err := vm.CreateBaseImage(img, 20); err != nil {

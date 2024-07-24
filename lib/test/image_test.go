@@ -37,6 +37,9 @@ func TestCreateVM(t *testing.T) {
 	}
 }
 
+func TestUserdata(t *testing.T) {
+}
+
 // Delete the VM
 func TestDeleteVM(t *testing.T) {
 	conn, err := libvirt.NewConnect("qemu:///system")

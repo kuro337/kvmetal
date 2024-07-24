@@ -121,7 +121,7 @@ func CreateUserDataFile(userData, filePath string) error {
 	return err
 }
 
-// / The Name of the Image file for each VM : e.g myvm-vm-disk.qcow2
+// The Name of the Image file for each VM : e.g myvm-vm-disk.qcow2
 func ModifiedImageName(vmName string) string {
 	return vmName + "-vm-disk.qcow2"
 }
