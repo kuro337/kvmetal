@@ -20,7 +20,10 @@ type VM struct {
 	pool *lib.Pool
 
 	// basePath *fpath.FilePath
-	images map[string]*lib.Volume
+	baseImgPath string
+	images      map[string]*lib.Volume
+
+	config *lib.VMConfig
 }
 
 // NewImageMgr returns the Img Manager with a default Pool with the name provided
@@ -36,7 +39,8 @@ func NewVM(name, path string) (*VM, error) {
 		return nil, fmt.Errorf("Error:%s", err)
 	}
 
-	vm := &VM{Name: name, Path: path, client: conn, images: map[string]*lib.Volume{}}
+	// Init the VmConfig with the Name
+	vm := &VM{Name: name, Path: path, client: conn, config: lib.NewVMConfig(name), images: map[string]*lib.Volume{}}
 
 	pool, err := conn.GetOrCreatePool(name, path)
 	if err != nil {
@@ -56,13 +60,29 @@ func (vm *VM) baseImageName() string {
 }
 
 // Get the Image/Volume Path associated with the Base Image
-// Use this to configure the VM
+// Use this to configure the VM.
 func (vm *VM) BaseImagePath() (string, error) {
+	if vm.baseImgPath != "" {
+		return vm.baseImgPath, nil
+	}
 	imgPath, err := vm.pool.GetImage(vm.baseImageName())
 	if err != nil {
 		return "", fmt.Errorf("failed to get Base Image Path:%s", err)
 	}
+	vm.baseImgPath = imgPath
 	return imgPath, nil
+}
+
+// Launch the VM - once a base image is set. Apply defaults to uninitialized VmConfig params
+// Userdata and Base Image must be set
+func (vm *VM) Launch() error {
+	baseImgPath, err := vm.BaseImagePath()
+	if err != nil {
+		return fmt.Errorf("base img path uninitialized:%s. If the domain is not already running - a Base Image must be created first.", err)
+	}
+
+	vm.config.SetBaseImage(baseImgPath)
+	return nil
 }
 
 // CreateBaseImage will use the vm name to generate a default <vm-name>-base.img file as the base backing image
@@ -73,7 +93,6 @@ func (vm *VM) CreateBaseImage(imgPath string, capacityGB int) error {
 		log.Printf("Image %s already exists\n", baseImageName)
 		return nil
 	}
-
 	return vm.CreateImage(imgPath, baseImageName, capacityGB)
 }
 
@@ -113,8 +132,13 @@ func getXMLFromBaseImage(baseImagePath, newName string, capacityGB int) string {
 
 ///////////////////////
 
-func (vm *VM) ConfigureLaunchVM() string {
-	return ""
+// Get and Set the config for the VM
+func (vm *VM) GetConfig() *lib.VMConfig {
+	return vm.config
+}
+
+func (vm *VM) SetConfig(config *lib.VMConfig) {
+	vm.config = config
 }
 
 func (vm *VM) ListImages() error {
