@@ -75,6 +75,16 @@ func (p *Pool) Delete() error {
 		return err
 	}
 
+	active, err := p.pool.IsActive()
+	if err != nil {
+		fmt.Printf("Error checking pool active:%s\n", err.Error())
+	}
+	if active {
+		fmt.Println("Pool Is ACTIVE")
+	} else {
+		fmt.Println("Pool Is INACTIVE")
+	}
+
 	// Undefine an Inactive Storage Pool - call after destroy
 	if err := p.pool.Undefine(); err != nil {
 		return fmt.Errorf("failed undefine pool: %v", err)
