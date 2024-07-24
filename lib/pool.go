@@ -18,8 +18,8 @@ type Pool struct {
 	path string
 	pool *libvirt.StoragePool
 
-	volumes map[string]*libvirt.StorageVol
-
+	//	volumes map[string]*libvirt.StorageVol
+	volumes  map[string]*Volume
 	preserve bool
 }
 
@@ -52,8 +52,40 @@ func GetPool(conn *libvirt.Connect, poolName string) (*Pool, error) {
 		name:    poolName,
 		path:    path,
 		pool:    pool,
-		volumes: map[string]*libvirt.StorageVol{},
+		volumes: map[string]*Volume{},
 	}, nil
+}
+
+// Delete deletes a Pool entirely clearing all the volumes associated with it
+func (p *Pool) Delete() error {
+	if p.pool == nil {
+		return fmt.Errorf("storage pool is nil")
+	}
+
+	if err := p.UpdateVolumes(); err != nil {
+		return fmt.Errorf("failed updateVolumes:%s\n", err)
+	}
+	// Destroy the pool if it is active
+	if err := p.destroy(); err != nil {
+		return err
+	}
+
+	// delete volumes pulled from UpdateVolumes()
+	if err := p.DeleteVolumes(); err != nil {
+		return fmt.Errorf("failed delete volumes:%s\n", err)
+	}
+
+	// Undefine an Inactive Storage Pool - call after destroy
+	if err := p.pool.Undefine(); err != nil {
+		return fmt.Errorf("failed undefine pool: %v", err)
+	}
+
+	// Delete the pool - final irreversible operation
+	if err := p.pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL); err != nil {
+		return fmt.Errorf("failed to delete pool data: %v", err)
+	}
+
+	return nil
 }
 
 func (p *Pool) DeleteImage(image string) error {
@@ -73,7 +105,7 @@ func InitPool(pool *libvirt.StoragePool, name, path string) *Pool {
 		name:    name,
 		path:    path,
 		pool:    pool,
-		volumes: map[string]*libvirt.StorageVol{},
+		volumes: map[string]*Volume{},
 	}
 }
 
@@ -111,7 +143,7 @@ func NewPool(conn *libvirt.Connect, name, path string) (*Pool, error) {
 		name:    name,
 		path:    path,
 		pool:    pool,
-		volumes: map[string]*libvirt.StorageVol{},
+		volumes: map[string]*Volume{},
 	}, nil
 }
 
@@ -121,35 +153,6 @@ func (p *Pool) ImageExists(imageName string) bool {
 		return false
 	}
 	return true
-}
-
-// Delete deletes a Pool entirely clearing all the volumes associated with it
-func (p *Pool) Delete() error {
-	if p.pool == nil {
-		return fmt.Errorf("storage pool is nil")
-	}
-
-	if err := p.UpdateVolumes(); err != nil {
-		return fmt.Errorf("failed updateVolumes:%s\n", err)
-	}
-	// Destroy the pool if it is active
-	if err := p.destroy(); err != nil {
-		return err
-	}
-
-	if err := p.DeleteVolumes(); err != nil {
-		return fmt.Errorf("failed delete volumes: %s\n", err)
-	}
-
-	if err := p.pool.Undefine(); err != nil {
-		return fmt.Errorf("failed undefine pool: %v", err)
-	}
-
-	if err := p.pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL); err != nil {
-		return fmt.Errorf("failed to delete pool data: %v", err)
-	}
-
-	return nil
 }
 
 func ImageExists(pool *libvirt.StoragePool, volumeName string) (bool, error) {
@@ -212,17 +215,15 @@ func DeletePool(conn *libvirt.Connect, poolName string) error {
 			return fmt.Errorf("failed to destroy storage pool: %v", err)
 		}
 	}
-
 	log.Printf("Undefining pool %s", poolName)
 	if err := pool.Undefine(); err != nil {
 		return fmt.Errorf("failed to undefine storage pool: %v", err)
 	}
-
 	log.Printf("Deleted pool %s", poolName)
 	return nil
 }
 
-// destroy stops the Pool if it is active, destroy before delete and undefining the Pool
+// destroy destroys an active Storage Pool
 func (p *Pool) destroy() error {
 	if active, err := p.Active(); err == nil && active {
 		if err := p.pool.Destroy(); err != nil {
@@ -237,40 +238,56 @@ func (p *Pool) destroy() error {
 // Active() checks whether the Pool is Active or not
 func (p *Pool) Active() (bool, error) {
 	pool := p.pool
-	if err := pool.Create(0); err != nil && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
-		fmt.Printf("Failed to activate storage pool: %v\n", err)
-		return false, fmt.Errorf("Storage Pool not active for %s", p.name)
+
+	active, err := pool.IsActive()
+	if err != nil {
+		return false, fmt.Errorf("error checking IsActive:%s", err)
 	}
-	return true, nil
+	return active, nil
+
+	//	if err := pool.Create(0); err != nil && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
+	//		fmt.Printf("Failed to activate storage pool: %v\n", err)
+	//		return false, fmt.Errorf("Storage Pool not active for %s", p.name)
+	//	}
+	//
+	// return true, nil
 }
 
+func (p *Pool) Refresh() error {
+	return p.pool.Refresh(0)
+}
+
+// UpdateVolumes refreshes the Pool and gets the Volumes/Images associated with it and resolves the Name and Path
+// Updates the pool struct to have the Path as the key for the Volumes to &Volume pointers
 func (p *Pool) UpdateVolumes() error {
 	pool := p.pool
 	// Refresh the pool to get the latest state
-	if err := pool.Refresh(0); err != nil {
+	if err := p.Refresh(); err != nil {
 		return fmt.Errorf("failed to refresh pool: %v", err)
 	}
+
 	volumes, err := pool.ListAllStorageVolumes(0)
 	if err != nil {
 		return fmt.Errorf("failed to list volumes: %v", err)
 	}
+
 	// libvirt.StorageVol
 	for _, vol := range volumes {
-		vol.GetKey()
-		path, err := vol.GetPath()
+
+		volume, err := NewVolume(&vol)
 		if err != nil {
 			vol.Free()
-			return fmt.Errorf("failed to get volume path: %v", err)
+			return fmt.Errorf("failed to get volume:%s", err.Error())
 		}
 
-		p.volumes[path] = &vol
+		p.volumes[volume.Path] = volume
 		// vol.Free()
 	}
 	return nil
 }
 
 // GetImages updates the current images/volumes and returns the Volumes
-func (p *Pool) GetImages() (map[string]*libvirt.StorageVol, error) {
+func (p *Pool) GetImages() (map[string]*Volume, error) {
 	if p.volumes == nil {
 		if err := p.UpdateVolumes(); err != nil {
 			return nil, err
@@ -295,11 +312,7 @@ func (p *Pool) GetVolumes(refresh bool) ([]string, error) {
 
 	var volumePaths []string
 	for _, vol := range p.volumes {
-		path, err := vol.GetPath()
-		if err != nil {
-			vol.Free()
-			return nil, fmt.Errorf("failed to get volume path: %v", err)
-		}
+		path := vol.Path
 		volumePaths = append(volumePaths, path)
 		//		vol.Free()
 	}
@@ -311,20 +324,22 @@ func (p *Pool) DeleteVolume(path string) error {
 	if !ok {
 		return fmt.Errorf("Volume at path %s not found\n", path)
 	}
-	if err := vol.Delete(0); err != nil {
+	if err := vol.Delete(); err != nil {
 		vol.Free()
 		return fmt.Errorf("failed to delete volume: %v", err)
 	}
 	return nil
 }
 
+// Delete the Volumes pulled on the struct
 func (p *Pool) DeleteVolumes() error {
 	for _, vol := range p.volumes {
-		if err := vol.Delete(0); err != nil {
+		//  fmt.Printf("Deleting Volume: %s\n",vol.GetName()
+		if err := vol.Delete(); err != nil {
 			vol.Free()
 			return fmt.Errorf("failed to delete volume: %v", err)
 		}
-		vol.Free()
+		// vol.Free()
 	}
 	return nil
 }

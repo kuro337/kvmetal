@@ -9,8 +9,6 @@ import (
 	"kvmgo/lib"
 	"kvmgo/types/fpath"
 	"kvmgo/utils"
-
-	"libvirt.org/go/libvirt"
 )
 
 type VM struct {
@@ -22,7 +20,7 @@ type VM struct {
 	pool *lib.Pool
 
 	// basePath *fpath.FilePath
-	images map[string]*libvirt.StorageVol
+	images map[string]*lib.Volume
 }
 
 // NewImageMgr returns the Img Manager with a default Pool with the name provided
@@ -38,7 +36,7 @@ func NewVM(name, path string) (*VM, error) {
 		return nil, fmt.Errorf("Error:%s", err)
 	}
 
-	vm := &VM{Name: name, Path: path, client: conn, images: map[string]*libvirt.StorageVol{}}
+	vm := &VM{Name: name, Path: path, client: conn, images: map[string]*lib.Volume{}}
 
 	// note: do not create dirs where we register the Storage Pool - it has to be managed by libvirt
 	//	if err := vm.initPath(path); err != nil {
