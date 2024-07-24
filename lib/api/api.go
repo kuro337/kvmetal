@@ -354,7 +354,7 @@ func DownloadImageProgress(url, dir string) (string, error) {
 
 	// Progress tracking variables
 	var written int64
-	buf := make([]byte, 64*1024) // 64 KB buffer
+	buf := make([]byte, 128*1024) // 64 KB buffer
 	startTime := time.Now()
 	lastLoggedTime := time.Now()
 
