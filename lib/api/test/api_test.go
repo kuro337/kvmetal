@@ -39,7 +39,11 @@ func TestVM(t *testing.T) {
 
 	img := "/home/kuro/kvm/images/ubuntu/ubuntu-24.04-server-cloudimg-amd64.img"
 
-	vm.CreateBaseImage(img, 20)
+	if err := vm.CreateBaseImage(img, 20); err != nil {
+		t.Errorf("Error creating image :%s", err)
+	}
+
+	t.Log("VM Base Image Created")
 
 	// url := "https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img"
 
