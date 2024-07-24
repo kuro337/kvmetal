@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"kvmgo/lib"
 	"kvmgo/utils"
 
 	"libvirt.org/go/libvirt"
@@ -49,7 +50,7 @@ func GetPoolPath(conn *libvirt.Connect, poolName string) (string, error) {
 }
 
 // ListPoolVolumes lists the volumes associated with the Storage Pool such as ubuntu for Images
-func ListPoolVolumes(conn *libvirt.Connect, poolName string) ([]string, error) {
+func ListPoolVolumes(conn *libvirt.Connect, poolName string) ([]*lib.Volume, error) {
 	pool, err := conn.LookupStoragePoolByName(poolName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to lookup pool: %v", err)
@@ -66,18 +67,21 @@ func ListPoolVolumes(conn *libvirt.Connect, poolName string) ([]string, error) {
 		return nil, fmt.Errorf("failed to list volumes: %v", err)
 	}
 
-	var volumePaths []string
+	var vols []*lib.Volume
+
 	for _, vol := range volumes {
-		path, err := vol.GetPath()
+		// path, err := vol.GetPath()
+		volume, err := lib.NewVolume(&vol)
 		if err != nil {
 			vol.Free()
 			return nil, fmt.Errorf("failed to get volume path: %v", err)
 		}
-		volumePaths = append(volumePaths, path)
+		// volumePaths = append(volumePaths, path)
+		vols = append(vols, volume)
 		vol.Free()
 	}
 
-	return volumePaths, nil
+	return vols, nil
 }
 
 func DeletePool(conn *libvirt.Connect, poolName string, deleteContents bool) error {

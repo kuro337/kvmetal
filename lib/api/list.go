@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"kvmgo/lib"
+
 	"libvirt.org/go/libvirt"
 )
 
@@ -61,6 +63,6 @@ func ListAllStoragePools(conn *libvirt.Connect) ([]PoolInfo, error) {
 }
 
 // List all Images/Volumes associated with a Pool : go test -v --run TestListAll | fzf
-func ListAllVolumes(conn *libvirt.Connect, name string) ([]string, error) {
+func ListAllVolumes(conn *libvirt.Connect, name string) ([]*lib.Volume, error) {
 	return ListPoolVolumes(conn, name)
 }

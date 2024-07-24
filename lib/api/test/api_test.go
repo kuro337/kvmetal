@@ -2,7 +2,6 @@ package test
 
 import (
 	"log"
-	"strings"
 	"testing"
 
 	"kvmgo/lib"
@@ -89,7 +88,7 @@ func TestListImages(t *testing.T) {
 		t.Errorf("Failed to get Volumes Error:%s", err)
 	}
 	for _, vol := range vols {
-		t.Logf("Volume: %s\n", vol)
+		t.Logf("Volume: %s\n", vol.String())
 	}
 }
 
@@ -157,7 +156,9 @@ func TestImageApi(t *testing.T) {
 		t.Error("No Images Present")
 	}
 
-	t.Logf("Volumes: %s\n", strings.Join(imgs, "\n"))
+	for _, vol := range imgs {
+		t.Logf("Volume: %s\n", vol.String())
+	}
 
 	// Pool exists
 
