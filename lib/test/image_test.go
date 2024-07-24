@@ -28,7 +28,9 @@ func TestCreateVM(t *testing.T) {
 		t.Fatalf("Error:%s", err)
 	}
 
-	vm.CreateAndStartVM(conn)
+	if err := vm.CreateAndStartVM(conn); err != nil {
+		t.Fatalf("Error Starting VM:%s", err)
+	}
 }
 
 /*
