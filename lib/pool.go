@@ -122,23 +122,23 @@ func (p *Pool) Delete() error {
 	}
 
 	if err := p.UpdateVolumes(); err != nil {
-		return fmt.Errorf("Failed to Delete Pool as volumes could not be retrieved. Error %s\n", err)
-	}
-
-	if err := p.DeleteVolumes(); err != nil {
-		return fmt.Errorf("Failed to Delete - volumes could not be deleted. Error %s\n", err)
+		return fmt.Errorf("failed updateVolumes:%s\n", err)
 	}
 	// Destroy the pool if it is active
 	if err := p.destroy(); err != nil {
 		return err
 	}
 
-	if err := p.pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL); err != nil {
-		return fmt.Errorf("failed to delete pool data: %v", err)
+	if err := p.DeleteVolumes(); err != nil {
+		return fmt.Errorf("failed delete volumes: %s\n", err)
 	}
 
 	if err := p.pool.Undefine(); err != nil {
-		return fmt.Errorf("failed to undefine storage pool: %v", err)
+		return fmt.Errorf("failed undefine pool: %v", err)
+	}
+
+	if err := p.pool.Delete(libvirt.STORAGE_POOL_DELETE_NORMAL); err != nil {
+		return fmt.Errorf("failed to delete pool data: %v", err)
 	}
 
 	return nil
@@ -214,6 +214,7 @@ func DeletePool(conn *libvirt.Connect, poolName string) error {
 	return nil
 }
 
+// destroy stops the Pool if it is active, destroy before delete and undefining the Pool
 func (p *Pool) destroy() error {
 	if active, err := p.Active(); err == nil && active {
 		if err := p.pool.Destroy(); err != nil {
