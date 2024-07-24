@@ -116,6 +116,7 @@ func TestDeletePool(t *testing.T) {
 		t.Logf("Volume: %s\n", vol)
 	}
 
+	t.Log("Deleting Pool")
 	if err := pool.Delete(); err != nil {
 		t.Errorf("Failed to delete Pool Error:%s", err)
 	}
