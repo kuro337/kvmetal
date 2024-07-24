@@ -16,6 +16,10 @@ func (v *Volume) Free() {
 	v.volume.Free()
 }
 
+func (v *Volume) String() string {
+	return fmt.Sprintf("Name:%s Path:%s", v.Name, v.Path)
+}
+
 func (v *Volume) Delete() error {
 	//	STORAGE_VOL_DELETE_NORMAL         = StorageVolDeleteFlags(C.VIR_STORAGE_VOL_DELETE_NORMAL)         // Delete metadata only (fast)
 	//	STORAGE_VOL_DELETE_ZEROED         = StorageVolDeleteFlags(C.VIR_STORAGE_VOL_DELETE_ZEROED)         // Clear all data to zeros (slow)

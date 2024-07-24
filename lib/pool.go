@@ -273,7 +273,6 @@ func (p *Pool) UpdateVolumes() error {
 
 	// libvirt.StorageVol
 	for _, vol := range volumes {
-
 		volume, err := NewVolume(&vol)
 		if err != nil {
 			vol.Free()
@@ -281,7 +280,6 @@ func (p *Pool) UpdateVolumes() error {
 		}
 
 		p.volumes[volume.Path] = volume
-		// vol.Free()
 	}
 	return nil
 }
