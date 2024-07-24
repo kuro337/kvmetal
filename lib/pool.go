@@ -78,7 +78,7 @@ func (p *Pool) Delete() error {
 	}
 
 	if _, err := p.client.LookupStoragePoolByName(p.name); err != nil {
-		fmt.Printf("pool does not exist after destroy:%s", err.Error())
+		log.Printf("Pool does not exist after destroy. Skipping Undefine and Delete. %s\n", err.Error())
 		return nil
 	}
 
