@@ -55,16 +55,24 @@ func NewVM(name, path string) (*VM, error) {
 	return vm, nil
 }
 
+// baseImageName will be the name of the Volume/Image created from the base OS
+// <vm.Name>-base.img
+func (vm *VM) baseImageName() string {
+	// make sure it has an .img extension if not provided
+	return utils.AddExtensionIfRequired(vm.Name+"-base", ".img")
+}
+
 // CreateBaseImage will use the vm name to generate a default <vm-name>-base.img file as the base backing image
 func (vm *VM) CreateBaseImage(imgPath string, capacityGB int) error {
-	basePool := vm.Name + "-base"
-	if vm.pool.ImageExists(basePool) {
+	baseImageName := vm.baseImageName()
+	// <vm.Name>-base.img
+	if vm.pool.ImageExists(baseImageName) {
 		return nil // already exists
 	} else {
-		fmt.Printf("Pool %s does not exist, creating.\n", basePool)
+		fmt.Printf("Pool %s does not exist, creating.\n", baseImageName)
 	}
 
-	return vm.CreateImage(imgPath, basePool, capacityGB)
+	return vm.CreateImage(imgPath, baseImageName, capacityGB)
 }
 
 // CreateImage creates a new Image for this VM from a backing image such as an Ubuntu base Image
@@ -82,9 +90,6 @@ func (vm *VM) CreateImage(imgPath, imageName string, capacityGB int) error {
 // @Usage:
 // getXMLFromBaseImage("/path/v.img", "kafka", 20) // or "kafka.img" - it is added if not specified
 func getXMLFromBaseImage(baseImagePath, newName string, capacityGB int) string {
-	// make sure it has an .img extension if not provided
-	newName = utils.AddExtensionIfRequired(newName, ".img")
-
 	return fmt.Sprintf(`
 <volume>
 	<name>%s</name>
