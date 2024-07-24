@@ -65,14 +65,14 @@ func (p *Pool) Delete() error {
 	if err := p.UpdateVolumes(); err != nil {
 		return fmt.Errorf("failed updateVolumes:%s\n", err)
 	}
-	// Destroy the pool if it is active
-	if err := p.destroy(); err != nil {
-		return err
-	}
-
 	// delete volumes pulled from UpdateVolumes()
 	if err := p.DeleteVolumes(); err != nil {
 		return fmt.Errorf("failed delete volumes:%s\n", err)
+	}
+
+	// Destroy the pool if it is active
+	if err := p.destroy(); err != nil {
+		return err
 	}
 
 	// Undefine an Inactive Storage Pool - call after destroy
@@ -223,7 +223,7 @@ func DeletePool(conn *libvirt.Connect, poolName string) error {
 	return nil
 }
 
-// destroy destroys an active Storage Pool
+// destroy destroys an active Storage Pool. Destroy after deleting the Volumes
 func (p *Pool) destroy() error {
 	if active, err := p.Active(); err == nil && active {
 		if err := p.pool.Destroy(); err != nil {
