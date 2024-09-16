@@ -1,10 +1,10 @@
 package tests
 
 import (
+	"kvmgo/kube"
 	"strings"
 	"testing"
 
-	"kvmgo/kube"
 	kssh "kvmgo/network/ssh"
 )
 

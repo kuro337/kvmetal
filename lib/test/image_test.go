@@ -1,10 +1,9 @@
 package test
 
 import (
+	"kvmgo/lib"
 	"log"
 	"testing"
-
-	"kvmgo/lib"
 
 	"libvirt.org/go/libvirt"
 )
@@ -131,6 +130,14 @@ func TestAPI(t *testing.T) {
 	// check if kube img already exists
 
 	// create the Pool with name of VM
+}
+
+func TestLibvirtInstalled(t *testing.T) {
+	_, err := libvirt.NewConnect("qemu:///system")
+	if err != nil {
+		log.Printf("Error Connecting %s", err)
+		t.Errorf("Error:%s", err)
+	}
 }
 
 func TestFullKvmImageMgmt(t *testing.T) {

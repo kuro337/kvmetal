@@ -7,14 +7,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"sync"
-	"time"
-
 	"kvmgo/configuration/presets"
 	"kvmgo/constants"
 	"kvmgo/constants/kafka"
@@ -22,7 +14,13 @@ import (
 	"kvmgo/network"
 	"kvmgo/network/qemu_hooks"
 	"kvmgo/utils"
-	"kvmgo/vm"
+	"log"
+	"os"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
+	"time"
 
 	kvm "kvmgo/vm"
 )
@@ -175,24 +173,22 @@ const (
 )
 
 type Config struct {
-	// VM           string
-	Action       Action
-	Cluster      bool
-	Cleanup      []string
-	Control      string
-	Workers      []string
-	Name         string
-	Memory       int
-	CPU          int
 	SSH          string
-	BootScript   string
-	Userdata     string // Inline Userdata from presets
-	UserdataFile string // Optional file on disk with userdata
-	Help         bool
 	Preset       Preset
+	UserdataFile string // userdatafile Optional file on disk with userdata
+	Control      string
+	Userdata     string // userdata Inline Userdata from presets
+	Name         string
+	BootScript   string
+	Workers      []string
+	Cleanup      []string
+	KubeJoin     []string
+	CPU          int
+	Memory       int
+	Action       Action
+	Help         bool
+	Cluster      bool
 	Confirm      bool
-
-	KubeJoin []string
 }
 
 type Preset string
@@ -259,7 +255,7 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 			log.Printf("Failed to get VM IP Address. ERROR:%s", err)
 		}
 		hostIp, _ := network.GetHostIP()
-		fmt.Printf(utils.TurnBoldBlueDelimited(fmt.Sprintf(" %s IP : %s | Host IP : %s", *getIp, vmIp.IP.String(), hostIp.IP.String())))
+		fmt.Print(utils.TurnBoldBlueDelimited(fmt.Sprintf(" %s IP : %s | Host IP : %s", *getIp, vmIp.IP.String(), hostIp.IP.String())))
 	}
 
 	if *exposeVM != "" && *hostPort != 0 && *vmPort != 0 {
@@ -274,7 +270,7 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 		if err != nil {
 			log.Printf("Failed to Disable Bridge Filtering for Port Forwarding Enablement. ERROR:%s", err)
 		}
-		log.Printf(utils.TurnSuccess("Successfully Disabled Bridge Filtering"))
+		log.Print(utils.TurnSuccess("Successfully Disabled Bridge Filtering"))
 	}
 
 	if *cluster {
@@ -342,7 +338,7 @@ func ParseFlags(ctx context.Context, wg *sync.WaitGroup) (*Config, error) {
 func joinKubeNodes(joinStr string) error {
 	nodes, err := SplitKubeJoinNodes(joinStr)
 	if err != nil {
-		return fmt.Errorf("Failed Joining:%s", err)
+		return fmt.Errorf("failed Joining:%s", err)
 	}
 	_, err = join.JoinNodes(nodes)
 	return err
@@ -352,7 +348,7 @@ func joinKubeNodes(joinStr string) error {
 func launchVM(launchConfig Config) {
 	vmConfig := CreateVMConfig(launchConfig)
 
-	if _, err := vm.LaunchNewVM(vmConfig); err != nil {
+	if _, err := kvm.LaunchNewVM(vmConfig); err != nil {
 		log.Printf("Failed vm.LaunchNewVM(vmConfig) go_err ERROR:%s,", err)
 	}
 }
@@ -362,7 +358,7 @@ func TestLaunchConf(controlNode string) error {
 
 	controlConf := GetKubeLaunchConfig(controlNode, true)
 
-	_, err := vm.LaunchNewVM(controlConf)
+	_, err := kvm.LaunchNewVM(controlConf)
 	if err != nil {
 		log.Printf("Error launching test new VM: %s\n", err)
 		return err
@@ -387,14 +383,14 @@ func launchClusterNew(controlNode string, workerNodes []string) error {
 			// time.Sleep(5 * time.Second)
 
 			workerConf := GetKubeLaunchConfig(w, false)
-			_, err := vm.LaunchNewVM(workerConf)
+			_, err := kvm.LaunchNewVM(workerConf)
 			errc <- err
 		}(worker)
 	}
 
 	go func() {
 		controlConf := GetKubeLaunchConfig(controlNode, true)
-		_, err := vm.LaunchNewVM(controlConf)
+		_, err := kvm.LaunchNewVM(controlConf)
 		errc <- err
 	}()
 
@@ -403,16 +399,16 @@ func launchClusterNew(controlNode string, workerNodes []string) error {
 		case <-timeout:
 			log.Printf("Timed out - returning")
 			close(errc)
-			return fmt.Errorf("Timed Out")
+			return fmt.Errorf("timed Out")
 		case err := <-errc:
 			if err != nil {
-				return fmt.Errorf("Failed vm.LaunchNewVM(vmConfig) go_err ERROR:%s,", err)
+				return fmt.Errorf("failed vm.LaunchNewVM(vmConfig) go_err ERROR:%s,", err)
 			}
 		}
 	}
 	close(errc)
 
-	log.Printf(utils.TurnSuccess("Cluster Nodes are initalized"))
+	log.Print(utils.TurnSuccess("Cluster Nodes are initalized"))
 
 	nodes := append([]string{controlNode}, workerNodes...)
 
@@ -423,7 +419,7 @@ func launchClusterNew(controlNode string, workerNodes []string) error {
 		return err
 	}
 
-	log.Printf(utils.TurnSuccess("Successfully Joined the Cluster - functional and ready for deployments."))
+	log.Print(utils.TurnSuccess("Successfully Joined the Cluster - functional and ready for deployments."))
 
 	return nil
 }
@@ -434,7 +430,7 @@ func launchClusterNew(controlNode string, workerNodes []string) error {
 //   - config.Userdata for cloud-init
 //   - config.SshPub
 //   - config.Preset
-func CreateVMConfig(config Config) *vm.VMConfig {
+func CreateVMConfig(config Config) *kvm.VMConfig {
 	if config.UserdataFile != "" && config.Userdata != "" {
 		utils.LogWarning("Both User Data and --preset cannot be used. --preset overrides.")
 	}
@@ -485,7 +481,7 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 	// https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img
 	// https://cloud-images.ubuntu.com/releases/noble/release/ubuntu-24.04-server-cloudimg-amd64.img
 
-	vmConfig := vm.NewVMConfig(config.Name).
+	vmConfig := kvm.NewVMConfig(config.Name).
 		SetImageURL("https://cloud-images.ubuntu.com/releases/jammy/release/ubuntu-22.04-server-cloudimg-amd64.img").
 		SetImagesDir(imgsPath.Abs()).
 		SetArtifactsDir(artifactsPath.Abs()).
@@ -501,7 +497,7 @@ func CreateVMConfig(config Config) *vm.VMConfig {
 
 	if isk8(config.Preset) { // for OpenEBS disk management
 		// Path created as data/artifacts/vm1/vm1-openebs-disk.qcow2
-		openEbsDisk, err := vm.NewDiskConfig(
+		openEbsDisk, err := kvm.NewDiskConfig(
 			// Defines path for extra disks - data/artifacts/<vm>/disk/...
 
 			// fix this - shud be %s/disk/%s
