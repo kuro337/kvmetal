@@ -15,3 +15,7 @@ application/qemuhookintercept
 PKG.md
 data/keys
 mock
+simple/*.img
+simple/*qcow*
+*qcow*
+
