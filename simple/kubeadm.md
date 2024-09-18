@@ -78,6 +78,9 @@ sudo systemctl enable --now kubelet
 
 # kubeadm init $args
 
+git remote add origin github.com:kuro337/kvmetal.git
+
+git remote github.com:kuro337/kvmetal.git
 echo -e "net.bridge.bridge-nf-call-iptables = 1\nnet.bridge.bridge-nf-call-ip6tables = 1\nnet.ipv4.ip_forward = 1" | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
 sudo sysctl --system
 sudo apt update
