@@ -1,0 +1,8 @@
+#cloud-config
+password: password
+chpasswd: { expire: False }
+ssh_pwauth: true
+package_update: true
+package_upgrade: true
+
+

@@ -1,0 +1,18 @@
+#cloud-config
+password: password
+chpasswd: { expire: False }
+ssh_pwauth: True
+
+write_files:
+  - path: /etc/netplan/50-cloud-init.yaml
+    content: |
+      network:
+        version: 2
+        ethernets:
+          enp1s0:
+            dhcp4: true
+
+runcmd:
+  - netplan apply
+  - ip link set enp1s0 up
+  - dhclient enp1s0
