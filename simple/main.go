@@ -287,11 +287,9 @@ func main() {
 			log.Fatalf("Failed to create worker VM: %s", err)
 		}
 	}
-
 	// if err := createVMAndRun(workerName, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
 	// 	log.Fatalf("Failed to create VM: %s", err)
 	// }
-
 	// imagePath, err := stageUbuntuImg()
 	// if err != nil {
 	// 	log.Printf("Error pulling image: %v", err)
