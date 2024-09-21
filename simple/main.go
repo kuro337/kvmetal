@@ -504,10 +504,6 @@ func main() {
 	// 	return
 	// }
 
-	// if err := createUserdataKube(); err != nil {
-	// 	log.Fatal(err)
-	// }
-
 	// if err := createUserdataImg(); err != nil {
 
 	// 	log.Print("create userdata failed")
