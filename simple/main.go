@@ -240,10 +240,10 @@ ssh_authorized_keys:
 --vcpus %d \
 --boot hd,menu=on \
 --disk path=%s,device=disk \
---disk path=user-data.img,format=raw \
+--disk path=%s,format=raw \
 --cloud-init network-config=network-config.yaml \
 --graphics none \
---noautoconsole`, vmName, mem, vcpu, qcowDisk)
+--noautoconsole`, vmName, mem, vcpu, qcowDisk, vmUserdataImg)
 
 	// --cloud-init user-data=user-data.txt,network-config=network-config.yaml \
 	// --cloud-init network-config=network-config.yaml \
