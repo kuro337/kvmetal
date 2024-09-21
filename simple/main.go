@@ -211,7 +211,7 @@ ssh_authorized_keys:
 	if err := os.Remove(qcowDisk); err != nil {
 		return fmt.Errorf("failed to clean existing qCow img: %s", err)
 	}
-	if e := exists(qcowDisk); !e {
+	if e := exists(qcowDisk); e {
 		if err := os.Remove(qcowDisk); err != nil {
 			return fmt.Errorf("failed to clean existing qCow img: %s", err)
 		}
