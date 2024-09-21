@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"kvmgo/simple/ssh"
 	"log"
 	"net/http"
 	"os"
@@ -395,13 +396,21 @@ const KUBE_WORKER_CMD = `
   `
 
 func main() {
+	if err := ssh.CheckDomain("ubuntu-base-vm"); err != nil {
+		log.Printf("Domain doesnt exist, creating. %s", err)
+		if err := createVMAndRun(vmName, qcowImg, "user-data.img", KUBE_RUNCMD); err != nil {
+			log.Fatalf("Failed to create VM: %s", err)
+		}
+	}
+	log.Print("success, exists")
+
 	if err := createVMAndRun(vmName, qcowImg, "user-data.img", KUBE_RUNCMD); err != nil {
 		log.Fatalf("Failed to create VM: %s", err)
 	}
 
-	if err := createVMAndRun(workerName, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
-		log.Fatalf("Failed to create VM: %s", err)
-	}
+	// if err := createVMAndRun(workerName, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
+	// 	log.Fatalf("Failed to create VM: %s", err)
+	// }
 
 	// imagePath, err := stageUbuntuImg()
 	// if err != nil {
