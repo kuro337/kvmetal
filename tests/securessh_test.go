@@ -2,17 +2,25 @@ package tests
 
 import (
 	"bytes"
+	"kvmgo/constants"
+	"kvmgo/lib"
 	"log"
 	"net"
 	"os"
 	"testing"
 	"time"
 
-	"kvmgo/constants"
-	"kvmgo/lib"
-
 	"golang.org/x/crypto/ssh"
 )
+
+func TestConn(t *testing.T) {
+	domain := "ubuntu-base-vm"
+	qconn, _ := lib.ConnectLibvirt()
+	dom, _ := qconn.GetDomain(domain)
+	vmIP, _ := dom.GetIP()
+
+	t.Logf("vm ip:%s", vmIP)
+}
 
 func TestSSHConnection(t *testing.T) {
 	privateKeyPath := constants.SshPriv

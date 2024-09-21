@@ -482,9 +482,6 @@ const KUBE_RUNCMD = `  - swapoff -a
     echo "complete -o default -F __start_kubectl k" >> /home/ubuntu/.bashrc
 
   - systemctl start kubelet
-
-
-
   `
 
 func main() {
