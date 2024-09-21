@@ -275,17 +275,17 @@ var (
 func main() {
 	if err := ssh.CheckDomain(controlVM); err != nil {
 		log.Printf("Domain doesnt exist, creating. %s", err)
-		// if err := createVMAndRun(controlVM, controlQcow, controlUserdata, KUBE_RUNCMD); err != nil {
-		// 	log.Fatalf("Failed to create control VM: %s", err)
-		// }
+		if err := createVMAndRun(controlVM, controlQcow, controlUserdata, KUBE_RUNCMD); err != nil {
+			log.Fatalf("Failed to create control VM: %s", err)
+		}
 	}
 	log.Print("success, exists")
 
 	if err := ssh.CheckDomain(workerVM); err != nil {
 		log.Printf("Worker doesnt exist, creating. %s", err)
-		// if err := createVMAndRun(workerVM, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
-		// 	log.Fatalf("Failed to create worker VM: %s", err)
-		// }
+		if err := createVMAndRun(workerVM, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
+			log.Fatalf("Failed to create worker VM: %s", err)
+		}
 	}
 
 	// if err := createVMAndRun(workerName, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
