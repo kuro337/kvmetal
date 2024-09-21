@@ -212,10 +212,13 @@ ssh_authorized_keys:
 		return fmt.Errorf("failed to clean existing qCow img: %s", err)
 	}
 	if e := exists(qcowDisk); !e {
-		qemuCmd := fmt.Sprintf("qemu-img create -b %s -F qcow2 -f qcow2 %s 20G", imgFile, qcowDisk)
-		if _, err := ExecCmd(qemuCmd, true); err != nil {
-			return fmt.Errorf("failed to create qcow2 disk from img %s", err)
+		if err := os.Remove(qcowDisk); err != nil {
+			return fmt.Errorf("failed to clean existing qCow img: %s", err)
 		}
+	}
+	qemuCmd := fmt.Sprintf("qemu-img create -b %s -F qcow2 -f qcow2 %s 20G", imgFile, qcowDisk)
+	if _, err := ExecCmd(qemuCmd, true); err != nil {
+		return fmt.Errorf("failed to create qcow2 disk from img %s", err)
 	}
 
 	// user-data.img
