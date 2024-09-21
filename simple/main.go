@@ -504,12 +504,6 @@ func main() {
 	// 	return
 	// }
 
-	// if err := createUserdataImg(); err != nil {
-
-	// 	log.Print("create userdata failed")
-	// 	log.Fatal(err)
-	// }
-
 	// if err := virtInstall(); err != nil {
 	// 		log.Print("virt-install failed")
 
