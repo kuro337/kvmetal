@@ -33,6 +33,30 @@ func extractJoinCommand(input string) (string, error) {
 	return joinCmd, nil
 }
 
+func CheckDomain(domain string) error {
+	if domain == "" {
+		domain = "ubuntu-base-vm"
+	}
+
+	qconn, err := lib.ConnectLibvirt()
+	if err != nil {
+		return err
+	}
+	_, err = qconn.GetDomain(domain)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func TestCheckdom(t *testing.T) {
+	if err := CheckDomain("ubuntu-base-vm"); err != nil {
+		t.Fatalf("could not get domain, %s", err)
+	}
+	t.Log("success")
+}
+
 func GetJoinCmd(domain string) string {
 	privateKeyPath := constants.SshPriv
 

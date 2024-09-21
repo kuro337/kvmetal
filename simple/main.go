@@ -69,11 +69,16 @@ func ExecCmd(command string, print bool) (string, error) {
 }
 
 var (
-	imgFile     = "ubuntu-24.04-server-cloudimg-amd64.img"
-	url         = "https://cloud-images.ubuntu.com/releases/server/server/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+	imgFile = "ubuntu-24.04-server-cloudimg-amd64.img"
+	url     = "https://cloud-images.ubuntu.com/releases/server/server/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+
 	qcowImg     = "ubuntu-vm-disk.qcow2"
 	vmName      = "ubuntu-base-vm"
 	userDataImg = "user-data.img"
+
+	workerName        = "kube-worker"
+	qcowWorker        = "kube-worker.qcow2"
+	workerUserdataImg = "user-data-worker.img"
 )
 
 func stageUbuntuImg() (string, error) {
@@ -160,7 +165,7 @@ package_upgrade: true`
 	log.Print(virtInstallCmd, networkCfg, userDataContent, createUserDataImgCmd)
 }
 
-func createVMAndRun(vmName, qcowDisk, runCmd string) error {
+func createVMAndRun(vmName, qcowDisk, vmUserdataImg, runCmd string) error {
 	// Write user-data file
 
 	runcmd := fmt.Sprintf(`runcmd:
@@ -205,7 +210,8 @@ ssh_authorized_keys:
 		return fmt.Errorf("failed to create qcow2 disk from img %s", err)
 	}
 
-	if err := os.Remove("user-data.img"); err != nil {
+	// user-data.img
+	if err := os.Remove(vmUserdataImg); err != nil {
 		return fmt.Errorf("failed to clean existing user-data img: %s", err)
 	}
 	// Create user-data.img
@@ -214,7 +220,8 @@ ssh_authorized_keys:
 	// 	return fmt.Errorf("failed to create user-data.img: %v\nOutput: %s", err, output)
 	// }
 
-	if _, err := ExecCmd("cloud-localds user-data.img user-data.txt", true); err != nil {
+	// user-data.img
+	if _, err := ExecCmd(fmt.Sprintf("cloud-localds %s user-data.txt", vmUserdataImg), true); err != nil {
 		return fmt.Errorf("failed to create user-data disk from img %s", err)
 	}
 	vcpu := 4
@@ -388,7 +395,11 @@ const KUBE_WORKER_CMD = `
   `
 
 func main() {
-	if err := createVMAndRun(vmName, qcowImg, KUBE_RUNCMD); err != nil {
+	if err := createVMAndRun(vmName, qcowImg, "user-data.img", KUBE_RUNCMD); err != nil {
+		log.Fatalf("Failed to create VM: %s", err)
+	}
+
+	if err := createVMAndRun(workerName, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
 		log.Fatalf("Failed to create VM: %s", err)
 	}
 
