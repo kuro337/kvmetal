@@ -486,6 +486,46 @@ const KUBE_RUNCMD = `  - swapoff -a
   - systemctl start kubelet
   `
 
+const KUBE_WORKER_CMD = `
+  - swapoff -a
+  - apt-get update
+  - apt-get install -y make unzip
+  - modprobe overlay
+  - modprobe br_netfilter
+  - wget https://go.dev/dl/go1.23.1.linux-amd64.tar.gz
+  - sudo tar -C /usr/local -xzf go1.23.1.linux-amd64.tar.gz
+  - export PATH=$PATH:/usr/local/go/bin
+  - echo 'export PATH=$PATH:/usr/local/go/bin' | sudo tee -a /etc/profile.d/go.sh
+  - chmod +x /etc/profile.d/go.sh
+  - wget https://github.com/containerd/containerd/releases/download/v1.7.22/containerd-1.7.22-linux-amd64.tar.gz
+  - tar Cxzvf /usr/local containerd-1.7.22-linux-amd64.tar.gz
+  - wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+  - mkdir -p /usr/local/lib/systemd/system/
+  - mv containerd.service /usr/local/lib/systemd/system/
+  - systemctl daemon-reload
+  - systemctl enable --now containerd
+  - wget https://github.com/opencontainers/runc/releases/download/v1.1.14/runc.amd64
+  - install -m 755 runc.amd64 /usr/local/sbin/runc
+  - wget https://github.com/containernetworking/plugins/releases/download/v1.5.1/cni-plugins-linux-amd64-v1.5.1.tgz
+  - mkdir -p /opt/cni/bin
+  - tar Cxzvf /opt/cni/bin cni-plugins-linux-amd64-v1.5.1.tgz
+  - mkdir -p /etc/containerd
+  - containerd config default | sudo tee /etc/containerd/config.toml
+  - sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+  - apt-get update
+  - apt-get install -y apt-transport-https ca-certificates curl gpg
+  - curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+  - echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /' | sudo tee /etc/apt/sources.list.d/kubernetes.list
+  - apt-get update
+  - apt-get install -y kubelet kubeadm kubectl
+  - apt-mark hold kubelet kubeadm kubectl
+  - systemctl enable --now kubelet
+  - echo -e "net.bridge.bridge-nf-call-iptables = 1\nnet.bridge.bridge-nf-call-ip6tables = 1\nnet.ipv4.ip_forward = 1" | sudo tee /etc/sysctl.d/99-kubernetes-cri.conf
+  - sysctl --system
+  - apt update
+  - apt install -y socat
+  `
+
 func main() {
 	if err := createVMAndRun(vmName, qcowImg, KUBE_RUNCMD); err != nil {
 		log.Fatalf("Failed to create VM: %s", err)
