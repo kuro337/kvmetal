@@ -16,6 +16,7 @@ import (
 func TestConn(t *testing.T) {
 	domain := "ubuntu-base-vm"
 	qconn, _ := lib.ConnectLibvirt()
+
 	dom, _ := qconn.GetDomain(domain)
 	vmIP, _ := dom.GetIP()
 

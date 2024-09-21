@@ -4,6 +4,8 @@ chpasswd: { expire: False }
 ssh_pwauth: true
 package_update: true
 package_upgrade: true
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDj4wnyp6PWYdwtJIEj8Kc6eomUCzD6/pesIbIFABeeOPLRUL12s60PNObkevBBOZglHfLJScEOqkxMo1sC99PeeZ+vQbQDFXex8b7TzUHpwq/KpupC7cAjQ1wWnzcZSkgq5/zGaIT+WE8SS+bKk+Ar7Z89nJ6wgU+kbtB5GvOaU0DZdZL13ztRLRseOU57oaJ8TP4nMSIW2wP0Q27e63vPSBo/FjB3V6w4PF61guC2dlcfJJSFcxdag4rERP+3lZDMffO9KlHvGlnkk0j/nK5b558VSycMI3jiKldPBpH/qTBy3IH5kCaWsQ2GpW6HZWtYYEEZqJ1FuFz0QcobKRw5
 
 runcmd:
   - swapoff -a
@@ -71,7 +73,5 @@ runcmd:
     echo "alias k=kubectl" >> /home/ubuntu/.bashrc
     echo "complete -o default -F __start_kubectl k" >> /home/ubuntu/.bashrc
 
-
-
-
+  - systemctl start kubelet
   
