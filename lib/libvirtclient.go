@@ -28,8 +28,18 @@ func ConnectLibvirt() (*VirtClient, error) {
 	return &VirtClient{conn: conn, domains: make(map[string]*dom.Domain)}, nil
 }
 
+func (v *VirtClient) Stream() error {
+	stream, err := v.conn.NewStream(0)
+	if err != nil {
+		return fmt.Errorf("failed to create stream: %v", err)
+	}
+	defer stream.Abort()
+
+	return nil
+}
+
 func (v *VirtClient) Close() {
-	v.Close()
+	v.conn.Close()
 }
 
 func (v *VirtClient) GetDomSlice() []*dom.Domain {
@@ -46,7 +56,7 @@ func (v *VirtClient) GetDomSlice() []*dom.Domain {
 func AwaitDomains(domains []string) (*VirtClient, map[string]*dom.Domain, error) {
 	l, err := ConnectLibvirt()
 	if err != nil {
-		return nil, nil, fmt.Errorf("Error Connecting %s", err)
+		return nil, nil, fmt.Errorf("error Connecting %s", err)
 	}
 
 	// defer l.conn.Close()
@@ -105,7 +115,7 @@ func (v *VirtClient) Running() error {
 	}
 
 	if i == retries && len(doms) > 0 {
-		return fmt.Errorf("Not all domains are stopped after retries")
+		return fmt.Errorf("not all domains are stopped after retries")
 	}
 
 	return nil
@@ -136,7 +146,7 @@ func (v *VirtClient) AddDomain(domain string) error {
 		i++
 		ferr = err
 	}
-	return fmt.Errorf("Failed getting domain attempt %d Error:%s", i, ferr)
+	return fmt.Errorf("failed getting domain attempt %d Error:%s", i, ferr)
 }
 
 // ListInterfaces() lists all Active Network Interfaces
@@ -235,7 +245,7 @@ func (v *VirtClient) GetOrCreatePool(poolName, poolPath string) (*libvirt.Storag
 	}
 
 	if poolPath == "" {
-		return nil, fmt.Errorf("Provide a path to create a new pool for %s\n", poolName)
+		return nil, fmt.Errorf("provide a path to create a new pool for %s", poolName)
 	}
 	return v.createPool(poolName, poolPath)
 }
@@ -264,11 +274,11 @@ func (v *VirtClient) createPool(name, path string) (*libvirt.StoragePool, error)
 
 func (v *VirtClient) CreateStoragePool(poolName, poolPath string) error {
 	// Check if the storage pool already exists
-	pool, err := v.conn.LookupStoragePoolByName(poolName)
+	// pool, err := v.conn.LookupStoragePoolByName(poolName)
 
-	if err == nil {
-		return nil
-	}
+	// if err == nil {
+	// return nil
+	// }
 
 	// If the pool does not exist, create it
 	poolXML := fmt.Sprintf(`<pool type='dir'>
@@ -278,7 +288,7 @@ func (v *VirtClient) CreateStoragePool(poolName, poolPath string) error {
                                     </target>
                                 </pool>`, poolName, poolPath)
 
-	pool, err = v.conn.StoragePoolCreateXML(poolXML, 0)
+	pool, err := v.conn.StoragePoolCreateXML(poolXML, 0)
 	if err != nil {
 		fmt.Printf("Failed to create storage pool: %v\n", err)
 		return err
@@ -337,7 +347,7 @@ func (v *VirtClient) CreateImgVolume(poolName string) error {
 	// Ensure the pool is active
 	if err := pool.Create(0); err != nil && err.(libvirt.Error).Code != libvirt.ERR_OPERATION_INVALID {
 		fmt.Printf("Failed to activate storage pool: %v\n", err)
-		return fmt.Errorf("Storage Pool not active for %s", poolName)
+		return fmt.Errorf("storage Pool not active for %s", poolName)
 	}
 
 	// Create a new storage volume

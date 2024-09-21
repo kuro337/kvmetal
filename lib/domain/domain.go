@@ -2,21 +2,20 @@ package domain
 
 import (
 	"fmt"
+	"kvmgo/network"
+	"kvmgo/utils"
 	"log"
 	"net"
 	"time"
-
-	"kvmgo/network"
-	"kvmgo/utils"
 
 	"libvirt.org/go/libvirt"
 )
 
 type Domain struct {
-	Name        string
-	domain      *libvirt.Domain
-	ip          net.IP
 	ipRetrieved time.Time
+	domain      *libvirt.Domain
+	Name        string
+	ip          net.IP
 }
 
 func NewDomainAwait(conn *libvirt.Connect, domain string) (*Domain, error) {
@@ -46,7 +45,7 @@ func NewDomainAwait(conn *libvirt.Connect, domain string) (*Domain, error) {
 
 	}
 
-	return nil, fmt.Errorf("Timed out getting ip for domain: %s", domain)
+	return nil, fmt.Errorf("timed out getting ip for domain: %s", domain)
 }
 
 // func NewDomain(conn *libvirt.Connect, domain string) (*Domain, error) {
@@ -86,7 +85,7 @@ func NewDomain(conn *libvirt.Connect, domain string) (*Domain, error) {
 	ip, err := d.IP()
 	if err != nil {
 		// return nil, fmt.Errorf("Failed to get Domain IP: %s\n", err)
-		return d, fmt.Errorf("Failed to get Domain IP: %s\n", err)
+		return d, fmt.Errorf("failed to get Domain IP: %s\n", err)
 	}
 
 	log.Printf("Domain IP: Retreived domain.go %s\n", ip)
@@ -248,7 +247,7 @@ func (d *Domain) NewSSHClient() (*network.VMClient, error) {
 	log.Printf("Using ip for ssh client: %s\n", d.ip.String())
 	client, err := network.NewInsecureSSHClientVM(d.Name, d.ip.String(), "ubuntu", "password")
 	if err != nil {
-		return nil, fmt.Errorf("Failed to create client Error:%s", err)
+		return nil, fmt.Errorf("failed to create client Error:%s", err)
 	}
 
 	return client, nil
