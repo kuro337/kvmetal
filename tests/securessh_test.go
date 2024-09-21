@@ -2,11 +2,14 @@ package tests
 
 import (
 	"bytes"
+	"fmt"
 	"kvmgo/constants"
 	"kvmgo/lib"
 	"log"
 	"net"
 	"os"
+	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,6 +24,23 @@ func TestConn(t *testing.T) {
 	vmIP, _ := dom.GetIP()
 
 	t.Logf("vm ip:%s", vmIP)
+}
+
+func extractJoinCommand(input string) (string, error) {
+	// Regular expression to match the join command
+	re := regexp.MustCompile(`kubeadm join \S+:\d+ --token \S+ \\\s+--discovery-token-ca-cert-hash \S+`)
+
+	// Find the match
+	match := re.FindString(input)
+	if match == "" {
+		return "", fmt.Errorf("join command not found in the input string")
+	}
+
+	// Clean up the extracted command
+	joinCmd := strings.ReplaceAll(match, "\\\n", " ")
+	joinCmd = strings.ReplaceAll(joinCmd, "\t", "")
+
+	return joinCmd, nil
 }
 
 func TestSSHConnection(t *testing.T) {
@@ -78,5 +98,12 @@ func TestSSHConnection(t *testing.T) {
 		t.Fatalf("Failed to run command: %v", err)
 	}
 
-	log.Println(b.String())
+	e, err := extractJoinCommand(b.String())
+	if err != nil {
+		t.Errorf("failure: %s", err)
+	}
+
+	// log.Println(b.String())
+
+	log.Println("KUBEJOIN", e)
 }
