@@ -69,19 +69,6 @@ func ExecCmd(command string, print bool) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-var (
-	imgFile = "ubuntu-24.04-server-cloudimg-amd64.img"
-	url     = "https://cloud-images.ubuntu.com/releases/server/server/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
-
-	qcowImg     = "ubuntu-vm-disk.qcow2"
-	vmName      = "ubuntu-base-vm"
-	userDataImg = "user-data.img"
-
-	workerName        = "kube-worker"
-	qcowWorker        = "kube-worker.qcow2"
-	workerUserdataImg = "user-data-worker.img"
-)
-
 func stageUbuntuImg() (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -96,6 +83,25 @@ func stageUbuntuImg() (string, error) {
 }
 
 // use this + user-data.img in virt-install
+
+func writeIfNot(path, content string) error {
+	if e := exists(path); e {
+		return nil
+	}
+	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+		return fmt.Errorf("failed to write file %s: %v", path, err)
+	}
+	return nil
+}
+
+func deleteIfExists(path string) error {
+	if e := exists(path); e {
+		if err := os.Remove(path); err != nil {
+			return fmt.Errorf("failed to clean existing file %s : %s", path, err)
+		}
+	}
+	return nil
+}
 
 func writeNew(path, content string) error {
 	if e := exists(path); e {
@@ -129,7 +135,7 @@ working config
 				  -d
 */
 
-func workingConfig(qcowDiskFile string) {
+func workingConfig(vmName, userDataImg, qcowDiskFile string) {
 	userDataContent := `#cloud-config
 password: password
 chpasswd: { expire: False }
@@ -198,27 +204,25 @@ ssh_authorized_keys:
     enp1s0:
       dhcp4: true`
 
-	if err := writeNew("network-config.yaml", networkCfg); err != nil {
+	if err := writeIfNot("network-config.yaml", networkCfg); err != nil {
 		return fmt.Errorf("failed to write network-config.yaml: %v", err)
 	}
 
 	if err := os.Remove(qcowDisk); err != nil {
 		return fmt.Errorf("failed to clean existing qCow img: %s", err)
 	}
-
-	qemuCmd := fmt.Sprintf("qemu-img create -b %s -F qcow2 -f qcow2 %s 20G", imgFile, qcowImg)
-	if _, err := ExecCmd(qemuCmd, true); err != nil {
-		return fmt.Errorf("failed to create qcow2 disk from img %s", err)
+	if e := exists(qcowDisk); !e {
+		qemuCmd := fmt.Sprintf("qemu-img create -b %s -F qcow2 -f qcow2 %s 20G", imgFile, qcowDisk)
+		if _, err := ExecCmd(qemuCmd, true); err != nil {
+			return fmt.Errorf("failed to create qcow2 disk from img %s", err)
+		}
 	}
 
 	// user-data.img
-	if err := os.Remove(vmUserdataImg); err != nil {
+
+	if err := deleteIfExists(vmUserdataImg); err != nil {
 		return fmt.Errorf("failed to clean existing user-data img: %s", err)
 	}
-	// createUserDataImgCmd := exec.Command("cloud-localds", "user-data.img", "user-data.txt")
-	// if output, err := createUserDataImgCmd.CombinedOutput(); err != nil {
-	// 	return fmt.Errorf("failed to create user-data.img: %v\nOutput: %s", err, output)
-	// }
 
 	// user-data.img
 	if _, err := ExecCmd(fmt.Sprintf("cloud-localds %s user-data.txt", vmUserdataImg), true); err != nil {
@@ -253,38 +257,97 @@ ssh_authorized_keys:
 	return nil
 }
 
-func virtInstall() error {
-	cmdArgs := []string{
-		"virt-install",
-		"--name=ubuntu-base-vm",
-		"--virt-type=kvm",
-		"--memory=8192",
-		"--vcpus=4",
-		"--disk", "path=" + qcowImg + ",device=disk",
-		"--disk", "path=user-data.img,format=raw",
-		"--graphics", "none",
-		"--boot", "hd,menu=on",
-		"--network", "network=default",
-		"--os-variant=ubuntu24.04", // 22.04
-		// "--network", "bridge=virbr0,model=virtio",
-		// "--cloud-init user-data=user-data.yaml,network-config=network-config.yaml",
-		// "--cloud-init user-data=user-data.yaml,network-config=network-config.yaml",
-		"--noautoconsole",
-		"--check",
-		"-d",
-	}
-	cmdStr := strings.Join(cmdArgs, " ")
-	log.Print(cmdStr)
+// sudo -i
 
-	if _, err := ExecCmd(cmdStr, true); err != nil {
-		return fmt.Errorf("failed to run virt-install %s", err)
+var (
+	imgFile = "ubuntu-24.04-server-cloudimg-amd64.img"
+	url     = "https://cloud-images.ubuntu.com/releases/server/server/24.04/release/ubuntu-24.04-server-cloudimg-amd64.img"
+
+	controlVM       = "ubuntu-base-vm"
+	controlQcow     = "ubuntu-vm-disk.qcow2"
+	controlUserdata = "user-data.img"
+
+	workerVM          = "kube-worker"
+	qcowWorker        = "kube-worker.qcow2"
+	workerUserdataImg = "user-data-worker.img"
+)
+
+func main() {
+	if err := ssh.CheckDomain(controlVM); err != nil {
+		log.Printf("Domain doesnt exist, creating. %s", err)
+		// if err := createVMAndRun(controlVM, controlQcow, controlUserdata, KUBE_RUNCMD); err != nil {
+		// 	log.Fatalf("Failed to create control VM: %s", err)
+		// }
+	}
+	log.Print("success, exists")
+
+	if err := ssh.CheckDomain(workerVM); err != nil {
+		log.Printf("Worker doesnt exist, creating. %s", err)
+		// if err := createVMAndRun(workerVM, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
+		// 	log.Fatalf("Failed to create worker VM: %s", err)
+		// }
 	}
 
-	// virsh destroy ubuntu-base-vm && virsh undefine ubuntu-base-vm
-	return nil
+	// if err := createVMAndRun(workerName, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
+	// 	log.Fatalf("Failed to create VM: %s", err)
+	// }
+
+	// imagePath, err := stageUbuntuImg()
+	// if err != nil {
+	// 	log.Printf("Error pulling image: %v", err)
+	// }
+	// log.Printf("pulled to %s", imagePath)
+
+	// if err := qcowDisk(); err != nil {
+	// 	log.Print("QCOW CMD RUNNING - ERROR HERE")
+	// 	log.Fatal(err)
+	// 	return
+	// }
+
+	// if err := virtInstall(); err != nil {
+	// 		log.Print("virt-install failed")
+
+	// 		log.Fatal(err)
+	// 	}
+	// cat /etc/netplan/01-netcfg.yaml
+
+	// sudo journalctl -b
+
+	// sudo cloud-init query userdata
+
+	// ens1:
+	// dhcp4: true
+
+	// sudo dhclient enp1s0
+	// ip addr show enp1s0
+
+	// sudo cloud-init schema --system
+	// sudo cloud-init query userdata
+
+	// viewing user-data used
+	// sudo cat /var/lib/cloud/instance/user-data.txt
+
+	// sudo cat /var/log/cloud-init-output.log
+	// sudo cat /var/log/cloud-init.log
+	// sudo grep -i kubectl /var/log/cloud-init.log
+	// sudo grep -i error /var/log/cloud-init-output.log
+	// error logs sudo grep -i error /var/log/cloud-init.log
+
+	// sudo /var/log/apt
 }
 
-// sudo -i
+/*
+sudo apt-get update && sudo apt-get install containerd
+
+sudo mkdir -p /etc/containerd
+sudo containerd config default | sudo tee /etc/containerd/config.toml
+sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+systemctl restart containerd
+systemctl enable containerd
+
+
+
+*/
 
 const KUBE_RUNCMD = `  - swapoff -a
   - apt-get update
@@ -393,80 +456,6 @@ const KUBE_WORKER_CMD = `
   - apt update
   - apt install -y socat
   `
-
-func main() {
-	if err := ssh.CheckDomain("ubuntu-base-vm"); err != nil {
-		log.Printf("Domain doesnt exist, creating. %s", err)
-		if err := createVMAndRun(vmName, qcowImg, "user-data.img", KUBE_RUNCMD); err != nil {
-			log.Fatalf("Failed to create VM: %s", err)
-		}
-	}
-	log.Print("success, exists")
-
-	if err := createVMAndRun(workerName, qcowWorker, workerUserdataImg, KUBE_RUNCMD); err != nil {
-		log.Fatalf("Failed to create VM: %s", err)
-	}
-
-	// if err := createVMAndRun(workerName, qcowWorker, workerUserdataImg, KUBE_WORKER_CMD); err != nil {
-	// 	log.Fatalf("Failed to create VM: %s", err)
-	// }
-
-	// imagePath, err := stageUbuntuImg()
-	// if err != nil {
-	// 	log.Printf("Error pulling image: %v", err)
-	// }
-	// log.Printf("pulled to %s", imagePath)
-
-	// if err := qcowDisk(); err != nil {
-	// 	log.Print("QCOW CMD RUNNING - ERROR HERE")
-	// 	log.Fatal(err)
-	// 	return
-	// }
-
-	// if err := virtInstall(); err != nil {
-	// 		log.Print("virt-install failed")
-
-	// 		log.Fatal(err)
-	// 	}
-	// cat /etc/netplan/01-netcfg.yaml
-
-	// sudo journalctl -b
-
-	// sudo cloud-init query userdata
-
-	// ens1:
-	// dhcp4: true
-
-	// sudo dhclient enp1s0
-	// ip addr show enp1s0
-
-	// sudo cloud-init schema --system
-	// sudo cloud-init query userdata
-
-	// viewing user-data used
-	// sudo cat /var/lib/cloud/instance/user-data.txt
-
-	// sudo cat /var/log/cloud-init-output.log
-	// sudo cat /var/log/cloud-init.log
-	// sudo grep -i kubectl /var/log/cloud-init.log
-	// sudo grep -i error /var/log/cloud-init-output.log
-	// error logs sudo grep -i error /var/log/cloud-init.log
-
-	// sudo /var/log/apt
-}
-
-/*
-sudo apt-get update && sudo apt-get install containerd
-
-sudo mkdir -p /etc/containerd
-sudo containerd config default | sudo tee /etc/containerd/config.toml
-sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
-systemctl restart containerd
-systemctl enable containerd
-
-
-
-*/
 
 const NEW_KUBE_CONTROL = `  - swapoff -a
   - apt-get update
