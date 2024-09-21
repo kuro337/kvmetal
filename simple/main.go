@@ -215,7 +215,6 @@ ssh_authorized_keys:
 	if err := os.Remove(vmUserdataImg); err != nil {
 		return fmt.Errorf("failed to clean existing user-data img: %s", err)
 	}
-	// Create user-data.img
 	// createUserDataImgCmd := exec.Command("cloud-localds", "user-data.img", "user-data.txt")
 	// if output, err := createUserDataImgCmd.CombinedOutput(); err != nil {
 	// 	return fmt.Errorf("failed to create user-data.img: %v\nOutput: %s", err, output)
