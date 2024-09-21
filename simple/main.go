@@ -404,7 +404,7 @@ func main() {
 	}
 	log.Print("success, exists")
 
-	if err := createVMAndRun(vmName, qcowImg, "user-data.img", KUBE_RUNCMD); err != nil {
+	if err := createVMAndRun(workerName, qcowWorker, workerUserdataImg, KUBE_RUNCMD); err != nil {
 		log.Fatalf("Failed to create VM: %s", err)
 	}
 
